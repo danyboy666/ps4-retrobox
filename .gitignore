@@ -1,0 +1,27 @@
+# Large binary files (hosted on GitHub Releases)
+*.tar.xz
+*.tar.gz
+*.zip
+*.bin
+*.elf
+*.gz
+
+# Community binaries
+community-files/ps4-ubuntu-es.tar.xz
+community-files/bzImage*
+community-files/initramfs*
+community-files/payload-*
+
+# Build artifacts
+/rootfs/
+/tmp/
+/mnt/ps4root/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*~
+.vscode/
