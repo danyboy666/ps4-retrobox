@@ -197,15 +197,17 @@ chown -R 1001:1001 "$ROOTFS/home/PS4"
 # === Create Samba setup helper ===
 cat > "$ROOTFS/usr/local/bin/setup-samba.sh" << 'SAMBA'
 #!/bin/bash
-PC_IP="${1:-192.168.1.100}"
-SHARE="${2:-PS4_ROMs}"
-USER="${3:-PS4}"
-PASS="${4:-PS4}"
+# === EDIT THESE VALUES ===
+PC_IP="192.168.1.100"        # Your Windows PC IP address
+SHARE="PS4_ROMs"             # Your Samba share name
+USER="PS4"                   # Samba username
+PASS="PS4"                   # Samba password
+# =========================
 
 echo "Mounting //$PC_IP/$SHARE to /mnt/roms ..."
 sudo mkdir -p /mnt/roms
 
-if ! grep -q "PS4_ROMs" /etc/fstab; then
+if ! grep -q "$SHARE" /etc/fstab; then
     echo "//$PC_IP/$SHARE /mnt/roms cifs user=$USER,password=$PASS,uid=1001,gid=1001,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0" | sudo tee -a /etc/fstab
     echo "Added to /etc/fstab"
 fi
@@ -338,4 +340,4 @@ echo ""
 echo "Next steps:"
 echo "1. Copy ps4-ubuntu-es.tar.xz + community files to FAT32 USB"
 echo "2. Boot PS4 with 1GB payload -> exec install-HDD.sh -> enter 32"
-echo "3. After boot: sudo setup-samba.sh <PC-IP> PS4_ROMs PS4 PS4"
+echo "3. After boot: ssh PS4@<PS4-IP> -> sudo nano /usr/local/bin/setup-samba.sh -> sudo setup-samba.sh"

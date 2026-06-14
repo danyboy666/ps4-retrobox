@@ -41,7 +41,7 @@ Minimal Ubuntu 22.04 server rootfs designed for PS4 Fat (Aeolia southbridge) wit
 2. **Copy to USB** — put all 7 files on root of FAT32 USB drive
 3. **Boot payload** — send `payload-960-1gb.elf` via BinLoader
 4. **Install to HDD** — run `exec install-HDD.sh` in rescueshell, enter `32`
-5. **Configure Samba** — SSH in and run `sudo setup-samba.sh <PC-IP> PS4_ROMs PS4 PS4`
+5. **Configure Samba** — SSH in, edit `setup-samba.sh` with your PC's IP, then run it
 
 ## Detailed Installation
 
@@ -128,13 +128,24 @@ ssh PS4@<PS4-IP>
 # Password: PS4
 ```
 
-Run the Samba setup helper:
+Edit the Samba helper script with your PC's IP and share name:
 
 ```bash
-sudo setup-samba.sh 192.168.1.100 PS4_ROMs PS4 PS4
+sudo nano /usr/local/bin/setup-samba.sh
 ```
 
-Replace `192.168.1.100` with your PC's IP. This:
+Change the values at the top of the file:
+
+```bash
+PC_IP="192.168.1.100"        # <-- Your Windows PC IP
+SHARE="PS4_ROMs"             # <-- Your share name
+```
+
+Then run it:
+
+```bash
+sudo setup-samba.sh
+```
 - Creates `/mnt/roms` mount point
 - Adds auto-mount entry to `/etc/fstab`
 - Mounts the Samba share
