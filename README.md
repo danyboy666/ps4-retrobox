@@ -42,9 +42,10 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 
 1. **Download** — grab `ps4-retrobox-v1.0.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
 2. **Extract** the zip on your PC
-3. **FTP** 3 files to your PS4 (see Phase 3 below)
-4. **Boot** — send payload → run `exec install-HDD.sh` → enter `32`
-5. **Play** — SSH in, configure Samba, load ROMs
+3. **Rename** `bzImage_no-built-in-fw_Clang_fullLTO` to `bzImage`
+4. **FTP** 4 files to your PS4 (see Phase 3 below)
+5. **Boot** — send payload → run `exec install-HDD.sh` → enter `32`
+6. **Play** — SSH in, configure Samba, load ROMs
 
 ## Detailed Installation
 
@@ -82,18 +83,29 @@ Share the folder:
 
 ### Phase 3: FTP Files to Internal HDD
 
-From your PC, FTP these 3 files to the PS4:
+From your PC, FTP these 4 files to the PS4:
 
-| File | FTP Path | Size |
-|------|----------|------|
-| `bzImage_no-built-in-fw_Clang_fullLTO` | `/data/linux/boot/bzImage` | ~18MB |
-| `initramfs.cpio.gz` (feeRnt) | `/data/linux/boot/initramfs.cpio.gz` | ~6MB |
-| `arch.tar.xz` (Ubuntu rootfs) | `/user/system/boot/arch.tar.xz` | ~492MB |
+| Local File | Rename To | FTP Path | Size |
+|------------|-----------|----------|------|
+| `bzImage_no-built-in-fw_Clang_fullLTO` | **`bzImage`** | `/data/linux/boot/bzImage` | ~18MB |
+| `initramfs.cpio.gz` | (keep name) | `/data/linux/boot/initramfs.cpio.gz` | ~6MB |
+| `bootargs.txt` | (keep name) | `/data/linux/boot/bootargs.txt` | <1KB |
+| `arch.tar.xz` | (keep name) | `/user/system/boot/arch.tar.xz` | ~492MB |
+
+**Important:** You MUST rename `bzImage_no-built-in-fw_Clang_fullLTO` to just `bzImage` before uploading. The payload only looks for a file named `bzImage`.
 
 Use FileZilla or any FTP client:
 - Host: `<PS4-IP>`
 - Port: `2121`
 - Username/Password: (leave empty)
+
+### What is bootargs.txt?
+
+`bootargs.txt` contains kernel boot parameters that fix common issues like black screen. It is loaded automatically by the payload. The default contents fix display output and disable power management that can cause crashes:
+
+```
+panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 drm.edid_firmware=edid/1920x1080.bin
+```
 
 **Important:** The kernel file must be renamed to `bzImage` (not the full original name).
 
