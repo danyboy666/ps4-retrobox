@@ -12,6 +12,7 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 - **RetroArch** with 9 libretro cores pre-installed
 - **Internal HDD install** — runs from 32GB `.img` file on PS4's encrypted HDD
 - **No USB drive needed** after initial setup — all boot files on internal HDD
+- **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
 - **SSH server** enabled (user: `PS4`, password: `PS4`)
 - **Auto-boot** into EmulationStation on tty1
 - **Samba client** for loading ROMs from your PC over the network
