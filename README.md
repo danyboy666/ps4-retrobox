@@ -310,9 +310,13 @@ Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. The
 | Payload | Use When | RAM to GPU |
 |---------|----------|------------|
 | `payload-960-1gb.elf` | First install only | 1GB |
-| `payload-960-2gb.elf` | Daily gaming | 2GB |
+| `payload-960-2gb.elf` | Daily gaming (recommended) | 2GB |
+| `payload-960-3gb.elf` | Optional — better GPU perf | 3GB |
+| `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB |
 
 **Tip:** If Linux fails to boot with 2GB payload, try the 1GB payload first. Some systems may need the lower RAM allocation to boot reliably.
+
+**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** 3GB and 4GB payloads are optional and provided for testing.
 
 ## How It Works
 
