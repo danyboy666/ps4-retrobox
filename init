@@ -1,0 +1,154 @@
+#!/bin/sh
+# better-initramfs project
+# https://bitbucket.org/piotrkarbowski/better-initramfs
+# Copyright (c) 2010-2018, Piotr Karbowski <piotr.karbowski@gmail.com>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without 
+# modification, are permitted provided that the following conditions are met:
+#    * Redistributions of source code must retain the above copyright notice,
+#      this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#    * Neither the name of the Piotr Karbowski nor the names of its contributors
+#      may be used to endorse or promote products derived from this software
+#      without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE
+
+# Load functions.
+. /functions.sh
+
+run_hooks init
+
+# Prepare dirs
+run dodir /dev /newroot /sbin /proc /sys /etc /var/log /var/run /run /run/cryptsetup
+for d in /lib /usr/lib; do
+   # ! -e && ! -h: also skip broken symlinks
+   if [ -d "${d}" ] && [ ! -e "${d}64" ] && [ ! -h "${d}64" ]; then
+      run ln -s "${d}" "${d}64"
+   fi
+done
+unset -v d
+
+# Basic /dev content, we need it as fast as possible.
+[ ! -e /dev/console ]  && run mknod /dev/console c 5 1
+[ ! -e /dev/null ]     && run mknod /dev/null c 1 3
+[ ! -e /dev/tty ]      && run mknod /dev/tty c 5 0
+[ ! -e /dev/urandom ]  && run mknod /dev/urandom c 1 9
+[ ! -e /dev/random ]   && run mknod /dev/random c 1 8
+[ ! -e /dev/zero ]     && run mknod /dev/zero c 1 5
+
+# Clear the screen
+clear
+
+# Save IFS so we can easly restore it if we ever change it.
+readonly default_ifs="${IFS}"
+
+# Basic
+kernelver="$(uname -r)"
+ver="$(cat /VERSION)"
+
+einfo "better-initramfs ${ver}. Linux kernel ${kernelver}.\n"
+echo -e "\nWelcome to better-initramfs ${ver}. Linux kernel ${kernelver}.\n" > /etc/motd
+
+emount /proc /sys
+
+# Disable kernel messages from popping onto the screen
+echo 0 > /proc/sys/kernel/printk
+
+process_commandline_options
+InitializeBusybox
+emount /dev
+run_hooks early
+#SetupNetwork
+#use sshd && setup_sshd
+loadkeymap
+
+use rootdelay rootdelay #needs rootdelay variable to be set, through kernel parameter?
+
+# Let's try to support all possible combinations of storage layers.
+use bcache register_bcache_devices
+use softraid InitializeSoftwareRaid && use bcache register_bcache_devices
+use lvm InitializeLVM && use bcache register_bcache_devices
+use luks InitializeLUKS && use lvm InitializeLVM && use bcache register_bcache_devices
+
+# populate_dev_disk_by_label_and_uuid
+
+use rescueshell rescueshell
+use swsusp && SwsuspResume 
+#missing uswsusp && Uswsuspresume from older initramfs
+use tuxonice TuxOnIceResume
+run_hooks pre_newroot_mount
+
+
+# # PS4 specific section:
+echo "Setting up (en)crypt(ted) mount setup for PlayStation 4 HDD." 
+echo "Using PS4 11xx model and later partition encryption scheme. . ."
+sleep 4
+cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 --skip 0 create ps4hdd /dev/sd?13
+echo "Finished cryptsetup. Mounting the encrypted drive. . ."
+
+mkdir /ps4hdd
+mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+
+# dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
+choose_boot_os
+
+###
+#if [ -f /ps4hdd/home/Arch.img ]; then
+#	echo ""
+#else
+#	echo "No Arch.img found in /ps4hdd/home/ , reentering rescueshell"
+#	rescueshell
+#fi
+###
+
+choose_os_offset
+setup_img_loop_device
+os_filesystem_check
+
+mount /dev/loop0 /newroot
+if [ -f /newroot/home/eap_hdd_key.bin ]; then
+	echo ''
+else
+	cp /key/eap_hdd_key.bin /newroot/home/eap_hdd_key.bin
+fi
+
+# # End of PS4 specific section
+
+emount /newroot
+emount /newroot/usr #new!!
+# Wait for sshd connection only if rescueshell have never occur.
+#use sshd && was_shell || wait_sshd
+
+cleanup
+moveDev
+eumount /sys /proc
+run_hooks pre_switch_root
+
+# # PS4 specific section:
+#
+if [ ! -d /newroot/ps4hdd ]; then
+	mkdir /newroot/ps4hdd
+fi
+mount /ps4hdd /newroot/ps4hdd
+# # End of PS4 specific section
+
+boot_newroot
+
+ewarn "Something went wrong."
+rescueshell
+
+# vim: noexpandtab
