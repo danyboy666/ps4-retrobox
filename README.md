@@ -1,5 +1,7 @@
 # PS4 RetroBox
 
+> **DISCLAIMER**: This project was assembled by an AI assistant (OpenCode). The author is testing this method on real hardware to verify it is valid and safe. Use at your own risk. Always ensure you have a way to recover your PS4 if something goes wrong. The author assumes no responsibility for any damage to your console.
+
 Turn your jailbroken PS4 into a retro gaming machine with EmulationStation + RetroArch.
 
 Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on internal HDD, with network-loaded ROMs via Samba.
