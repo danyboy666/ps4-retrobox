@@ -33,7 +33,7 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 ## Requirements
 
 - PS4 Fat **CUH-1001A** (Aeolia southbridge)
-- Firmware **9.60** (exploitable via karo218.ir jailbreak)
+- Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir)
 - Windows PC on the **same network** as PS4
 - Ethernet cable recommended (WiFi works with USB dongle)
 - **No USB drive required** — everything is transferred via FTP
@@ -111,27 +111,36 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 
 ### Phase 4: Install to Internal HDD
 
-#### Step 1: Disable FTP
+#### Step 1: Jailbreak
 
-Disable FTP on PS4 before booting Linux:
-- GoldHEN → Server Settings → Disable FTP
+**Option A: PSFree-Enhanced (Recommended)**
+1. Open **PS4 Browser**
+2. Go to `arabpixel.github.io/PSFree-Enhanced`
+3. Wait for caching to reach 100% (checkmark appears at top left)
+4. Press **Options** on controller → choose **Refresh Page**
+5. Select **GoldHEN** → press **Start**
+6. Wait for GoldHEN notification
 
-FTP and Linux cannot run at the same time.
+First time requires internet. After caching, works offline from browser cache.
 
-#### Step 2: Jailbreak
-
+**Option B: Karo218.ir**
 1. Open **PS4 Browser**
 2. Go to `karo218.ir`
 3. Click **G2All** → wait for jailbreak to complete
-4. You'll see a notification when jailbreak is done
 
-#### Step 3: Enable BinLoader
+**Option C: DNS Method (no URL typing)**
+1. **Settings** → **Network** → **Set Up Internet Connection**
+2. Set **Primary DNS** to `62.210.38.117`
+3. Open **User Guide** from PS4 Settings → redirects to exploit host
+4. Jailbreak from there
+
+#### Step 2: Enable BinLoader
 
 1. Go to **GoldHEN** menu
 2. Select **Enable BinLoader Server**
 3. You'll see "BinLoader Server: Listening on port 9020"
 
-#### Step 4: Send the Payload
+#### Step 3: Send the Payload
 
 There are several ways to send the payload from your PC to the PS4:
 
@@ -159,7 +168,7 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
 
 **Recommended for first install:** Use Method 1 (netcat) — it's the most reliable.
 
-#### Step 5: Rescueshell
+#### Step 4: Rescueshell
 
 After the payload is sent, the PS4 screen shows white text on black background — this is the **rescueshell**. It's a minimal Linux command prompt.
 
@@ -171,7 +180,7 @@ Welcome to rescue shell!
 
 Connect a USB keyboard to the PS4 to type commands.
 
-#### Step 6: Run HDD Install
+#### Step 5: Run HDD Install
 
 In the rescueshell, type:
 ```bash
@@ -190,7 +199,7 @@ The script will:
 
 **If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
 
-#### Step 7: First Boot
+#### Step 6: First Boot
 
 After installation completes, the PS4 reboots into Ubuntu:
 1. Linux boots from the internal HDD `.img` file
@@ -240,9 +249,22 @@ Once Linux is installed on the internal HDD, you don't need to run `install-HDD.
 
 #### Step 1: Jailbreak
 
-1. Power on PS4 normally (OrbisOS boots)
-2. Open **Browser** → go to `karo218.ir`
+**Option A: PSFree-Enhanced (Recommended)**
+1. Open **PS4 Browser**
+2. Go to `arabpixel.github.io/PSFree-Enhanced`
+3. Wait for caching to reach 100%
+4. Press **Options** → **Refresh Page**
+5. Select **GoldHEN** → press **Start**
+
+**Option B: Karo218.ir**
+1. Open **PS4 Browser**
+2. Go to `karo218.ir`
 3. Click **G2All** → wait for jailbreak
+
+**Option C: DNS Method**
+1. **Settings** → **Network** → **Set Up Internet Connection**
+2. Set **Primary DNS** to `62.210.38.117`
+3. Open **User Guide** → redirects to exploit host
 
 #### Step 2: Enable BinLoader
 
@@ -292,7 +314,7 @@ Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. The
 The PS4 Linux boot chain:
 
 ```
-Exploit (karo218.ir) → GoldHEN → Payload (kexec) → Kernel (bzImage)
+Exploit (PSFree-Enhanced / karo218.ir) → GoldHEN → Payload (kexec) → Kernel (bzImage)
   → Initramfs (feeRnt) → Decrypt PS4 HDD → Find .img file
   → Loop-mount .img → switch_root → Ubuntu boots
 ```
