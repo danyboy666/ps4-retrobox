@@ -58,13 +58,13 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 ### Daily Use — Method 2: Payload Loader (No PC needed)
 1. **Jailbreak** → GoldHEN
 2. **Open** "Payload Loader" from the PS4 home screen
-3. **Select** the 2GB payload ELF from HDD (`/data/pkg/payload-960-2gb.elf`)
+3. **Select** the 2GB payload ELF from HDD (`/data/payloads/payload-960-2gb.elf`)
 4. **Linux boots** → EmulationStation launches → play!
 
 **To set up Payload Loader (one-time):**
 1. Download [Payload Loader PKG](https://pkg-zone.com/download/ps4/FLTZ00001/latest)
 2. Install via GoldHEN → Package Installer
-3. FTP `payload-960-2gb.elf` to `/data/pkg/` on your PS4
+3. FTP `payload-960-2gb.elf` to `/data/payloads/` on your PS4
 
 **That's it.** Just jailbreak → launch payload → play.
 
@@ -306,10 +306,10 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 
 **Method 2: Payload Loader (no PC needed)** — fully standalone
 1. Open **"Payload Loader"** from the PS4 home screen
-2. Browse to `/data/pkg/payload-960-2gb.elf`
+2. Browse to `/data/payloads/payload-960-2gb.elf`
 3. Select it to load
 
-> **One-time setup for Method 2:** Download [Payload Loader PKG](https://pkg-zone.com/download/ps4/FLTZ00001/latest), install via GoldHEN → Package Installer, then FTP `payload-960-2gb.elf` to `/data/pkg/` on your PS4.
+> **One-time setup for Method 2:** Download [Payload Loader PKG](https://pkg-zone.com/download/ps4/FLTZ00001/latest), install via GoldHEN → Package Installer, then FTP `payload-960-2gb.elf` to `/data/payloads/` on your PS4.
 
 #### Step 3: Play!
 
