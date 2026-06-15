@@ -79,9 +79,11 @@ if [ ! -f "/ps4hdd/home/$_install_OS_img" ]; then
 	partsize="${partsize:-32}"
 
 	echo "Creating ${partsize}GB .img file..."
-	truncate -s "${partsize}G" "/ps4hdd/home/$_install_OS_img"
+	if ! fallocate -l "${partsize}G" "/ps4hdd/home/$_install_OS_img" 2>/dev/null; then
+		echo "fallocate not supported, using dd (this may take several minutes)..."
+		dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=64M count=$((partsize * 16))
+	fi
 	echo "Image file created."
-	sleep 2
 	losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
 
 	echo "Formatting ext4..."
@@ -95,11 +97,12 @@ if [ ! -f "/ps4hdd/home/$_install_OS_img" ]; then
 	echo "Extraction complete!"
 fi
 
+umount /newroot 2>/dev/null
+losetup -d /dev/loop5 2>/dev/null
+
 echo
 echo "Script created by https://github.com/Nazky and https://github.com/feeRnt"
 echo
 
-echo "Installation complete! Rebooting in 5 seconds..."
-echo "After reboot, the payload will boot directly into Linux."
-sleep 5
-reboot
+echo "Installation complete!"
+echo "The system will now boot into Linux automatically."
