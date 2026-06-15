@@ -140,7 +140,7 @@ choose_os_offset
 setup_img_loop_device
 os_filesystem_check
 
-mount /dev/loop0 /newroot
+mount -t ext4 /dev/loop0 /newroot
 if [ -f /newroot/home/eap_hdd_key.bin ]; then
 	echo ''
 else

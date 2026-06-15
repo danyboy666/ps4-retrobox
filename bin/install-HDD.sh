@@ -79,11 +79,23 @@ if [ ! -f "/ps4hdd/home/$_install_OS_img" ]; then
 	partsize="${partsize:-32}"
 
 	echo "Creating ${partsize}GB .img file..."
-	if ! fallocate -l "${partsize}G" "/ps4hdd/home/$_install_OS_img" 2>/dev/null; then
-		echo "fallocate not supported, using dd (this may take several minutes)..."
-		dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=64M count=$((partsize * 16))
-	fi
+	TOTAL_MB=$((partsize * 1024))
+	dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=1M count=$TOTAL_MB &
+	_DD_PID=$!
+	sleep 2
+	while kill -0 $_DD_PID 2>/dev/null; do
+		if [ -f "/ps4hdd/home/$_install_OS_img" ]; then
+			DONE=$(wc -c < "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0)
+			DONE_MB=$((DONE / 1048576))
+			PCT=$((DONE_MB * 100 / TOTAL_MB))
+			echo -ne "\rWriting image: ${DONE_MB}MB / ${TOTAL_MB}MB (${PCT}%)"
+		fi
+		sleep 5
+	done
+	wait $_DD_PID
+	echo ""
 	echo "Image file created."
+	[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
 	losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
 
 	echo "Formatting ext4..."

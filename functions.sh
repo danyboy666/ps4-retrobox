@@ -634,98 +634,36 @@ rootdelay() {
 
 choose_boot_os() {
 
-	_OS_list="$(ls /ps4hdd/home | grep \.img | sed -n 's/.img//p')"  
-	
-	if [ ! -f /ps4hdd/home/fstab ]; then
-		touch /ps4hdd/home/fstab
-	fi;
-	_old_OS="$(sed -n '2p' /ps4hdd/home/fstab)"
-	if [[ -z "$_old_OS" ]]; then
-		_old_OS="$(echo -e "$_OS_list" | head -1)"
-	fi
-	
-	echo -e "Available distros to launch in /ps4hdd/home = \n$_OS_list,"
-	read -t 15 -p "Please type out the OS you would like to boot within 15 seconds. Will default to $_old_OS <- . . . : "$'\n' _OS;
-	echo -e "Selected $_OS for launch. . .\n";
+	_OS_list="$(ls /ps4hdd/home 2>/dev/null | grep \.img | sed -n 's/.img//p')"
+	_OS="$(echo -e "$_OS_list" | head -1)"
 
-	if [[ -z "$_OS" ]]; then 
-		_OS="$_old_OS"
+	if [ -z "$_OS" ]; then
+		echo "ERROR: No .img found in /ps4hdd/home/"
+		rescueshell
 	fi
-	sed -i "2 s/.*/$_OS/" /ps4hdd/home/fstab;
+
+	echo "Auto-detected OS: $_OS"
 }
 
 choose_os_offset() {
-
-	if [[ -n $_OS ]];
-		#then _OS_offset="$(grep "$_OS" /ps4hdd/home/fstab | sed  -nE 's|.*\t([0-9]*)|\1|p')"
-		#Either write good regex, or have sed or tr cut out the white space characters
-		then _OS_offset="$(grep "$_OS" /ps4hdd/home/fstab | sed  -nE 's|.*\t([0-9]*)|\1|p' | tr -d ' \n\ry')"
-						#		| sed -E 's|[ \n\cr]||g')"
-						#this evaluates to not nill in the initramfs sh... but not in regular linux bash
-		echo "_OS_offset for $_OS : $_OS_offset bytes"
-	else
-		_OS_offset=0;
-
-	fi;
-
-	if [[ -n $_OS_offset ]];
-		then _imageOffset="$_OS_offset";
-		echo "Set _imageOffset to _OS_offset = $_OS_offset";
-	else
-		_imageOffset=0;
-		echo "Set _imageOffset to 0";
-	fi;
-
-	read -t 12 -p "Current Linux distro img file offset: $_imageOffset. Change to ... (1048576 for linuxmint): " imageOffset; 
-	echo -e "\n";
-	 	# start sector * logical size of sector (512)
-		#TODO: Put in an fstab like file for differently name .img files...
-	if [[ -n "$imageOffset" ]];
-		then _imageOffset="$imageOffset"; echo "Changed image offset to $_imageOffset.";
-	else
-		echo "Keeping image offset as $_imageOffset.";
-	fi;
-
+	_imageOffset=0
+	echo "Image offset: $_imageOffset"
 }
 
 
 setup_img_loop_device() {
-	echo "Setting up OS image loop device. . ."
-	losetup -o $_imageOffset /dev/loop0 /ps4hdd/home/"$_OS".img
+	echo "Setting up OS image loop device..."
+	[ ! -e /dev/loop0 ] && mknod /dev/loop0 b 7 0
+	if ! losetup -o $_imageOffset /dev/loop0 /ps4hdd/home/"$_OS".img; then
+		echo "ERROR: losetup failed. Check that /ps4hdd/home/${_OS}.img exists and is readable."
+		rescueshell
+	fi
+	echo "Loop0 set up: offset=$_imageOffset, file=/ps4hdd/home/${_OS}.img"
 }
 
 os_filesystem_check() {
-	echo -e  "Waiting for 10 seconds before checking filesystem integrity.\n\
-	Press and enter:\n\
-	\"S\" to Start booting into Linux directly,\n\
-	\"R\" to enter into the Rescueshell for debugging or other checks,\n\
-	\"F\" to initiate Filesystem check without waiting."
-	read -t 10 -p "Waiting for input: " answer;
-	echo -e "\n";
-
-	if [[ "$answer" == "S" ]] || [[ "$answer" == "s" ]] ; then echo -e "Starting Linux...\n"; 
-		#boot_ps4_arch;
-	#Will head to init, and run the next boot steps
-
-	elif [[ "$answer" == "R" ]] || [ "$answer" == "r" ]; then echo -e "Entering rescueshell... WITHOUT PID 1. Do 'resume-boot' to boot to the OS.\n";
-	#TO-DO: Break down... Mm. put this checking, _OS name, offset initializations in functions instead of the init. That way resume-boot will work more properly. 
-	#The boot steps (boot_ps4_arch), should be in rescueshell as init as they are very pivotal and prone to failure.
-	#Shouldn't be inside functions. As then resume-boot will not remember what the last step was.
-	echo -e "\n"; #doesn't print new line if you don't quote, does a literal n
-	rescueshell;
-	#boot_ps4_arch;
-
-	elif [[ "$answer" == "F" ]] || [ "$answer" == "f" ]; then echo -e "Checking filesystem integrity and booting...\n"
-	# Always quote the variable expansions. Threw error beforehand because
-	# of -e in $answer.
-	
-	e2fsck /dev/loop0 -p
-	#boot_ps4_arch;
-			
-	else
-	e2fsck /dev/loop0 -p
-	#boot_ps4_arch;		
-	fi;
+	echo "Checking filesystem integrity..."
+	e2fsck /dev/loop0 -p || echo "e2fsck completed (may have fixed errors)"
 }
 
 #unused:::
