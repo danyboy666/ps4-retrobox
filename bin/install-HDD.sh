@@ -23,82 +23,83 @@ echo '             Was that ship really necessary? Well, it looks cool at least 
 echo
 echo
 
-#set -e; # fail on command exit
+# Auto-detect partition encryption scheme
+if [ ! -e /dev/mapper/ps4hdd ]; then
+	echo "Setting up cryptsetup..."
+	if cryptsetup -d /key/eap_hdd_key.bin --cipher=aes-xts-plain64 -s 256 --offset=0 create ps4hdd /dev/sd?27 2>/dev/null; then
+		echo "Using partition 27"
+	elif cryptsetup -d /key/eap_hdd_key.bin --cipher=aes-xts-plain64 -s 256 --offset=0 create ps4hdd /dev/sd?13 2>/dev/null; then
+		echo "Using partition 13"
+	else
+		echo "Trying partition 27 with --skip (for models needing ivoffset)..."
+		cryptsetup -d /key/eap_hdd_key.bin --cipher=aes-xts-plain64 -s 256 --offset=0 --skip=111669149696 create ps4hdd /dev/sd?27
+	fi
+else
+	echo "cryptsetup already done, skipping."
+fi
 
-echo "Setting up cryptmount"
-cryptsetup -d /key/eap_hdd_key.bin --cipher=aes-xts-plain64 -s 256 --offset=0 --skip=0 create ps4hdd /dev/sd?13
-mkdir /ps4hdd
-mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd # will take some time
-read -p 'Linux disk image file size in GB (recommended >=50) : ' partsize
+# Mount if not already mounted
+if ! mountpoint -q /ps4hdd 2>/dev/null; then
+	mkdir -p /ps4hdd
+	mount -t ufs -o rw,ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+else
+	echo "/ps4hdd already mounted, skipping."
+fi
 
-_install_OS_list="$(ls /ps4hdd/system/boot | grep "\.tar\." )"  
-		
-	echo -e "Available distros to install in /ps4hdd/system/boot = \n$_install_OS_list,"
-	read -t 120 -p "Please type out the OS you would like to install within 120 seconds."$'\n' _install_OS;
-	echo -e "Selected $_install_OS for install. . .\n";
+# Auto-detect the .tar.* file
+_install_OS="$(ls /ps4hdd/system/boot/*.tar.* 2>/dev/null | head -1)"
+if [ -z "$_install_OS" ]; then
+	echo "ERROR: No .tar.* found in /ps4hdd/system/boot/"
+	echo "Upload arch.tar.xz via FTP first."
+	rescueshell
+fi
+_install_OS="$(basename "$_install_OS")"
+echo "Auto-detected OS: $_install_OS"
 
+_install_OS_img="$(echo "$_install_OS" | sed -n 's/.tar.*/.img/p')"
+echo "Target image: $_install_OS_img"
 
-_install_OS_img="$(echo "$_install_OS" | sed -n 's/.tar.*/.img/p')";
-echo "_install_OS_img = $_install_OS_img";
-if [ -f /ps4hdd/home/"$_install_OS_img" ]; then 
-	echo "You seem to already have this OS installed.";
-	ls /ps4hdd/home | grep "\.img";
- 	echo "Please rename the matching .img file";
- 	#return 1; //use this only if you ". ./bin/install..." or "source ./bin/install"
-	exit 1;
- fi;
+# Check for ANY existing .img files
+_old_imgs="$(ls /ps4hdd/home/*.img 2>/dev/null)"
+if [ -n "$_old_imgs" ]; then
+	echo "WARNING: Existing .img file(s) found:"
+	ls -lh /ps4hdd/home/*.img
+	echo ""
+	read -p "Delete and reinstall? (y/N): " _del
+	if [ "$_del" = "y" ] || [ "$_del" = "Y" ]; then
+		rm -f /ps4hdd/home/*.img
+		echo "Old images deleted."
+	else
+		echo "Keeping existing image."
+	fi
+fi
 
-#partsize2="$(bc -lw <<EOF
-#1024*1024*1024/512*$partsize
-#EOF
-#)"    #	This also works. But below is more readable
-#echo "partsize2 = $partsize2"
+if [ ! -f "/ps4hdd/home/$_install_OS_img" ]; then
+	read -p 'Linux disk image file size in GB (recommended >=32, default=32): ' partsize
+	partsize="${partsize:-32}"
 
-#echo "partsize = $partsize"
-partsize2="$(echo "($partsize*1024*1024*1024/4096)/1" | bc)"
-#echo "partsize2 = $partsize2"
+	echo "Creating ${partsize}GB .img file..."
+	truncate -s "${partsize}G" "/ps4hdd/home/$_install_OS_img"
+	echo "Image file created."
+	sleep 2
+	losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
 
-echo "Creating .img file . . ."
-dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$partsize2" # creates a sparse img file. Use /dev/zero if you use seek. 
-# You can change the size, but ensure it's big enuogh for a distribution
-sleep 2;
-losetup /dev/loop5 /ps4hdd/home/"$_install_OS_img";
+	echo "Formatting ext4..."
+	mkfs.ext4 -F /dev/loop5
 
-echo "What file system would you like to install? Available options: ext4, ext3, ext2 ..."
-#TODO
+	mount /dev/loop5 /newroot
 
-mkfs.ext4 /dev/loop5 # for installation only, will take some time
-mount /dev/loop5 /newroot
+	echo "Extracting rootfs into .img (this takes 5-15 minutes)..."
+	cd /newroot
+	tar -xvf "/ps4hdd/system/boot/$_install_OS"
+	echo "Extraction complete!"
+fi
 
-echo "Extracting the distro into your .img file"
-cd /newroot; tar -xvf /ps4hdd/system/boot/"$_install_OS"; # the main installation happens here, install only
-
-echo "Extraction complete!"
 echo
-
 echo "Script created by https://github.com/Nazky and https://github.com/feeRnt"
 echo
 
-
-if [ $$ != 1 ]; then
-	echo "Your PID is not 1, this is not being run as init process. switch_root will not work."
-	echo "Please do resume-boot, or if 'echo \$\$' = 1, then manually do"
-	echo "exec switch_root /newroot /newroot/sbin/init , to to try booting again."
-	exit 1;
-else 
-
-	echo "Booting arch linux, please wait.." 
-	sleep 4;
-	exec switch_root /newroot /newroot/sbin/init &
-	echo "Attempt 1 failed, trying again."
-	sleep 4 &&
-	exec switch_root /newroot /newroot/sbin/init &
-	echo "Attempt 2 failed, trying again."
-	sleep 4 &&
-	exec switch_root /newroot /newroot/sbin/init
-	echo
-	echo
-	echo "Booting seems to have failed."
-	echo "If Arch does not boot automatically press CTRL + D once, then again, and wait." 
-	echo "WARNING: Might freeze your shell."
-fi;
+echo "Installation complete! Rebooting in 5 seconds..."
+echo "After reboot, the payload will boot directly into Linux."
+sleep 5
+reboot

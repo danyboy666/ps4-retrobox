@@ -70,6 +70,7 @@ echo 0 > /proc/sys/kernel/printk
 
 process_commandline_options
 InitializeBusybox
+ln -s /bin/sh /bin/bash # not exactly accurate, but aids with many scripts requiring a #!/bin/bash 
 emount /dev
 run_hooks early
 #SetupNetwork
@@ -84,7 +85,8 @@ use softraid InitializeSoftwareRaid && use bcache register_bcache_devices
 use lvm InitializeLVM && use bcache register_bcache_devices
 use luks InitializeLUKS && use lvm InitializeLVM && use bcache register_bcache_devices
 
-# populate_dev_disk_by_label_and_uuid
+# populate_dev_disk_by_label_and_uuid #kept this off as it seems unnecessary and overcomplicated with PS4's
+# encrypted partitioning system
 
 use rescueshell rescueshell
 use swsusp && SwsuspResume 
@@ -95,13 +97,32 @@ run_hooks pre_newroot_mount
 
 # # PS4 specific section:
 echo "Setting up (en)crypt(ted) mount setup for PlayStation 4 HDD." 
-echo "Using PS4 11xx model and later partition encryption scheme. . ."
+echo "Trying partition 27 (CUH-1200+) then partition 13 (CUH-1000/1100)..."
 sleep 4
-cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 --skip 0 create ps4hdd /dev/sd?13
+
+# Try partition 27 first (Slim/Pro models), then partition 13 (early Aeolia)
+if cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 create ps4hdd /dev/sd?27 2>/dev/null; then
+    echo "Using partition 27"
+elif cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 create ps4hdd /dev/sd?13 2>/dev/null; then
+    echo "Using partition 13"
+else
+    echo "ERROR: Could not find valid PS4 HDD partition"
+    echo "Trying partition 27 with --skip (for models needing ivoffset)..."
+    cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 --skip 111669149696 create ps4hdd /dev/sd?27
+fi
+
 echo "Finished cryptsetup. Mounting the encrypted drive. . ."
 
 mkdir /ps4hdd
-mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+mount -t ufs -o rw,ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+
+# First boot check: skip boot sequence if no valid OS installed yet
+# Only consider .img files larger than 1GB (ignore 0-byte/partial from failed attempts)
+if ! find /ps4hdd/home -name "*.img" -size +1G 2>/dev/null | grep -q .; then
+	echo "No valid OS installed. Dropping to rescueshell."
+	echo "Run: exec install-HDD.sh"
+	rescueshell
+fi
 
 # dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
 choose_boot_os

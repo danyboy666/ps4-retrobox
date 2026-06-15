@@ -41,12 +41,21 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 
 ## Quick Start
 
+### First Time Install (one-time setup)
 1. **Download** — grab `ps4-retrobox-v1.0.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
 2. **Extract** the zip on your PC
 3. **Rename** `bzImage_no-built-in-fw_Clang_fullLTO` to `bzImage`
 4. **FTP** 4 files to your PS4 (see Phase 3 below)
-5. **Boot** — send payload → run `exec install-HDD.sh` → enter `32`
-6. **Play** — SSH in, configure Samba, load ROMs
+5. **Jailbreak** → GoldHEN → Enable BinLoader → send 1GB payload
+6. **Run** `exec install-HDD.sh` → type `32` → wait for extraction to finish
+7. **Done** — Linux boots automatically into EmulationStation
+
+### Daily Use (after install is complete)
+1. **Jailbreak** → GoldHEN → Enable BinLoader
+2. **Send 2GB payload:** `netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf`
+3. **Linux boots** → EmulationStation launches → play!
+
+**That's it.** No FTP, no install script, no creating images. Just jailbreak → send payload → play.
 
 ## Detailed Installation
 
@@ -191,22 +200,22 @@ exec install-HDD.sh
 ```
 
 The script will:
-1. Ask how many GB to allocate to Linux — type `32` and press Enter
-2. List available `.tar.*` files on the internal HDD
-3. Select the Ubuntu rootfs (usually option 1)
-4. Create a 32GB `.img` file on the internal HDD
-5. Extract the rootfs into it (takes 5-15 minutes)
-6. Automatically reboot into Ubuntu
-
-**If it asks to select a distro:** Choose the one that matches `arch.tar.xz` (your Ubuntu rootfs).
+1. Auto-detect the PS4 HDD partition and decrypt it
+2. Auto-detect `arch.tar.xz` on the internal HDD
+3. If an old `.img` exists, ask if you want to delete and reinstall
+4. Ask how many GB to allocate — type `32` and press Enter
+5. Create a 32GB `.img` file on the internal HDD
+6. Format it as ext4
+7. Extract the rootfs into it (takes 5-15 minutes)
+8. Print "Installation complete!" and init boots into Linux automatically
 
 **If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
 
 #### Step 6: First Boot
 
-After installation completes, the PS4 reboots into Ubuntu:
-1. Linux boots from the internal HDD `.img` file
-2. tty1 auto-login as `PS4` user
+After extraction completes, init automatically boots into Linux:
+1. Ubuntu boots from the `.img` file on internal HDD
+2. tty1 auto-logs in as `PS4` user
 3. EmulationStation launches automatically
 4. You'll see the EmulationStation menu
 
@@ -246,11 +255,13 @@ Copy BIOS files to local storage:
 cp /mnt/roms/BIOS/* /home/PS4/BIOS/
 ```
 
-### Phase 6: Daily Use
+### Phase 6: Daily Use — How to Play
 
-Once Linux is installed on the internal HDD, you don't need to run `install-HDD.sh` again. Every time you want to use Linux:
+Once Linux is installed on the internal HDD, **you never run `install-HDD.sh` again.** The `.img` stays on your PS4 permanently.
 
-#### Step 1: Jailbreak
+**Every time you want to play:**
+
+#### Step 1: Jailbreak Your PS4
 
 > **⚠ The jailbreak can freeze the console even after a success message.** If the screen goes black or the console becomes unresponsive, **hold the power button for 7-10 seconds** to force shutdown. This is normal — try again. This is NOT a jailbreak guide. See [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced) for instructions.
 
@@ -273,25 +284,26 @@ Once Linux is installed on the internal HDD, you don't need to run `install-HDD.
 
 #### Step 2: Enable BinLoader
 
-1. Go to **GoldHEN** → **Enable BinLoader Server**
+1. Go to **GoldHEN** menu
+2. Select **Enable BinLoader Server**
+3. You'll see "BinLoader Server: Listening on port 9020"
 
 #### Step 3: Send the 2GB Payload
 
-For daily use, send the **2GB payload** for better GPU performance:
+From your PC (use the **2GB payload** for better GPU performance):
 
 ```bash
 netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 ```
 
-The 2GB payload allocates 2GB of PS4 RAM to the GPU, giving better graphics performance than the 1GB payload used for installation.
+#### Step 4: Play!
 
-#### Step 4: Linux Boots
-
-1. The payload loads kernel + initramfs from internal HDD
-2. Ubuntu boots from the `.img` file on internal HDD
-3. tty1 auto-login as `PS4`
+The payload boots Linux automatically:
+1. Loads kernel + initramfs from internal HDD
+2. Decrypts the PS4 HDD and finds your `.img` file
+3. Ubuntu boots from the `.img`
 4. EmulationStation launches automatically
-5. Play!
+5. **Play!**
 
 #### Step 5: Shutdown
 
