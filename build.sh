@@ -2,13 +2,8 @@
 set -e
 
 ROOTFS="/mnt/ps4root"
-SUDO_PASS="danyboy"
-
-usage() {
-    echo "Usage: sudo $0 [rootfs-path]"
-    echo "Default rootfs path: /mnt/ps4root"
-    exit 1
-}
+REPO="danyboy666/ps4-retrobox"
+FEEINT_INITRAMFS_TAG="v1.0"
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (sudo $0)"
@@ -84,7 +79,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # === Install CIFS utils ===
 echo "=== Installing CIFS utils ==="
-run_chroot "DEBIAN_FRONTEND=oninteractive apt-get install -y cifs-utils"
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y cifs-utils"
 
 # === Install GPU + X11 ===
 echo "=== Installing Graphics stack ==="
@@ -327,17 +322,36 @@ for fs in tmp run dev/pts dev sys proc; do
     umount "$ROOTFS/$fs" 2>/dev/null || true
 done
 
-# === Package rootfs ===
+# === Package rootfs as arch.tar.xz ===
 echo "=== Packaging rootfs ==="
-tar -cJf ps4-ubuntu-es.tar.xz -C "$ROOTFS" \
+tar -cJf arch.tar.xz -C "$ROOTFS" \
     --exclude='./proc' --exclude='./sys' --exclude='./run' \
     --exclude='./dev' --exclude='./tmp' .
 
+# === Download feeRnt initramfs ===
+echo "=== Downloading feeRnt initramfs ==="
+if command -v gh &>/dev/null; then
+    gh release download "$FEEINT_INITRAMFS_TAG" -R feeRnt/ps4-linux-initramfs \
+        -p "initramfs.cpio.gz" -D . --clobber 2>/dev/null || \
+    echo "Warning: Could not download initramfs via gh. Download manually from:"
+    echo "  https://github.com/feeRnt/ps4-linux-initramfs/releases/tag/$FEEINT_INITRAMFS_TAG"
+else
+    echo "Warning: gh CLI not found. Download initramfs manually from:"
+    echo "  https://github.com/feeRnt/ps4-linux-initramfs/releases/tag/$FEEINT_INITRAMFS_TAG"
+fi
+
 echo ""
 echo "=== Build complete! ==="
-echo "Rootfs: ps4-ubuntu-es.tar.xz ($(du -h ps4-ubuntu-es.tar.xz | cut -f1))"
+echo "Files:"
+echo "  arch.tar.xz          $(du -h arch.tar.xz | cut -f1)  (Ubuntu rootfs)"
+echo "  initramfs.cpio.gz    $(du -h initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (feeRnt initramfs)"
+echo "  bzImage*             (kernel - download from community-files or GitHub)"
+echo "  payload-960-*.elf    (payloads - download from community-files or GitHub)"
 echo ""
-echo "Next steps:"
-echo "1. Copy ps4-ubuntu-es.tar.xz + community files to FAT32 USB"
-echo "2. Boot PS4 with 1GB payload -> exec install-HDD.sh -> enter 32"
-echo "3. After boot: ssh PS4@<PS4-IP> -> sudo nano /usr/local/bin/setup-samba.sh -> sudo setup-samba.sh"
+echo "FTP these 3 files to your PS4:"
+echo "  1. bzImage*           -> /data/linux/boot/bzImage"
+echo "  2. initramfs.cpio.gz  -> /data/linux/boot/initramfs.cpio.gz"
+echo "  3. arch.tar.xz        -> /user/system/boot/arch.tar.xz"
+echo ""
+echo "Then boot: send 1GB payload -> exec install-HDD.sh -> enter 32"
+echo "After boot: sudo nano /usr/local/bin/setup-samba.sh -> sudo setup-samba.sh"

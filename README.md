@@ -2,17 +2,18 @@
 
 Turn your jailbroken PS4 into a retro gaming machine with EmulationStation + RetroArch.
 
-Minimal Ubuntu 22.04 server rootfs designed for PS4 Fat (Aeolia southbridge) with network-loaded ROMs via Samba.
+Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on internal HDD, with network-loaded ROMs via Samba.
 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
 - **RetroArch** with 9 libretro cores pre-installed
+- **Internal HDD install** — runs from 32GB `.img` file on PS4's encrypted HDD
+- **No USB drive needed** after initial setup — all boot files on internal HDD
 - **SSH server** enabled (user: `PS4`, password: `PS4`)
 - **Auto-boot** into EmulationStation on tty1
 - **Samba client** for loading ROMs from your PC over the network
-- **Internal HDD install** (32GB partition) — no USB drive needed after setup
-- **Dual payload support** — 1GB for first boot, 2GB for daily use
+- **Safe & reversible** — delete the `.img` file via FTP to uninstall
 
 ## Supported Systems
 
@@ -31,17 +32,17 @@ Minimal Ubuntu 22.04 server rootfs designed for PS4 Fat (Aeolia southbridge) wit
 
 - PS4 Fat **CUH-1001A** (Aeolia southbridge)
 - Firmware **9.60** (exploitable via karo218.ir jailbreak)
-- USB 3.0 drive (16GB+) formatted as **FAT32**
 - Windows PC on the **same network** as PS4
 - Ethernet cable recommended (WiFi works with USB dongle)
+- **No USB drive required** — everything is transferred via FTP
 
 ## Quick Start
 
-1. **Download binaries** — run `./download-binaries.sh` or grab files from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
-2. **Copy to USB** — put all 7 files on root of FAT32 USB drive
-3. **Boot payload** — send `payload-960-1gb.elf` via BinLoader
-4. **Install to HDD** — run `exec install-HDD.sh` in rescueshell, enter `32`
-5. **Configure Samba** — SSH in, edit `setup-samba.sh` with your PC's IP, then run it
+1. **Download** — grab `ps4-retrobox-v1.0.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
+2. **Extract** the zip on your PC
+3. **FTP** 3 files to your PS4 (see Phase 3 below)
+4. **Boot** — send payload → run `exec install-HDD.sh` → enter `32`
+5. **Play** — SSH in, configure Samba, load ROMs
 
 ## Detailed Installation
 
@@ -51,16 +52,14 @@ Create a shared folder on your Windows PC:
 
 ```
 C:\PS4_ROMs\
-├── NES\
 ├── SNES\
 ├── N64\
 ├── GBA\
-├── GB\
+├── GameBoy\
 ├── Genesis\
 ├── PlayStation\
-├── PSP\
-├── NDS\
 ├── TurboGrafx16\
+├── NintendoDS\
 └── BIOS\
 ```
 
@@ -69,57 +68,53 @@ Share the folder:
 2. Add user `Everyone` with Read access
 3. Note your PC's IP address (run `ipconfig`)
 
-### Phase 2: Prepare USB Drive
-
-1. Format USB as **FAT32**
-2. Copy all release files to root of USB:
-
-```
-USB Root/
-├── payload-960-1gb.elf
-├── payload-960-2gb.elf
-├── bzImage_no-built-in-fw_Clang_fullLTO
-├── initramfs.cpio.gz
-├── ps4-ubuntu-es.tar.xz
-└── bootargs.txt
-```
-
-### Phase 3: PS4 Preparation
+### Phase 2: PS4 Preparation
 
 1. **Settings** → Disable **HDCP**
 2. **Settings** → **Screen and Video** → Set resolution to **1080p**
 3. **Settings** → **System** → Disable **HDMI Device Link**
 4. Connect PS4 to network (Ethernet recommended)
+5. Enable **FTP** on PS4:
+   - GoldHEN → Server Settings → Enable FTP
+   - Note the PS4's IP address
 
-### Phase 4: First Boot (Test from USB)
+### Phase 3: FTP Files to Internal HDD
 
-1. Open **Browser** → go to `karo218.ir`
-2. Click **G2All** → wait for jailbreak
-3. Go to **GoldHEN** → **Enable BinLoader Server**
-4. From PC, send 1GB payload:
+From your PC, FTP these 3 files to the PS4:
+
+| File | FTP Path | Size |
+|------|----------|------|
+| `bzImage_no-built-in-fw_Clang_fullLTO` | `/data/linux/boot/bzImage` | ~18MB |
+| `initramfs.cpio.gz` (feeRnt) | `/data/linux/boot/initramfs.cpio.gz` | ~6MB |
+| `arch.tar.xz` (Ubuntu rootfs) | `/user/system/boot/arch.tar.xz` | ~492MB |
+
+Use FileZilla or any FTP client:
+- Host: `<PS4-IP>`
+- Port: `2121`
+- Username/Password: (leave empty)
+
+**Important:** The kernel file must be renamed to `bzImage` (not the full original name).
+
+### Phase 4: Install to Internal HDD
+
+1. **Disable FTP** on PS4 (GoldHEN → Server Settings → Disable FTP)
+2. Open **Browser** → go to `karo218.ir`
+3. Click **G2All** → wait for jailbreak
+4. Go to **GoldHEN** → **Enable BinLoader Server**
+5. From PC, send 1GB payload:
    ```bash
    netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
    ```
-5. Rescueshell appears (white text on black screen)
-6. Test USB boot:
-   ```bash
-   exec start-psxitarch.sh
-   ```
-7. Verify EmulationStation loads, then reboot: `reboot`
-
-### Phase 5: Install to Internal HDD
-
-1. Boot again with 1GB payload → rescueshell
-2. Insert USB drive with all files
-3. Run HDD install:
+6. Rescueshell appears (white text on black screen)
+7. Run HDD install:
    ```bash
    exec install-HDD.sh
    ```
-4. When prompted, enter partition size: **32** (GB)
-5. Wait 5-15 minutes for extraction
-6. System auto-reboots into HDD Linux
+8. When prompted, enter size: **32** (GB)
+9. Wait 5-15 minutes for extraction
+10. System reboots into Ubuntu
 
-### Phase 6: Configure Samba
+### Phase 5: Configure Samba
 
 SSH into PS4 from your PC:
 
@@ -146,9 +141,6 @@ Then run it:
 ```bash
 sudo setup-samba.sh
 ```
-- Creates `/mnt/roms` mount point
-- Adds auto-mount entry to `/etc/fstab`
-- Mounts the Samba share
 
 Copy BIOS files to local storage:
 
@@ -156,7 +148,7 @@ Copy BIOS files to local storage:
 cp /mnt/roms/BIOS/* /home/PS4/BIOS/
 ```
 
-### Phase 7: Daily Use
+### Phase 6: Daily Use
 
 For everyday gaming, use the 2GB payload for better GPU performance:
 
@@ -168,9 +160,24 @@ Linux boots → tty1 auto-login → EmulationStation launches → play!
 
 Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. They appear in EmulationStation on next restart.
 
+## How It Works
+
+The PS4 Linux boot chain:
+
+```
+Exploit (karo218.ir) → GoldHEN → Payload (kexec) → Kernel (bzImage)
+  → Initramfs (feeRnt) → Decrypt PS4 HDD → Find .img file
+  → Loop-mount .img → switch_root → Ubuntu boots
+```
+
+- **Payload** loads kernel + initramfs from `/data/linux/boot/` on internal HDD
+- **Initramfs** decrypts PS4's encrypted HDD partition, finds `.img` file at `/user/home/`
+- **`.img` file** contains the full Ubuntu rootfs (32GB ext4 filesystem image)
+- **No USB drive** needed — all files are on the internal HDD
+
 ## BIOS Files
 
-Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or `/home/PS4/BIOS/`):
+Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 
 | System | File(s) | Size |
 |--------|---------|------|
@@ -179,17 +186,14 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or `/home/PS4/BIOS/`):
 | TurboGrafx-16 | syscard3.pce | 24KB |
 | GBA (optional) | gba_bios.bin | 16KB |
 
-## Partition Layout (32GB)
+## Uninstalling
 
-```
-Internal HDD Linux Partition
-├── /                     5GB (rootfs + packages)
-├── /home/PS4/           26GB
-│   ├── BIOS/             100MB (local BIOS)
-│   ├── ROMs/saves/       1GB (local saves)
-│   └── ROMs/screenshots/ 500MB
-└── swap                  1GB
-```
+To remove Linux from your PS4:
+1. Enable FTP on PS4
+2. Delete `/user/home/arch.img` (or whatever the `.img` file is named)
+3. Delete `/data/linux/boot/bzImage` and `/data/linux/boot/initramfs.cpio.gz`
+
+This fully restores your PS4 to OrbisOS with no changes.
 
 ## Troubleshooting
 
@@ -202,7 +206,8 @@ Internal HDD Linux Partition
 | Samba mount fails | Check PC IP, firewall, share name, credentials |
 | BIOS not found | Verify files in `/home/PS4/BIOS/` |
 | ROMs not showing | Check `ls /mnt/roms/`, restart EmulationStation |
-| HDD install fails | Try 1GB payload, ensure FAT32 USB, re-download files |
+| HDD install fails | Try 1GB payload, re-download files, check FTP paths |
+| `mount -o ro /newroot failed` | Ensure `arch.tar.xz` is at `/user/system/boot/` via FTP |
 
 ## Building from Source
 
@@ -222,13 +227,14 @@ The build script:
 3. Installs RetroArch + libretro cores
 4. Compiles EmulationStation from source
 5. Configures auto-boot, SSH, user accounts
-6. Packages everything as `ps4-ubuntu-es.tar.xz`
+6. Packages as `arch.tar.xz`
+7. Downloads feeRnt initramfs
 
 ## Credits
 
+- [feeRnt](https://github.com/feeRnt/ps4-linux-initramfs) — Open-source initramfs with PS4 HDD support
 - [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel 6.15.4 for Aeolia/Belize
 - [crashniels](https://github.com/crashniels/linux) — Kernel source with WiFi/BT patches
-- [noob404](https://ps4linux.com) — Multi-boot initramfs, community resources
 - [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
 - [ps4boot](https://github.com/ps4boot/ps4-linux-payloads) — PS4 Linux payloads
