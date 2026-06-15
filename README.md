@@ -111,22 +111,94 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 
 ### Phase 4: Install to Internal HDD
 
-1. **Disable FTP** on PS4 (GoldHEN → Server Settings → Disable FTP)
-2. Open **Browser** → go to `karo218.ir`
-3. Click **G2All** → wait for jailbreak
-4. Go to **GoldHEN** → **Enable BinLoader Server**
-5. From PC, send 1GB payload:
-   ```bash
-   netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
-   ```
-6. Rescueshell appears (white text on black screen)
-7. Run HDD install:
-   ```bash
-   exec install-HDD.sh
-   ```
-8. When prompted, enter size: **32** (GB)
-9. Wait 5-15 minutes for extraction
-10. System reboots into Ubuntu
+#### Step 1: Disable FTP
+
+Disable FTP on PS4 before booting Linux:
+- GoldHEN → Server Settings → Disable FTP
+
+FTP and Linux cannot run at the same time.
+
+#### Step 2: Jailbreak
+
+1. Open **PS4 Browser**
+2. Go to `karo218.ir`
+3. Click **G2All** → wait for jailbreak to complete
+4. You'll see a notification when jailbreak is done
+
+#### Step 3: Enable BinLoader
+
+1. Go to **GoldHEN** menu
+2. Select **Enable BinLoader Server**
+3. You'll see "BinLoader Server: Listening on port 9020"
+
+#### Step 4: Send the Payload
+
+There are several ways to send the payload from your PC to the PS4:
+
+**Method 1: Netcat (Windows/Mac/Linux)**
+```bash
+netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
+```
+
+**Method 2: GoldHEN BinLoader (from PS4 browser)**
+1. On PS4 browser, go to `karo218.ir`
+2. Click **G2All** → wait for jailbreak
+3. Go to **GoldHEN** → **Enable BinLoader Server**
+4. From PC, use a payload sender app or netcat to send the `.elf` file to port 9020
+
+**Method 3: Windows payload sender apps**
+- Use any PS4 payload sender application (e.g., PS4 Payload Sender, BinLoader)
+- Enter PS4 IP and port 9020
+- Select `payload-960-1gb.elf`
+- Click Send
+
+**Method 4: Direct USB (if supported by exploit host)**
+- Some exploit hosts support loading payloads from USB
+- Copy the `.elf` file to root of USB drive
+- The exploit host may auto-detect it
+
+**Recommended for first install:** Use Method 1 (netcat) — it's the most reliable.
+
+#### Step 5: Rescueshell
+
+After the payload is sent, the PS4 screen shows white text on black background — this is the **rescueshell**. It's a minimal Linux command prompt.
+
+You'll see something like:
+```
+Welcome to rescue shell!
+# _
+```
+
+Connect a USB keyboard to the PS4 to type commands.
+
+#### Step 6: Run HDD Install
+
+In the rescueshell, type:
+```bash
+exec install-HDD.sh
+```
+
+The script will:
+1. Ask how many GB to allocate to Linux — type `32` and press Enter
+2. List available `.tar.*` files on the internal HDD
+3. Select the Ubuntu rootfs (usually option 1)
+4. Create a 32GB `.img` file on the internal HDD
+5. Extract the rootfs into it (takes 5-15 minutes)
+6. Automatically reboot into Ubuntu
+
+**If it asks to select a distro:** Choose the one that matches `arch.tar.xz` (your Ubuntu rootfs).
+
+**If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
+
+#### Step 7: First Boot
+
+After installation completes, the PS4 reboots into Ubuntu:
+1. Linux boots from the internal HDD `.img` file
+2. tty1 auto-login as `PS4` user
+3. EmulationStation launches automatically
+4. You'll see the EmulationStation menu
+
+**If you get a black screen:** Try connecting a different monitor/TV, or check `bootargs.txt` is at `/data/linux/boot/bootargs.txt`.
 
 ### Phase 5: Configure Samba
 
@@ -164,15 +236,56 @@ cp /mnt/roms/BIOS/* /home/PS4/BIOS/
 
 ### Phase 6: Daily Use
 
-For everyday gaming, use the 2GB payload for better GPU performance:
+Once Linux is installed on the internal HDD, you don't need to run `install-HDD.sh` again. Every time you want to use Linux:
+
+#### Step 1: Jailbreak
+
+1. Power on PS4 normally (OrbisOS boots)
+2. Open **Browser** → go to `karo218.ir`
+3. Click **G2All** → wait for jailbreak
+
+#### Step 2: Enable BinLoader
+
+1. Go to **GoldHEN** → **Enable BinLoader Server**
+
+#### Step 3: Send the 2GB Payload
+
+For daily use, send the **2GB payload** for better GPU performance:
 
 ```bash
 netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 ```
 
-Linux boots → tty1 auto-login → EmulationStation launches → play!
+The 2GB payload allocates 2GB of PS4 RAM to the GPU, giving better graphics performance than the 1GB payload used for installation.
 
-Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. They appear in EmulationStation on next restart.
+#### Step 4: Linux Boots
+
+1. The payload loads kernel + initramfs from internal HDD
+2. Ubuntu boots from the `.img` file on internal HDD
+3. tty1 auto-login as `PS4`
+4. EmulationStation launches automatically
+5. Play!
+
+#### Step 5: Shutdown
+
+When done gaming:
+- Press **PS button** → Power → Turn Off PS4
+- Or type `sudo shutdown -h now` in a terminal (if you have SSH access)
+
+#### Adding ROMs
+
+Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. They appear in EmulationStation after:
+- Restarting EmulationStation (press Start → Quit → restart with `startx`)
+- Or rebooting the PS4 Linux
+
+#### Payload Summary
+
+| Payload | Use When | RAM to GPU |
+|---------|----------|------------|
+| `payload-960-1gb.elf` | First install only | 1GB |
+| `payload-960-2gb.elf` | Daily gaming | 2GB |
+
+**Tip:** If Linux fails to boot with 2GB payload, try the 1GB payload first. Some systems may need the lower RAM allocation to boot reliably.
 
 ## How It Works
 
