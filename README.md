@@ -57,8 +57,8 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 
 ### Daily Use — Method 2: Payload Loader (No PC needed)
 1. **Jailbreak** → GoldHEN
-2. **Open** "Payload Loader" from the PS4 home screen
-3. **Select** the 2GB payload ELF from HDD (`/data/payloads/payload-960-2gb.elf`)
+2. **Go to GoldHEN menu** → **Payload Loader**
+3. **Select** the 2GB payload ELF from `/data/payloads/`
 4. **Linux boots** → EmulationStation launches → play!
 
 **To set up Payload Loader (one-time):**
@@ -305,7 +305,7 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 ```
 
 **Method 2: Payload Loader (no PC needed)** — fully standalone
-1. Open **"Payload Loader"** from the PS4 home screen
+1. Go to **GoldHEN** menu → **Payload Loader**
 2. Browse to `/data/payloads/payload-960-2gb.elf`
 3. Select it to load
 
