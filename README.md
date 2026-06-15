@@ -50,12 +50,23 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 6. **Run** `exec install-HDD.sh` → type `32` → wait for extraction to finish
 7. **Done** — Linux boots automatically into EmulationStation
 
-### Daily Use (after install is complete)
+### Daily Use — Method 1: Netcat (PC required)
 1. **Jailbreak** → GoldHEN → Enable BinLoader
-2. **Send 2GB payload:** `netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf`
+2. **Send 2GB payload from PC:** `netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf`
 3. **Linux boots** → EmulationStation launches → play!
 
-**That's it.** No FTP, no install script, no creating images. Just jailbreak → send payload → play.
+### Daily Use — Method 2: Payload Loader (No PC needed)
+1. **Jailbreak** → GoldHEN
+2. **Open** "Payload Loader" from the PS4 home screen
+3. **Select** the 2GB payload ELF from HDD (`/data/pkg/payload-960-2gb.elf`)
+4. **Linux boots** → EmulationStation launches → play!
+
+**To set up Payload Loader (one-time):**
+1. Download [Payload Loader PKG](https://pkg-zone.com/download/ps4/FLTZ00001/latest)
+2. Install via GoldHEN → Package Installer
+3. FTP `payload-960-2gb.elf` to `/data/pkg/` on your PS4
+
+**That's it.** Just jailbreak → launch payload → play.
 
 ## Detailed Installation
 
@@ -282,21 +293,25 @@ Once Linux is installed on the internal HDD, **you never run `install-HDD.sh` ag
 2. Set **Primary DNS** to `62.210.38.117`
 3. Open **User Guide** → redirects to exploit host
 
-#### Step 2: Enable BinLoader
+#### Step 2: Launch the Linux Payload
 
-1. Go to **GoldHEN** menu
-2. Select **Enable BinLoader Server**
-3. You'll see "BinLoader Server: Listening on port 9020"
+Pick one of two methods:
 
-#### Step 3: Send the 2GB Payload
-
-From your PC (use the **2GB payload** for better GPU performance):
-
+**Method 1: Netcat (from PC)** — requires PC on same network
+1. Go to **GoldHEN** → **Enable BinLoader Server**
+2. From your PC, run:
 ```bash
 netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 ```
 
-#### Step 4: Play!
+**Method 2: Payload Loader (no PC needed)** — fully standalone
+1. Open **"Payload Loader"** from the PS4 home screen
+2. Browse to `/data/pkg/payload-960-2gb.elf`
+3. Select it to load
+
+> **One-time setup for Method 2:** Download [Payload Loader PKG](https://pkg-zone.com/download/ps4/FLTZ00001/latest), install via GoldHEN → Package Installer, then FTP `payload-960-2gb.elf` to `/data/pkg/` on your PS4.
+
+#### Step 3: Play!
 
 The payload boots Linux automatically:
 1. Loads kernel + initramfs from internal HDD
@@ -305,7 +320,7 @@ The payload boots Linux automatically:
 4. EmulationStation launches automatically
 5. **Play!**
 
-#### Step 5: Shutdown
+#### Step 4: Shutdown
 
 When done gaming:
 - Press **PS button** → Power → Turn Off PS4
@@ -319,12 +334,12 @@ Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. The
 
 #### Payload Summary
 
-| Payload | Use When | RAM to GPU |
-|---------|----------|------------|
-| `payload-960-1gb.elf` | First install only | 1GB |
-| `payload-960-2gb.elf` | Daily gaming (recommended) | 2GB |
-| `payload-960-3gb.elf` | Optional — better GPU perf | 3GB |
-| `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB |
+| Payload | Use When | RAM to GPU | Netcat | Payload Loader |
+|---------|----------|------------|--------|----------------|
+| `payload-960-1gb.elf` | First install only | 1GB | ✅ | ✅ |
+| `payload-960-2gb.elf` | Daily gaming (recommended) | 2GB | ✅ | ✅ |
+| `payload-960-3gb.elf` | Optional — better GPU perf | 3GB | ✅ | ✅ |
+| `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB | ✅ | ✅ |
 
 **Tip:** If Linux fails to boot with 2GB payload, try the 1GB payload first. Some systems may need the lower RAM allocation to boot reliably.
 
