@@ -79,13 +79,34 @@ if [ ! -f "/ps4hdd/home/$_install_OS_img" ]; then
 	partsize="${partsize:-32}"
 
 	echo "Creating ${partsize}GB .img file..."
-	truncate -s "${partsize}G" "/ps4hdd/home/$_install_OS_img"
-	echo "Image file created (sparse, instant)."
+	TOTAL_MB=$((partsize * 1024))
 	[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
+	touch "/ps4hdd/home/$_install_OS_img"
 	losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
+	START=$(date +%s)
+	dd if=/dev/zero of=/dev/loop5 bs=1M count=$TOTAL_MB 2>&1 &
+	_DD_PID=$!
+	sleep 2
+	while kill -0 $_DD_PID 2>/dev/null; do
+		DONE_BYTES=$(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0)
+		DONE_MB=$((DONE_BYTES / 1048576))
+		PCT=$((DONE_MB * 100 / TOTAL_MB))
+		ELAPSED=$(($(date +%s) - START))
+		if [ "$ELAPSED" -gt 0 ] && [ "$DONE_MB" -gt 0 ]; then
+			SPEED=$((DONE_MB / ELAPSED))
+			if [ "$SPEED" -gt 0 ]; then
+				REMAIN=$(( (TOTAL_MB - DONE_MB) / SPEED / 60 ))
+				echo -ne "\rWriting image: ${DONE_MB}MB / ${TOTAL_MB}MB (${PCT}%) | ~${REMAIN} min remaining"
+			fi
+		fi
+		sleep 5
+	done
+	wait $_DD_PID
+	echo ""
+	echo "Image file created."
 
 	echo "Formatting ext4..."
-	mke2fs -t ext4 /dev/loop5
+	mkfs.ext4 -F /dev/loop5
 
 	mount /dev/loop5 /newroot
 
