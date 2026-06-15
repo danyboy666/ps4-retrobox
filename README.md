@@ -114,6 +114,8 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 
 #### Step 1: Jailbreak
 
+> **⚠ The jailbreak can freeze the console even after a success message.** If the screen goes black or the console becomes unresponsive, **hold the power button for 7-10 seconds** to force shutdown. This is normal — try again. This is NOT a jailbreak guide. See [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced) for instructions.
+
 **Option A: PSFree-Enhanced (Recommended)**
 1. Open **PS4 Browser**
 2. Go to `arabpixel.github.io/PSFree-Enhanced`
@@ -181,27 +183,7 @@ Welcome to rescue shell!
 
 Connect a USB keyboard to the PS4 to type commands.
 
-#### Step 5: Fix Partition for CUH-1000/1100 (Early Aeolia)
-
-The default initramfs uses `--skip 111669149696` which is only for CUH-1200+ (Slim/Pro). **CUH-1000/1100 users must fix this manually.**
-
-In the rescueshell, run these commands **before** install-HDD.sh:
-
-```bash
-# Fix the initramfs cryptsetup for early Aeolia
-sed -i 's/--skip 111669149696//g' /bin/install-HDD.sh
-sed -i 's/--skip=111669149696//g' /bin/install-HDD.sh
-```
-
-If the above doesn't work, edit manually:
-```bash
-vi /bin/install-HDD.sh
-# Find the line: cryptsetup ... --skip=111669149696 create ps4hdd /dev/sd?27
-# Remove the --skip=111669149696 part
-# Also try changing /dev/sd?27 to /dev/sd?13 if it still fails
-```
-
-#### Step 6: Run HDD Install
+#### Step 5: Run HDD Install
 
 In the rescueshell, type:
 ```bash
@@ -220,7 +202,7 @@ The script will:
 
 **If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
 
-#### Step 7: First Boot
+#### Step 6: First Boot
 
 After installation completes, the PS4 reboots into Ubuntu:
 1. Linux boots from the internal HDD `.img` file
@@ -269,6 +251,8 @@ cp /mnt/roms/BIOS/* /home/PS4/BIOS/
 Once Linux is installed on the internal HDD, you don't need to run `install-HDD.sh` again. Every time you want to use Linux:
 
 #### Step 1: Jailbreak
+
+> **⚠ The jailbreak can freeze the console even after a success message.** If the screen goes black or the console becomes unresponsive, **hold the power button for 7-10 seconds** to force shutdown. This is normal — try again. This is NOT a jailbreak guide. See [PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced) for instructions.
 
 **Option A: PSFree-Enhanced (Recommended)**
 1. Open **PS4 Browser**
