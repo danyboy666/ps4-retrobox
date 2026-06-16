@@ -99,27 +99,8 @@ _PARTSIZE2="$(echo "($_PARTSIZE*1024*1024*1024/4096)/1" | bc)"
 
 echo ""
 echo "=== Creating minimal ${_PARTSIZE}GB .img ==="
-_START=$(date +%s)
-dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>&1 &
-_DD_PID=$!
-sleep 2
-while kill -0 $_DD_PID 2>/dev/null; do
-	_DONE_BYTES=$(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0)
-	_DONE_MB=$((_DONE_BYTES / 1048576))
-	_PCT=$((_DONE_MB * 100 / _TOTAL_MB))
-	_ELAPSED=$(($(date +%s) - _START))
-	if [ "$_ELAPSED" -gt 0 ] && [ "$_DONE_MB" -gt 0 ]; then
-		_SPEED=$((_DONE_MB / _ELAPSED))
-		if [ "$_SPEED" -gt 0 ]; then
-			_REMAIN=$(( (_TOTAL_MB - _DONE_MB) / _SPEED / 60 ))
-			echo -ne "\r  Creating image: ${_DONE_MB}MB / ${_TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min  "
-		fi
-	fi
-	sleep 3
-done
-wait $_DD_PID
-echo ""
-echo "  Image file created."
+dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>/dev/null
+echo "  Sparse image created (instant)."
 echo ""
 
 [ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
@@ -135,10 +116,16 @@ mount /dev/loop5 /newroot
 
 echo "Extracting rootfs (this takes ~20-30 minutes)..."
 cd /newroot
+_IMG_TOTAL_MB=$(($(blockdev --getsize64 /dev/loop5 2>/dev/null || echo 3221225472) / 1048576))
 tar -xvf "/ps4hdd/system/boot/$_install_OS" | while read -r _file; do
 	_DONE=$(du -sb /newroot 2>/dev/null | awk '{print $1}')
 	_DONE_MB=$((_DONE / 1048576))
-	_PCT=$((_DONE_MB * 100 / 2500))
+	if [ "$_IMG_TOTAL_MB" -gt 0 ]; then
+		_PCT=$((_DONE_MB * 100 / _IMG_TOTAL_MB))
+		[ "$_PCT" -gt 100 ] && _PCT=100
+	else
+		_PCT=0
+	fi
 	echo -ne "\r  Extracting: ~${_DONE_MB}MB extracted (${_PCT}%)  "
 done
 echo ""
