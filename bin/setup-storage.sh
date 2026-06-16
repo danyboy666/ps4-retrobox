@@ -6,6 +6,7 @@ set -e
 
 _IMG_NAME="arch.img"
 _IMG_PATH="/ps4hdd/home/$_IMG_NAME"
+_TARGET_SIZE_FILE="/ps4hdd/home/.target_size"
 _DEFAULT_SIZE=32
 
 echo ""
@@ -31,14 +32,19 @@ _CURRENT_BYTES=$(stat -c %s "$_IMG_PATH" 2>/dev/null || echo 0)
 _CURRENT_GB=$((_CURRENT_BYTES / 1073741824))
 echo "Current image size: ${_CURRENT_GB}GB"
 
-# Ask user for target size
-echo ""
-read -p "Target size in GB (default=$_DEFAULT_SIZE): " _TARGET_GB
-_TARGET_GB="${_TARGET_GB:-$_DEFAULT_SIZE}"
+# Read target size from config file (set during install)
+if [ -f "$_TARGET_SIZE_FILE" ]; then
+	_TARGET_GB=$(cat "$_TARGET_SIZE_FILE")
+	echo "Target size: ${_TARGET_GB}GB (set during install)"
+else
+	echo "No target size configured. Using default: ${_DEFAULT_SIZE}GB"
+	_TARGET_GB="$_DEFAULT_SIZE"
+fi
 
 if [ "$_TARGET_GB" -le "$_CURRENT_GB" ]; then
 	echo "Target size must be larger than current size (${_CURRENT_GB}GB)."
-	exit 1
+	echo "Nothing to expand."
+	exit 0
 fi
 
 echo ""
@@ -68,6 +74,9 @@ echo "  ext4 expanded."
 # Cleanup
 sync
 losetup -d /dev/loop5 2>/dev/null
+
+# Clean up target size file
+rm -f "$_TARGET_SIZE_FILE"
 
 # Mark as expanded
 mkdir -p /var/lib

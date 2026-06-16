@@ -83,34 +83,39 @@ if [ -f "/ps4hdd/home/$_install_OS_img" ]; then
 	fi
 fi
 
+# Ask for final target size (stored for expansion after first boot)
 echo ""
-echo "=== Phase 1: Create minimal .img for initial install ==="
-echo "You can expand the image to full size after first boot."
-echo ""
-read -p 'Initial image size in GB (default=4): ' partsize
-partsize="${partsize:-4}"
-TOTAL_MB=$((partsize * 1024))
-partsize2="$(echo "($partsize*1024*1024*1024/4096)/1" | bc)"
+echo "How large should the final image be after expansion?"
+echo "Rootfs needs ~2.5GB. Common sizes: 16, 32, 50."
+read -p "Final size in GB (default=32): " _TARGET_SIZE
+_TARGET_SIZE="${_TARGET_SIZE:-32}"
+echo "$_TARGET_SIZE" > /ps4hdd/home/.target_size
+echo "Will expand to ${_TARGET_SIZE}GB after first boot."
+
+# Create minimal 3GB .img (enough for rootfs + ext4 overhead)
+_PARTSIZE=3
+_TOTAL_MB=$((_PARTSIZE * 1024))
+_PARTSIZE2="$(echo "($_PARTSIZE*1024*1024*1024/4096)/1" | bc)"
 
 echo ""
-echo "Creating sparse ${partsize}GB .img file..."
+echo "=== Creating minimal ${_PARTSIZE}GB .img ==="
 _START=$(date +%s)
-dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$partsize2" 2>&1 &
+dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>&1 &
 _DD_PID=$!
 sleep 2
 while kill -0 $_DD_PID 2>/dev/null; do
 	_DONE_BYTES=$(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0)
 	_DONE_MB=$((_DONE_BYTES / 1048576))
-	_PCT=$((_DONE_MB * 100 / TOTAL_MB))
+	_PCT=$((_DONE_MB * 100 / _TOTAL_MB))
 	_ELAPSED=$(($(date +%s) - _START))
 	if [ "$_ELAPSED" -gt 0 ] && [ "$_DONE_MB" -gt 0 ]; then
 		_SPEED=$((_DONE_MB / _ELAPSED))
 		if [ "$_SPEED" -gt 0 ]; then
-			_REMAIN=$(( (TOTAL_MB - _DONE_MB) / _SPEED / 60 ))
-			echo -ne "\r  Writing: ${_DONE_MB}MB / ${TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min remaining  "
+			_REMAIN=$(( (_TOTAL_MB - _DONE_MB) / _SPEED / 60 ))
+			echo -ne "\r  Creating image: ${_DONE_MB}MB / ${_TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min  "
 		fi
 	fi
-	sleep 5
+	sleep 3
 done
 wait $_DD_PID
 echo ""
@@ -121,57 +126,23 @@ echo ""
 losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
 
 echo "Formatting ext4..."
-_START=$(date +%s)
-mkfs.ext4 /dev/loop5 2>&1 &
-_MKFS_PID=$!
-sleep 2
-while kill -0 $_MKFS_PID 2>/dev/null; do
-	_DONE_BYTES=$(blockdev --getsize64 /dev/loop5 2>/dev/null || echo 0)
-	_DONE_MB=$((_DONE_BYTES / 1048576))
-	_ELAPSED=$(($(date +%s) - _START))
-	if [ "$_ELAPSED" -gt 0 ] && [ "$_DONE_MB" -gt 0 ]; then
-		echo -ne "\r  Formatting: ${_DONE_MB}MB written (${_ELAPSED}s elapsed)  "
-	fi
-	sleep 3
-done
-wait $_MKFS_PID
-echo ""
+mkfs.ext4 /dev/loop5
 echo "  ext4 formatted."
 echo ""
 
 mkdir -p /newroot
 mount /dev/loop5 /newroot
 
-echo "Extracting rootfs (this takes 5-15 minutes)..."
+echo "Extracting rootfs (this takes ~20-30 minutes)..."
 cd /newroot
-tar -xvf "/ps4hdd/system/boot/$_install_OS"
+tar -xvf "/ps4hdd/system/boot/$_install_OS" | while read -r _file; do
+	_DONE=$(du -sb /newroot 2>/dev/null | awk '{print $1}')
+	_DONE_MB=$((_DONE / 1048576))
+	_PCT=$((_DONE_MB * 100 / 2500))
+	echo -ne "\r  Extracting: ~${_DONE_MB}MB extracted (${_PCT}%)  "
+done
 echo ""
 echo "Extraction complete!"
-
-echo "Installing storage expansion script..."
-mkdir -p /newroot/usr/local/bin
-cp /bin/setup-storage.sh /newroot/usr/local/bin/setup-storage.sh
-chmod +x /newroot/usr/local/bin/setup-storage.sh
-
-echo "Setting up first-boot auto-expansion..."
-mkdir -p /newroot/etc/systemd/system
-cat > /newroot/etc/systemd/system/ps4-retrobox-expand.service << 'UNIT'
-[Unit]
-Description=PS4 RetroBox - Expand storage on first boot
-After=local-fs.target
-Before=getty@tty1.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/setup-storage.sh
-ExecStartPost=/bin/systemctl disable ps4-retrobox-expand.service
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-ln -sf /etc/systemd/system/ps4-retrobox-expand.service /newroot/etc/systemd/system/multi-user.target.wants/ps4-retrobox-expand.service 2>/dev/null || true
 
 echo "Syncing..."
 sync
@@ -180,10 +151,9 @@ umount /newroot 2>/dev/null
 losetup -d /dev/loop5 2>/dev/null
 
 echo
-echo "=== Phase 1 complete! ==="
+echo "=== Install complete! ==="
 echo ""
 echo "The system will now boot into Linux automatically."
-echo "After first boot, run 'sudo setup-storage.sh' to expand the"
-echo "image to full size."
+echo "On first boot, storage will auto-expand to ${_TARGET_SIZE}GB."
 echo
 echo "Script created by https://github.com/Nazky and https://github.com/feeRnt"
