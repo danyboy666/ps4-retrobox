@@ -168,20 +168,26 @@ if ! mount -t ext4 /dev/loop5 /newroot; then
 fi
 
 echo ""
-echo "Extracting rootfs (this takes ~20-30 minutes)..."
+echo "Extracting rootfs..."
 cd /newroot
-_IMG_TOTAL_MB=$(($(blockdev --getsize64 /dev/loop5 2>/dev/null || echo 3221225472) / 1048576))
-tar -xvf "/ps4hdd/system/boot/$_install_OS" | while read -r _file; do
-	_DONE=$(du -sb /newroot 2>/dev/null | awk '{print $1}')
-	_DONE_MB=$((_DONE / 1048576))
-	if [ "$_IMG_TOTAL_MB" -gt 0 ]; then
-		_PCT=$((_DONE_MB * 100 / _IMG_TOTAL_MB))
-		[ "$_PCT" -gt 100 ] && _PCT=100
-	else
-		_PCT=0
-	fi
-	echo -ne "\r  Extracting: ~${_DONE_MB}MB extracted (${_PCT}%)  "
-done
+
+# Background progress tracker (polls every 10 seconds, no overhead on tar)
+(
+    while true; do
+        _DONE=$(du -sb /newroot 2>/dev/null | awk '{print $1}')
+        _DONE_MB=$((_DONE / 1048576))
+        echo -ne "\r  Extracting: ~${_DONE_MB}MB extracted  "
+        sleep 10
+    done
+) &
+_PROG_PID=$!
+
+# Extract at full speed (no per-file overhead)
+tar xf "/ps4hdd/system/boot/$_install_OS"
+
+# Kill progress tracker
+kill $_PROG_PID 2>/dev/null
+wait $_PROG_PID 2>/dev/null
 echo ""
 echo "Extraction complete!"
 
