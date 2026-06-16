@@ -69,28 +69,103 @@ _install_OS_img="$(echo "$_install_OS" | sed -n 's/.tar.*/.img/p')"
 echo "Target image: $_install_OS_img"
 
 # Check for existing .img and validate
+_IMG_EXISTS=0
+_IMG_SIZE_MB=0
 if [ -f "/ps4hdd/home/$_install_OS_img" ]; then
+	_IMG_EXISTS=1
+	_IMG_SIZE_MB=$(($(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0) / 1048576))
 	# Verify ext4 magic number (0xEF53 at offset 0x438)
 	_MAGIC="$(dd if="/ps4hdd/home/$_install_OS_img" bs=1 skip=1080 count=2 2>/dev/null | hexdump -e '1/2 "%04x"')"
-	if [ "$_MAGIC" = "53ef" ]; then
-		echo "Valid .img already exists with correct ext4 filesystem."
-		echo "To reinstall, delete /ps4hdd/home/$_install_OS_img first."
-		exit 0
-	else
-		echo "Existing .img has invalid ext4 magic ($_MAGIC). It is corrupt."
+	if [ "$_MAGIC" != "53ef" ]; then
+		echo "Existing .img is corrupt (bad magic $_MAGIC). Deleting."
 		rm -f "/ps4hdd/home/$_install_OS_img"
-		echo "Deleted corrupt .img."
+		_IMG_EXISTS=0
 	fi
 fi
 
-# Ask for final target size (stored for expansion after first boot)
+if [ "$_IMG_EXISTS" -eq 1 ]; then
+	echo ""
+	echo "Existing .img found: $((_IMG_SIZE_MB / 1024))GB ($_IMG_SIZE_MB MB)"
+	echo ""
+	echo "Delete and reinstall? (Auto-selects NO in 10 seconds)"
+	_COUNTDOWN=10
+	while [ "$_COUNTDOWN" -gt 0 ]; do
+		printf "\r  [y/N] %2ds remaining... " "$_COUNTDOWN"
+		read -t 1 -n 1 _ANSWER 2>/dev/null
+		case "$_ANSWER" in
+			y|Y)
+				echo ""
+				echo "Deleting existing .img..."
+				rm -f "/ps4hdd/home/$_install_OS_img"
+				_IMG_EXISTS=0
+				break
+				;;
+			n|N)
+				echo ""
+				echo "Keeping existing .img. Install cancelled."
+				exit 0
+				;;
+		esac
+		_COUNTDOWN=$((_COUNTDOWN - 1))
+	done
+	if [ "$_COUNTDOWN" -eq 0 ] && [ "$_IMG_EXISTS" -eq 1 ]; then
+		echo ""
+		echo "No answer. Keeping existing .img. Install cancelled."
+		exit 0
+	fi
+fi
+
+# Ask for target size with menu and countdown
 echo ""
-echo "How large should the final image be after expansion?"
-echo "Rootfs needs ~2.5GB. Common sizes: 16, 32, 50."
-read -p "Final size in GB (default=32): " _TARGET_SIZE
-_TARGET_SIZE="${_TARGET_SIZE:-32}"
+echo "Select target size for Linux installation:"
+echo "  [1] 16 GB  (minimal, lots of ROMs later)"
+echo "  [2] 32 GB  (recommended)"
+echo "  [3] 50 GB  (lots of ROMs)"
+echo "  [4] Custom size"
+echo ""
+echo "Default: 32GB in 10 seconds..."
+_COUNTDOWN=10
+_TARGET_SIZE=""
+while [ "$_COUNTDOWN" -gt 0 ] && [ -z "$_TARGET_SIZE" ]; do
+	printf "\r  Choice [1-4]: %2ds " "$_COUNTDOWN"
+	read -t 1 -n 1 _CHOICE 2>/dev/null
+	case "$_CHOICE" in
+		1) _TARGET_SIZE=16 ;;
+		2) _TARGET_SIZE=32 ;;
+		3) _TARGET_SIZE=50 ;;
+		4)
+			echo ""
+			echo -n "  Enter size in GB: "
+			read _TARGET_SIZE
+			# Validate input is a number
+			case "$_TARGET_SIZE" in
+				""|[!0-9]*)
+					echo "  Invalid input. Using 32GB."
+					_TARGET_SIZE=32
+					;;
+			esac
+			# Sanity check
+			if [ "$_TARGET_SIZE" -lt 3 ] 2>/dev/null; then
+				echo "  Too small (need at least 3GB). Using 32GB."
+				_TARGET_SIZE=32
+			fi
+			if [ "$_TARGET_SIZE" -gt 500 ] 2>/dev/null; then
+				echo "  That's huge! Using 32GB."
+				_TARGET_SIZE=32
+			fi
+			break
+			;;
+	esac
+	_COUNTDOWN=$((_COUNTDOWN - 1))
+done
+if [ -z "$_TARGET_SIZE" ]; then
+	_TARGET_SIZE=32
+	echo ""
+	echo "  Auto-selected: 32GB"
+fi
+echo ""
+echo "Target size: ${_TARGET_SIZE}GB"
 echo "$_TARGET_SIZE" > /ps4hdd/home/.target_size
-echo "Will expand to ${_TARGET_SIZE}GB after first boot."
 
 # Create minimal 3GB .img (enough for rootfs + ext4 overhead)
 _PARTSIZE=3

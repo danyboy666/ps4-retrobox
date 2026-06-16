@@ -114,14 +114,34 @@ fi
 echo "Finished cryptsetup. Mounting the encrypted drive. . ."
 
 mkdir /ps4hdd
-mount -t ufs -o rw,ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+
+# Verify UFS is writable
+if ! touch /ps4hdd/.write_test 2>/dev/null; then
+	echo "ERROR: UFS mounted read-only. Cannot proceed."
+	echo "Try rebooting and running install-HDD.sh again."
+	rescueshell
+fi
+rm -f /ps4hdd/.write_test
+echo "UFS mounted and writable."
 
 # First boot check: skip boot sequence if no valid OS installed yet
 # Only consider .img files larger than 1GB (ignore 0-byte/partial from failed attempts)
 if ! find /ps4hdd/home -name "*.img" -size +1G 2>/dev/null | grep -q .; then
-	echo "No valid OS installed. Dropping to rescueshell."
-	echo "Run: exec install-HDD.sh"
-	rescueshell
+	echo ""
+	echo "No valid OS detected. Launching installer..."
+	echo ""
+	exec install-HDD.sh
+fi
+
+# Check if image is small (initial install) and remind about expansion
+_IMG_SIZE=$(stat -c %s "$(find /ps4hdd/home -name '*.img' -size +1G 2>/dev/null | head -1)" 2>/dev/null || echo 0)
+if [ "$_IMG_SIZE" -gt 0 ] && [ "$_IMG_SIZE" -lt 17179869184 ]; then
+	echo ""
+	echo "NOTE: Image is $((_IMG_SIZE / 1073741824))GB. After boot, run:"
+	echo "  sudo setup-storage.sh"
+	echo "to expand to full size."
+	echo ""
 fi
 
 # dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
@@ -140,7 +160,13 @@ choose_os_offset
 setup_img_loop_device
 os_filesystem_check
 
-mount -t ext4 /dev/loop0 /newroot
+if ! mount -t ext4 /dev/loop0 /newroot; then
+	echo "FATAL: mount /dev/loop0 on /newroot failed."
+	echo "The .img file may be corrupt. Try reinstalling with install-HDD.sh."
+	echo "If using USB staging, the transfer to UFS may have failed."
+	rescueshell
+fi
+
 if [ -f /newroot/home/eap_hdd_key.bin ]; then
 	echo ''
 else
@@ -149,7 +175,6 @@ fi
 
 # # End of PS4 specific section
 
-emount /newroot
 emount /newroot/usr #new!!
 # Wait for sshd connection only if rescueshell have never occur.
 #use sshd && was_shell || wait_sshd
