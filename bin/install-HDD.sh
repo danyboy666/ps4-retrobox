@@ -76,7 +76,7 @@ if [ -f "/ps4hdd/home/$_install_OS_img" ]; then
 	_IMG_SIZE_MB=$(($(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0) / 1048576))
 	# Verify ext4 magic number (0xEF53 at offset 0x438)
 	_MAGIC="$(dd if="/ps4hdd/home/$_install_OS_img" bs=1 skip=1080 count=2 2>/dev/null | hexdump -e '1/2 "%04x"')"
-	if [ "$_MAGIC" != "53ef" ]; then
+	if [ "$_MAGIC" != "ef53" ] && [ "$_MAGIC" != "53ef" ]; then
 		echo "Existing .img is corrupt (bad magic $_MAGIC). Deleting."
 		rm -f "/ps4hdd/home/$_install_OS_img"
 		_IMG_EXISTS=0
@@ -87,11 +87,12 @@ if [ "$_IMG_EXISTS" -eq 1 ]; then
 	echo ""
 	echo "Existing .img found: $((_IMG_SIZE_MB / 1024))GB ($_IMG_SIZE_MB MB)"
 	echo ""
-	echo "Delete and reinstall? (Auto-selects NO in 10 seconds)"
-	_COUNTDOWN=10
+	echo "Delete and reinstall? (Auto-selects NO in 15 seconds)"
+	_COUNTDOWN=15
 	while [ "$_COUNTDOWN" -gt 0 ]; do
 		printf "\r  [y/N] %2ds remaining... " "$_COUNTDOWN"
-		read -t 1 -n 1 _ANSWER 2>/dev/null
+		_ANSWER=""
+		read -t 1 _ANSWER 2>/dev/null
 		case "$_ANSWER" in
 			y|Y)
 				echo ""
@@ -128,7 +129,8 @@ _COUNTDOWN=10
 _TARGET_SIZE=""
 while [ "$_COUNTDOWN" -gt 0 ] && [ -z "$_TARGET_SIZE" ]; do
 	printf "\r  Choice [1-4]: %2ds " "$_COUNTDOWN"
-	read -t 1 -n 1 _CHOICE 2>/dev/null
+	_CHOICE=""
+	read -t 1 _CHOICE 2>/dev/null
 	case "$_CHOICE" in
 		1) _TARGET_SIZE=16 ;;
 		2) _TARGET_SIZE=32 ;;
