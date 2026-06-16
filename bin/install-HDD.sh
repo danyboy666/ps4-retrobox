@@ -95,22 +95,32 @@ echo "Will expand to ${_TARGET_SIZE}GB after first boot."
 # Create minimal 3GB .img (enough for rootfs + ext4 overhead)
 _PARTSIZE=3
 _TOTAL_MB=$((_PARTSIZE * 1024))
-_PARTSIZE2="$(echo "($_PARTSIZE*1024*1024*1024/4096)/1" | bc)"
+_IMG_FILE="/ps4hdd/home/$_install_OS_img"
 
 echo ""
 echo "=== Creating minimal ${_PARTSIZE}GB .img ==="
-truncate -s "${_PARTSIZE}G" "/ps4hdd/home/$_install_OS_img" 2>/dev/null
-if [ $? -eq 0 ] && [ -f "/ps4hdd/home/$_install_OS_img" ]; then
+
+# Try sparse creation first (truncate, instant)
+rm -f "$_IMG_FILE" 2>/dev/null
+truncate -s "${_PARTSIZE}G" "$_IMG_FILE" 2>/dev/null
+
+# Verify sparse file actually got created with real size
+_ACTUAL_SIZE=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+if [ "$_ACTUAL_SIZE" -gt 1048576 ]; then
 	echo "  Sparse image created (instant)."
+	_SPARSE=1
 else
-	echo "  truncate failed, falling back to dd (slow)..."
-	rm -f "/ps4hdd/home/$_install_OS_img" 2>/dev/null
+	# UFS doesn't support sparse files, use real dd (slow)
+	echo "  UFS does not support sparse files."
+	echo "  Writing ${_PARTSIZE}GB of zeros (this is slow)..."
+	rm -f "$_IMG_FILE" 2>/dev/null
+	_SPARSE=0
 	_START=$(date +%s)
-	dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>/dev/null &
+	dd if=/dev/zero of="$_IMG_FILE" bs=1M count=$_TOTAL_MB 2>/dev/null &
 	_DD_PID=$!
 	sleep 3
 	while kill -0 $_DD_PID 2>/dev/null; do
-		_DONE_KB=$(du -k "/ps4hdd/home/$_install_OS_img" 2>/dev/null | awk '{print $1}')
+		_DONE_KB=$(du -k "$_IMG_FILE" 2>/dev/null | awk '{print $1}')
 		_DONE_MB=$((_DONE_KB / 1024))
 		_PCT=$((_DONE_MB * 100 / _TOTAL_MB))
 		_ELAPSED=$(($(date +%s) - _START))
@@ -118,28 +128,46 @@ else
 			_SPEED=$((_DONE_MB / _ELAPSED))
 			if [ "$_SPEED" -gt 0 ]; then
 				_REMAIN=$(( (_TOTAL_MB - _DONE_MB) / _SPEED / 60 ))
-				echo -ne "\r  Creating image: ${_DONE_MB}MB / ${_TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min  "
+				echo -ne "\r  Writing: ${_DONE_MB}MB / ${_TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min  "
 			fi
 		fi
 		sleep 5
 	done
 	wait $_DD_PID
 	echo ""
-	echo "  Image file created via dd."
+	echo "  Image file created."
 fi
+
+# Verify .img is large enough for ext4
+_ACTUAL_SIZE=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+if [ "$_ACTUAL_SIZE" -lt 10485760 ]; then
+	echo "ERROR: .img file is too small ($((_ACTUAL_SIZE / 1048576))MB). Need at least 10MB."
+	echo "Something went wrong with image creation."
+	rescueshell
+fi
+
+# Format as ext4
 echo ""
-
-[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
-losetup /dev/loop5 "/ps4hdd/home/$_install_OS_img"
-
 echo "Formatting ext4..."
-mkfs.ext4 /dev/loop5
+[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
+losetup /dev/loop5 "$_IMG_FILE"
+
+if ! mke2fs -t ext4 /dev/loop5; then
+	echo "ERROR: mke2fs failed."
+	losetup -d /dev/loop5 2>/dev/null
+	rescueshell
+fi
 echo "  ext4 formatted."
-echo ""
 
+# Mount and extract
 mkdir -p /newroot
-mount /dev/loop5 /newroot
+if ! mount -t ext4 /dev/loop5 /newroot; then
+	echo "ERROR: mount failed."
+	losetup -d /dev/loop5 2>/dev/null
+	rescueshell
+fi
 
+echo ""
 echo "Extracting rootfs (this takes ~20-30 minutes)..."
 cd /newroot
 _IMG_TOTAL_MB=$(($(blockdev --getsize64 /dev/loop5 2>/dev/null || echo 3221225472) / 1048576))
