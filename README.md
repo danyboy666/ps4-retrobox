@@ -36,7 +36,8 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 - PS4 Fat **CUH-1001A** (Aeolia southbridge)
 - Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir)
 - Windows PC on the **same network** as PS4
-- Ethernet cable recommended (WiFi works with USB dongle)
+- **Ethernet cable required** — connect PS4 to your router/switch before booting
+- WiFi is **not supported** on CUH-1000/1100 (Aeolia v1 southbridge)
 - **No USB drive required** — everything is transferred via FTP
 
 ## Quick Start
@@ -328,9 +329,22 @@ When done gaming:
 
 #### Adding ROMs
 
-Add new ROMs by copying files to `C:\PS4_ROMs\<System>\` on your Windows PC. They appear in EmulationStation after:
-- Restarting EmulationStation (press Start → Quit → restart with `startx`)
-- Or rebooting the PS4 Linux
+**Method 1: SCP/SFTP (recommended)**
+Copy ROMs from your PC over SSH:
+```bash
+scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMs/SNES/
+# Password: PS4
+```
+
+**Method 2: Samba share**
+Edit the Samba helper script with your PC's IP:
+```bash
+ssh PS4@<PS4-IP>   # Password: PS4
+sudo nano /usr/local/bin/setup-samba.sh
+```
+Change `PC_IP` and `SHARE`, then run `sudo setup-samba.sh`.
+
+ROMs appear in EmulationStation after restarting it (press Start → Quit → run `startx`).
 
 #### Payload Summary
 
@@ -385,12 +399,13 @@ This fully restores your PS4 to OrbisOS with no changes.
 | Problem | Fix |
 |---------|-----|
 | Black screen | Use `bootargs.txt` params, try TV instead of monitor |
-| No WiFi | Use USB WiFi dongle or Ethernet cable |
+| No WiFi | WiFi not supported on CUH-1000/1100. Use Ethernet cable. |
 | No Bluetooth | Use USB BT dongle |
-| SSH refused | Ensure same network, try `ping <PS4-IP>` |
+| SSH refused | Ensure Ethernet cable connected, try `ping <PS4-IP>` |
+| No IP address | Ensure Ethernet cable is connected to router. Run `ip a` on PS4 to check. |
 | Samba mount fails | Check PC IP, firewall, share name, credentials |
 | BIOS not found | Verify files in `/home/PS4/BIOS/` |
-| ROMs not showing | Check `ls /mnt/roms/`, restart EmulationStation |
+| ROMs not showing | Check `ls /home/PS4/ROMs/`, restart EmulationStation |
 | HDD install fails | Try 1GB payload, re-download files, check FTP paths |
 | `mount -o ro /newroot failed` | Ensure `arch.tar.xz` is at `/user/system/boot/` via FTP |
 
