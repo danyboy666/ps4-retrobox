@@ -99,8 +99,27 @@ _PARTSIZE2="$(echo "($_PARTSIZE*1024*1024*1024/4096)/1" | bc)"
 
 echo ""
 echo "=== Creating minimal ${_PARTSIZE}GB .img ==="
-dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>/dev/null
-echo "  Sparse image created (instant)."
+_START=$(date +%s)
+dd if=/dev/zero of="/ps4hdd/home/$_install_OS_img" bs=4096 seek="$_PARTSIZE2" 2>/dev/null &
+_DD_PID=$!
+sleep 3
+while kill -0 $_DD_PID 2>/dev/null; do
+	_DONE_KB=$(du -k "/ps4hdd/home/$_install_OS_img" 2>/dev/null | awk '{print $1}')
+	_DONE_MB=$((_DONE_KB / 1024))
+	_PCT=$((_DONE_MB * 100 / _TOTAL_MB))
+	_ELAPSED=$(($(date +%s) - _START))
+	if [ "$_ELAPSED" -gt 0 ] && [ "$_DONE_MB" -gt 0 ]; then
+		_SPEED=$((_DONE_MB / _ELAPSED))
+		if [ "$_SPEED" -gt 0 ]; then
+			_REMAIN=$(( (_TOTAL_MB - _DONE_MB) / _SPEED / 60 ))
+			echo -ne "\r  Creating image: ${_DONE_MB}MB / ${_TOTAL_MB}MB (${_PCT}%) | ~${_REMAIN} min  "
+		fi
+	fi
+	sleep 5
+done
+wait $_DD_PID
+echo ""
+echo "  Image file created."
 echo ""
 
 [ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
