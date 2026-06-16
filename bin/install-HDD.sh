@@ -26,6 +26,26 @@ echo '             Was that ship really necessary? Well, it looks cool at least 
 echo
 echo
 
+# Interrupt window — press any key to drop to rescueshell
+echo "Press any key in 5 seconds to drop to rescue shell..."
+echo "Otherwise, install will begin automatically."
+echo ""
+_interrupt=5
+while [ "$_interrupt" -gt 0 ]; do
+	printf "\r  Starting in %ds... " "$_interrupt"
+	_key=""
+	read -t 1 _key 2>/dev/null
+	if [ -n "$_key" ]; then
+		echo ""
+		echo "Interrupted. Dropping to rescue shell."
+		rescueshell
+	fi
+	_interrupt=$((_interrupt - 1))
+done
+echo ""
+echo "Starting install..."
+echo ""
+
 # Auto-detect partition encryption scheme
 if [ ! -e /dev/mapper/ps4hdd ]; then
 	echo "Setting up cryptsetup..."
