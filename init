@@ -140,10 +140,7 @@ if ! find /ps4hdd/home -name "*.img" -size +1G 2>/dev/null | grep -q .; then
 	echo "No valid OS detected. Launching installer..."
 	echo ""
 	install-HDD.sh 2>&1 | tee /ps4hdd/system/boot/install.log
-	echo ""
-	echo "Install complete. Rebooting in 5 seconds..."
-	sleep 5
-	reboot -f
+	# Install done — fall through to normal boot (find .img below)
 fi
 
 # Check if image is small (initial install) and remind about expansion

@@ -110,20 +110,13 @@ if [ "$_IMG_EXISTS" -eq 1 ]; then
 	echo ""
 	echo "Existing .img found: $((_IMG_SIZE_MB / 1024))GB ($_IMG_SIZE_MB MB)"
 	echo ""
-	echo "Delete and reinstall? (Auto-selects NO in 15 seconds)"
+	echo "Delete and reinstall? (Auto-selects YES in 15 seconds)"
 	_COUNTDOWN=15
 	while [ "$_COUNTDOWN" -gt 0 ]; do
-		printf "\r  [y/N] %2ds remaining... " "$_COUNTDOWN"
+		printf "\r  [Y/n] %2ds remaining... " "$_COUNTDOWN"
 		_ANSWER=""
 		read -t 1 _ANSWER 2>/dev/null
 		case "$_ANSWER" in
-			y|Y)
-				echo ""
-				echo "Deleting existing .img..."
-				rm -f "/ps4hdd/home/$_install_OS_img"
-				_IMG_EXISTS=0
-				break
-				;;
 			n|N)
 				echo ""
 				echo "Keeping existing .img. Install cancelled."
@@ -132,11 +125,10 @@ if [ "$_IMG_EXISTS" -eq 1 ]; then
 		esac
 		_COUNTDOWN=$((_COUNTDOWN - 1))
 	done
-	if [ "$_COUNTDOWN" -eq 0 ] && [ "$_IMG_EXISTS" -eq 1 ]; then
-		echo ""
-		echo "No answer. Keeping existing .img. Install cancelled."
-		exit 0
-	fi
+	echo ""
+	echo "Auto-selected: Delete and reinstall."
+	rm -f "/ps4hdd/home/$_install_OS_img"
+	_IMG_EXISTS=0
 fi
 
 # Ask for target size with menu and countdown
