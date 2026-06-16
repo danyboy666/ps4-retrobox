@@ -97,8 +97,16 @@ run_hooks pre_newroot_mount
 
 # # PS4 specific section:
 echo "Setting up (en)crypt(ted) mount setup for PlayStation 4 HDD." 
-echo "Trying partition 27 (CUH-1200+) then partition 13 (CUH-1000/1100)..."
-sleep 4
+echo "Waiting for HDD to appear..."
+
+# Wait for SATA device nodes to appear (up to 15 seconds)
+_waited=0
+while [ "$_waited" -lt 15 ]; do
+	[ -e /dev/sda ] && break
+	sleep 1
+	_waited=$((_waited + 1))
+done
+echo "HDD ready after ${_waited}s. Trying partition 27 (CUH-1200+) then partition 13 (CUH-1000/1100)..."
 
 # Try partition 27 first (Slim/Pro models), then partition 13 (early Aeolia)
 if cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 create ps4hdd /dev/sd?27 2>/dev/null; then
