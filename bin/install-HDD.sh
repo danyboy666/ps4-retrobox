@@ -191,6 +191,32 @@ wait $_PROG_PID 2>/dev/null
 echo ""
 echo "Extraction complete!"
 
+echo "Fixing absolute symlinks..."
+cd /newroot
+# Convert absolute symlinks to relative (needed for mounting under /newroot)
+find . -maxdepth 4 -type l | while read -r _link; do
+	_target=$(readlink "$_link")
+	case "$_target" in
+		/*)
+			# Count directory depth of the link
+			_depth=$(echo "$(dirname "$_link")" | tr -cd '/' | wc -c)
+			# Build relative prefix: depth 2 => ../.., depth 3 => ../../..
+			_prefix=""
+			_i=0
+			while [ "$_i" -lt "$_depth" ]; do
+				_prefix="../${_prefix}"
+				_i=$((_i + 1))
+			done
+			# Remove leading slash from target
+			_target_noslash="${_target#/}"
+			rm -f "$_link"
+			ln -s "${_prefix}${_target_noslash}" "$_link"
+			;;
+	esac
+done
+cd -
+echo "Symlinks fixed."
+
 echo "Syncing..."
 sync
 

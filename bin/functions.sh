@@ -518,7 +518,16 @@ cleanup() {
 boot_newroot() {
 	init="${init:-sbin/init}"
 	einfo "Switching root to /newroot and executing ${init}."
-	if ! [ -x "/newroot/${init}" ]; then die "There is no executable '/newroot/${init}'."; fi
+	if ! [ -e "/newroot/${init}" ]; then
+		ewarn "'/newroot/${init}' not found, trying alternatives..."
+		for _alt in usr/sbin/init usr/bin/systemd sbin/init usr/lib/systemd/systemd; do
+			if [ -e "/newroot/$_alt" ]; then
+				init="$_alt"
+				einfo "Using init: ${init}"
+				break
+			fi
+		done
+	fi
 	exec env -i \
 		TERM="${TERM:-linux}" \
 		PATH="${PATH:-/bin:/sbin:/usr/bin:/usr/sbin}" \
