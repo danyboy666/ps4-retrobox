@@ -152,7 +152,7 @@ echo "Formatting ext4..."
 [ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
 losetup /dev/loop5 "$_IMG_FILE"
 
-if ! mke2fs -t ext4 /dev/loop5; then
+if ! mke2fs -j /dev/loop5; then
 	echo "ERROR: mke2fs failed."
 	losetup -d /dev/loop5 2>/dev/null
 	rescueshell
