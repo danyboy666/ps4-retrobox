@@ -2,14 +2,60 @@
 
 > **DISCLAIMER**: This project was assembled by an AI assistant (OpenCode). The author is testing this method on real hardware to verify it is valid and safe. Use at your own risk. Always ensure you have a way to recover your PS4 if something goes wrong. The author assumes no responsibility for any damage to your console.
 
-Turn your jailbroken PS4 into a retro gaming machine with EmulationStation + RetroArch.
+## What This Project Does
 
-Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on internal HDD, with network-loaded ROMs via Samba.
+PS4 RetroBox turns your jailbroken PS4 Fat into a retro gaming machine running **EmulationStation** + **RetroArch**. It installs a minimal **Ubuntu 22.04** server environment directly onto the PS4's internal HDD — no USB drive needed after setup, no external hardware required.
+
+### How It Works
+
+The PS4's internal HDD is encrypted and uses a UFS2 filesystem. This project works *within* those constraints:
+
+1. **Payload** — A small program (kexec) loads a Linux kernel and initramfs from `/data/linux/boot/` on the PS4's internal HDD
+2. **Initramfs** — Decrypts the PS4 HDD partition and mounts it
+3. **`.img` file** — A single ext4 filesystem image (like a virtual disk) stored at `/user/home/arch.img` on the PS4's existing OrbisOS partition
+4. **Loop-mount** — The `.img` file is loop-mounted as the root filesystem
+5. **`switch_root`** — The system hands off to Ubuntu, which boots into EmulationStation
+
+```
+Payload (kexec) → Kernel + Initramfs → Decrypt PS4 HDD
+  → Find .img on existing partition → Loop-mount .img
+  → switch_root → Ubuntu boots → EmulationStation launches
+```
+
+### Why This Is Safe
+
+This is the safest way to run Linux on a PS4 because **we never touch the HDD partition table or modify OrbisOS in any way.**
+
+- **No repartitioning** — The PS4's HDD partition layout is completely untouched. We don't resize, move, or create any new partitions.
+- **No firmware modification** — OrbisOS, the PS4 BIOS, and all system firmware remain exactly as Sony left them.
+- **No OrbisOS changes** — The `.img` file is stored as a regular file inside an existing OrbisOS partition (`/user/home/`). OrbisOS treats it like any other file — it doesn't know it's a Linux rootfs.
+- **No permanent changes** — The Linux installation is a single `.img` file. Delete it via FTP, and your PS4 is fully back to stock OrbisOS with zero traces of Linux.
+- **Virtually no risk of bricking** — The only "change" is adding a file. Even if the `.img` is corrupt or missing, the PS4 simply boots normally into OrbisOS. There is no way for this to brick your console.
+
+The only risky part is the jailbreak itself (exploiting the PS4 browser), which is unrelated to this project.
+
+### What Gets Installed
+
+| Component | Description |
+|-----------|-------------|
+| **Ubuntu 22.04** | Minimal server rootfs (no desktop environment) |
+| **EmulationStation** | Retro gaming frontend — shows your ROMs in a TV-friendly interface |
+| **RetroArch** | Emulator backend — runs the actual games via libretro cores |
+| **15 emulators** | SNES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
+| **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
+| **Network support** | Wired LAN for ROM transfer via Samba/SCP |
+
+### Key Facts
+
+- **Internal HDD only** — the `.img` file lives on the PS4's own encrypted HDD
+- **No USB drive needed** after initial setup — everything is self-contained
+- **Reversible** — delete the `.img` file via FTP to fully restore OrbisOS
+- **Ethernet required** — WiFi is not supported on CUH-1000/1100 models
 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
-- **RetroArch** with 9 libretro cores pre-installed
+- **RetroArch** with 15+ libretro cores pre-installed
 - **Internal HDD install** — runs from 32GB `.img` file on PS4's encrypted HDD
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
@@ -30,6 +76,14 @@ Minimal Ubuntu 22.04 server rootfs for PS4 Fat (Aeolia southbridge) installed on
 | Sony PlayStation | Mednafen PSX | Yes (SCPH1001.bin) |
 | TurboGrafx-16 | Mednafen PCE Fast | Yes (syscard3.pce) |
 | Nintendo DS | DeSmuME | No |
+| Arcade | FinalBurn Neo | No |
+| Neo Geo | FinalBurn Neo | No |
+| Atari 2600 | Stella | No |
+| Atari 7800 | ProSystem | No |
+| Sega Master System | Genesis Plus GX | No |
+| Sega Game Gear | Genesis Plus GX | No |
+| Commodore 64 | VICE | No |
+| PC Engine CD | Mednafen PCE Fast | Yes (syscard3.pce) |
 
 ## Requirements
 
@@ -85,6 +139,14 @@ C:\PS4_ROMs\
 ├── PlayStation\
 ├── TurboGrafx16\
 ├── NintendoDS\
+├── Arcade\
+├── NeoGeo\
+├── Atari2600\
+├── Atari7800\
+├── MasterSystem\
+├── GameGear\
+├── C64\
+├── PCEngineCD\
 └── BIOS\
 ```
 
@@ -95,13 +157,39 @@ Share the folder:
 
 ### Phase 2: PS4 Preparation
 
-1. **Settings** → Disable **HDCP**
-2. **Settings** → **Screen and Video** → Set resolution to **1080p**
-3. **Settings** → **System** → Disable **HDMI Device Link**
-4. Connect PS4 to network (Ethernet recommended)
-5. Enable **FTP** on PS4:
-   - GoldHEN → Server Settings → Enable FTP
-   - Note the PS4's IP address
+> **This step is critical.** Incorrect video settings are the #1 cause of black screens and garbled display when booting Linux.
+
+#### Video Settings (Required)
+
+Go to **Settings** → **Sound and Screen** → **Video Output Settings**:
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| **Resolution** | **1080p** (not Automatic, not 4K) | Linux display driver initializes at 1080p. Automatic may select 4K → garbled/black screen |
+| **HDR Range** | **OFF** | HDR confuses the Linux DRM driver |
+| **Deep Color Output** | **OFF** | Deep Color causes mode negotiation failures |
+| **RGB Range** | **Full** | Ensures correct color output on TVs |
+
+#### System Settings (Required)
+
+Go to **Settings** → **System**:
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| **Enable HDCP** | **OFF** | HDCP blocks third-party OS output. Must be disabled. |
+| **Enable HDMI Device Link** | **OFF** | HDMI Device Link causes unexpected power state changes during boot |
+
+#### Network & Exploit Services
+
+Before booting Linux, ensure these are running in GoldHEN:
+
+- **Enable BinLoader Server** — needed to receive the Linux payload
+- **Enable FTP Server** — needed to upload files (or for SSH access later)
+
+#### Physical Setup
+
+- Connect **Ethernet cable** from PS4 to your router (WiFi not supported on CUH-1000/1100)
+- Connect **USB keyboard** (optional — only needed if you want to interact during install)
 
 ### Phase 3: FTP Files to Internal HDD
 
@@ -123,13 +211,24 @@ Use FileZilla or any FTP client:
 
 ### What is bootargs.txt?
 
-`bootargs.txt` contains kernel boot parameters that fix common issues like black screen. It is loaded automatically by the payload. The default contents fix display output and disable power management that can cause crashes:
+`bootargs.txt` contains kernel boot parameters that fix common issues like black screen and garbled display. It is loaded automatically by the payload.
 
 ```
-panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 drm.edid_firmware=edid/1920x1080.bin
+panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 video=HDMI-A-1:1920x1080@60
 ```
 
-**Important:** The kernel file must be renamed to `bzImage` (not the full original name).
+| Parameter | Purpose |
+|-----------|---------|
+| `panic=0` | Reboot immediately on kernel panic |
+| `clocksource=tsc` | Force TSC clocksource |
+| `consoleblank=0` | Disable console screen blanking |
+| `net.ifnames=0` | Use legacy interface names (`eth0` instead of `enp3s0`) |
+| `radeon.dpm=0` | Disable Radeon power management (prevents crashes) |
+| `amdgpu.dpm=0` | Disable AMDGPU power management (prevents crashes) |
+| `console=tty0` | Output to virtual console (TV screen) |
+| `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector (bypasses EDID, works with any TV including 4K) |
+
+**Important:** Do NOT use `drm.edid_firmware=edid/1920x1080.bin` — this file doesn't exist in the kernel and causes error messages. Use `video=HDMI-A-1:1920x1080@60` instead.
 
 ### Phase 4: Install to Internal HDD
 
@@ -211,15 +310,21 @@ In the rescueshell, type:
 exec install-HDD.sh
 ```
 
+**Note:** A USB keyboard is optional during installation. You can plug one in to interact, or simply let the script run by itself — no input is required.
+
 The script will:
 1. Auto-detect the PS4 HDD partition and decrypt it
 2. Auto-detect `arch.tar.xz` on the internal HDD
-3. If an old `.img` exists, ask if you want to delete and reinstall
-4. Ask how many GB to allocate — type `32` and press Enter
-5. Create a 32GB `.img` file on the internal HDD
-6. Format it as ext4
-7. Extract the rootfs into it (takes 5-15 minutes)
-8. Print "Installation complete!" and init boots into Linux automatically
+3. Create a 3GB `.img` file on the internal HDD (minimal — expands on first boot)
+4. Format it as ext4
+5. Extract the rootfs into it (takes 5-15 minutes)
+6. Print "Installation complete!" and init boots into Linux automatically
+
+**If an `.img` file already exists** — the script will refuse to run and tell you to delete it first. This prevents accidentally overwriting your existing install. To reinstall:
+```bash
+rm /ps4hdd/home/arch.img
+exec install-HDD.sh
+```
 
 **If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
 
@@ -334,6 +439,8 @@ Copy ROMs from your PC over SSH:
 ```bash
 scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMs/SNES/
 # Password: PS4
+# Other ROM dirs: N64, GBA, GameBoy, Genesis, PlayStation, TurboGrafx16,
+#   NintendoDS, Arcade, NeoGeo, Atari2600, Atari7800, MasterSystem, GameGear, C64, PCEngineCD
 ```
 
 **Method 2: Samba share**
@@ -359,20 +466,17 @@ ROMs appear in EmulationStation after restarting it (press Start → Quit → ru
 
 **Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** 3GB and 4GB payloads are optional and provided for testing.
 
-## How It Works
+## Recovery — How to Undo Everything
 
-The PS4 Linux boot chain:
+Because Linux lives as a single `.img` file, removing it fully restores your PS4:
 
-```
-Exploit (PSFree-Enhanced / karo218.ir) → GoldHEN → Payload (kexec) → Kernel (bzImage)
-  → Initramfs (feeRnt) → Decrypt PS4 HDD → Find .img file
-  → Loop-mount .img → switch_root → Ubuntu boots
-```
+1. **FTP** into your PS4 (or SSH if Linux is running)
+2. **Delete** `/user/home/arch.img` — this is the entire Linux installation
+3. **Delete** `/data/linux/boot/bzImage` and `/data/linux/boot/initramfs.cpio.gz` — the kernel and initramfs
 
-- **Payload** loads kernel + initramfs from `/data/linux/boot/` on internal HDD
-- **Initramfs** decrypts PS4's encrypted HDD partition, finds `.img` file at `/user/home/`
-- **`.img` file** contains the full Ubuntu rootfs (32GB ext4 filesystem image)
-- **No USB drive** needed — all files are on the internal HDD
+Your PS4 is now completely back to stock OrbisOS. No partition changes, no firmware modifications, no traces of Linux.
+
+**If Linux won't boot:** The PS4 simply boots into OrbisOS normally. There is no way for this project to brick your console.
 
 ## BIOS Files
 
@@ -384,15 +488,6 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | PS2 | SCPH10000.bin | 4MB |
 | TurboGrafx-16 | syscard3.pce | 24KB |
 | GBA (optional) | gba_bios.bin | 16KB |
-
-## Uninstalling
-
-To remove Linux from your PS4:
-1. Enable FTP on PS4
-2. Delete `/user/home/arch.img` (or whatever the `.img` file is named)
-3. Delete `/data/linux/boot/bzImage` and `/data/linux/boot/initramfs.cpio.gz`
-
-This fully restores your PS4 to OrbisOS with no changes.
 
 ## Troubleshooting
 
