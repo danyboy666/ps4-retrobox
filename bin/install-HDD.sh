@@ -3,28 +3,93 @@
 
 clear
 
-echo '                   ~.                   '
-echo '            Ya...___|__..ab.     .   .  '
-echo '             Y88b  \88b  \88b   (     ) ' 
-echo '              Y88b  :88b  :88b   `.oo'\''  '
-echo '              :888  |888  |888  ( (`-'\''  '
-echo '     .---.    d88P  ;88P  ;88P   `.`.   '
-echo '    / .-._)  d8P-"""|"""'\''-Y8P      `.`. '
-echo '   ( (`._) .-.  .-. |.-.  .-.  .-.   ) )'
-echo '    \ `---( O )( O )( O )( O )( O )-'\'' / '
-echo '     `.    `-'\''  `-'\''  `-'\''  `-'\''  `-'\''  .'\''  '
-echo '       `---------------------------'\''    '
-echo '##  ##     ##     ######   ##  ##   ##  ##   ##  ##   ######'
-echo '### ##    ####        ##   ## ##    ##  ##   ##  ##     ##'
-echo '######   ##  ##      ##    ####     ##  ##   ##  ##     ##'
-echo '######   ######     ##     ###       ####     ####      ##'
-echo '## ###   ##  ##    ##      ####       ##       ##       ##'
-echo '##  ##   ##  ##   ##       ## ##      ##       ##       ##'
-echo '##  ##   ##  ##   ######   ##  ##     ##       ##       ##'
-echo
-echo '             Was that ship really necessary? Well, it looks cool at least - feeRnt'
-echo
-echo
+# PS4 RetroBox installer
+# Based on better-initramfs by feeRnt (https://github.com/feeRnt)
+
+cat << 'ART'
+
+
+ .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
+/ .. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \
+\ \/\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ \/ /
+ \/ /`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'\/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\       ███████████   █████████  █████ █████                                                     / /\ 
+/ /\ \     ░░███░░░░░███ ███░░░░░███░░███ ░░███                                                     / /\ \
+\ \/ /      ░███    ░███░███    ░░░  ░███  ░███ █                                                   \ \/ /
+ \/ /       ░██████████ ░░█████████  ░███████████                                                    \/ / 
+ / /\       ░███░░░░░░   ░░░░░░░░███ ░░░░░░░███░█                                                    / /\ 
+/ /\ \      ░███         ███    ░███       ░███░                                                    / /\ \
+\ \/ /      █████       ░░█████████        █████                                                    \ \/ /
+ \/ /      ░░░░░         ░░░░░░░░░        ░░░░░                                                      \/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /       ███████████             █████                       █████                                \/ / 
+ / /\      ░░███░░░░░███           ░░███                       ░░███                                 / /\ 
+/ /\ \      ░███    ░███   ██████  ███████   ████████   ██████  ░███████   ██████  █████ █████      / /\ \
+\ \/ /      ░██████████   ███░░███░░░███░   ░░███░░███ ███░░███ ░███░░███ ███░░███░░███ ░░███       \ \/ /
+ \/ /       ░███░░░░░███ ░███████   ░███     ░███ ░░░ ░███ ░███ ░███ ░███░███ ░███ ░░░█████░         \/ / 
+ / /\       ░███    ░███ ░███░░░    ░███ ███ ░███     ░███ ░███ ░███ ░███░███ ░███  ███░░░███        / /\ 
+/ /\ \      █████   █████░░██████   ░░█████  █████    ░░██████  ████████ ░░██████  █████ █████      / /\ \
+\ \/ /     ░░░░░   ░░░░░  ░░░░░░     ░░░░░  ░░░░░      ░░░░░░  ░░░░░░░░   ░░░░░░  ░░░░░ ░░░░░       \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\.--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--./ /\ 
+/ /\ \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \/\ \
+\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `' /
+ `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
+
+                                                                                                     
+                                                                                                     
+                       @@                                                    @@                      
+                 #=-=======-=#                                          #=-=======-=*                
+               @=-::::::::::::==++==+----------------------------=+=====--::::::::::-=@              
+              #-:::--=--=-:::::=----=-----------------------------=-----::::-==----:::-#             
+             +-:==:::-=--::-=---:---=----------------------------==--::=:=-::--+-=-:-=:-+            
+            +-=-:::-=====::::-==----=-----------------------------=:---+-:::-==-+-=::::=-+           
+           #=--::::=-:::=-:::::--::-=-----------------------------=::-=::::::====+-:::::-=*          
+           +--::-::-=---=:::-:::--:-=----------------------------==::-:----:::---::::-----+          
+          %-=-=-:--------=---==---:-=-----------------------------=:--=+==+=:::::::-==-=+=-%         
+          =:==+-::--=::---:::-==--:-=----------------------------==:---+::==:::::::-+-:-==-=         
+         *-:=::=-==--=---====-::--::==---------------------------=-:---=--=-::::::::==+=-=-:*        
+         =::--:::::--:::=-::::::========----------------------========-::::::------:::::--::=        
+        +-:::--::::=-:::=-:::::+=-:---:--+=::::--------::::-+=-:---::-+-::::-==+=-=::::--:::-+       
+        =-::::-=::::-----::::+=:==-----+=:-=-::-======-:::==:-+-----=+--+-:::==-===:::=-::::-=       
+       *-::::::::=----=----=+--+----::---*:-=-::------:::==:+=---::---+--+=----==---=-:::::::-*      
+       +-::::::::::::::::::-=:==--:::::---=:=-::-====-:::+-==--:::::---+:-=::::::::::::::::::-=      
+       +:::::::::::::::::::=-:==--:::::--==:==::-=##+-::-=-==---::::--==:-=-::::::::::::::::::=      
+       =:::::::::::::::::::-=--==-------==--=-:::-==-::::=-:==-------==---=:::::::::::::::::::=+     
+      %-:::::::::::::::::::--=-:=-=======:--=-:::::::::::=--:-========-:-=-:::::::::::::::::::-*     
+      *:::::::::::::::::::::---=-:-==--:-=---::::::::::::---=--:-==-:--=--:::::::::::::::::::::+     
+      =::::::::::::::::::::::-+=----------+################*=----------+=::::::::::::::::::::::=     
+      =:::::::::::::::::::::=*  #+=+++=+#                    %+=+++=+#  *=:::::::::::::::::::::-     
+     %:::::::::::::::::::::-+                                            +-:::::::::::::::::::::%    
+     *:::::::::::::::::::::=                                              =:::::::::::::::::::::*    
+     *::::::::::::::::::::-%                                              @-::::::::::::::::::::*    
+     =--:::::::::::::::::-#                                                #-:::::::::::::::::--=    
+     =::--:::::::::::::::+                                                  +:::::::::::::::--::=    
+     *:::::----::::::::-=+                                                   +-::::::::----:::::*    
+      +-:::::::::::-:::-+                                                    +-:::-:::::::::::-+     
+       +-:::::::::::::-+                                                      +=:::::::::::::-+      
+         +=-:::::::-=+                                                          +=-:::::::-=+        
+             +##*                                                                    *##+            
+                                                                                                     
+                                                                                                     
+
+ART
+echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
+echo "Based on better-initramfs by Piotr Karbowski"
+echo "  https://github.com/fff7d1bc/better-initramfs"
+echo "PS4 initramfs by feeRnt"
+echo "  https://github.com/feeRnt/ps4-linux-initramfs"
+echo ""
 
 # Interrupt window — press any key to drop to rescueshell
 echo "Press any key in 5 seconds to drop to rescue shell..."
@@ -44,6 +109,13 @@ while [ "$_interrupt" -gt 0 ]; do
 done
 echo ""
 echo "Starting install..."
+echo ""
+echo "========================================"
+echo "  NOTE: A USB keyboard is optional."
+echo "  You can plug one in now if you want"
+echo "  to interact with the script. Otherwise"
+echo "  just let it run — no input required."
+echo "========================================"
 echo ""
 
 # Auto-detect partition encryption scheme
@@ -90,46 +162,6 @@ echo "Auto-detected OS: $_install_OS"
 
 _install_OS_img="$(echo "$_install_OS" | sed -n 's/.tar.*/.img/p')"
 echo "Target image: $_install_OS_img"
-
-# Check for existing .img and validate
-_IMG_EXISTS=0
-_IMG_SIZE_MB=0
-if [ -f "/ps4hdd/home/$_install_OS_img" ]; then
-	_IMG_EXISTS=1
-	_IMG_SIZE_MB=$(($(stat -c %s "/ps4hdd/home/$_install_OS_img" 2>/dev/null || echo 0) / 1048576))
-	# Verify ext4 magic number (0xEF53 at offset 0x438)
-	_MAGIC="$(dd if="/ps4hdd/home/$_install_OS_img" bs=1 skip=1080 count=2 2>/dev/null | hexdump -e '1/2 "%04x"')"
-	if [ "$_MAGIC" != "ef53" ] && [ "$_MAGIC" != "53ef" ]; then
-		echo "Existing .img is corrupt (bad magic $_MAGIC). Deleting."
-		rm -f "/ps4hdd/home/$_install_OS_img"
-		_IMG_EXISTS=0
-	fi
-fi
-
-if [ "$_IMG_EXISTS" -eq 1 ]; then
-	echo ""
-	echo "Existing .img found: $((_IMG_SIZE_MB / 1024))GB ($_IMG_SIZE_MB MB)"
-	echo ""
-	echo "Delete and reinstall? (Auto-selects YES in 15 seconds)"
-	_COUNTDOWN=15
-	while [ "$_COUNTDOWN" -gt 0 ]; do
-		printf "\r  [Y/n] %2ds remaining... " "$_COUNTDOWN"
-		_ANSWER=""
-		read -t 1 _ANSWER 2>/dev/null
-		case "$_ANSWER" in
-			n|N)
-				echo ""
-				echo "Keeping existing .img. Install cancelled."
-				exit 0
-				;;
-		esac
-		_COUNTDOWN=$((_COUNTDOWN - 1))
-	done
-	echo ""
-	echo "Auto-selected: Delete and reinstall."
-	rm -f "/ps4hdd/home/$_install_OS_img"
-	_IMG_EXISTS=0
-fi
 
 # Ask for target size with menu and countdown
 echo ""
@@ -183,6 +215,14 @@ fi
 echo ""
 echo "Target size: ${_TARGET_SIZE}GB"
 echo "$_TARGET_SIZE" > /ps4hdd/home/.target_size
+
+echo ""
+echo "=== How this works ==="
+echo "  This creates the .img file and extracts the rootfs."
+echo "  Storage will be expanded to ${_TARGET_SIZE}GB automatically before boot."
+echo ""
+echo "  You do NOT need to do anything — no manual steps required."
+echo ""
 
 # Create minimal 3GB .img (enough for rootfs + ext4 overhead)
 _PARTSIZE=3
@@ -318,7 +358,8 @@ losetup -d /dev/loop5 2>/dev/null
 echo
 echo "=== Install complete! ==="
 echo ""
-echo "The system will now boot into Linux automatically."
-echo "On first boot, storage will auto-expand to ${_TARGET_SIZE}GB."
+echo "The system will now expand the .img to ${_TARGET_SIZE}GB and boot into Linux."
 echo
-echo "Script created by https://github.com/Nazky and https://github.com/feeRnt"
+echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
+echo "Based on better-initramfs by Piotr Karbowski"
+echo "PS4 initramfs by feeRnt — https://github.com/feeRnt/ps4-linux-initramfs"

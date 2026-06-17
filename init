@@ -133,24 +133,215 @@ fi
 rm -f /ps4hdd/.write_test
 echo "UFS mounted and writable."
 
-# First boot check: skip boot sequence if no valid OS installed yet
-# Only consider .img files larger than 1GB (ignore 0-byte/partial from failed attempts)
-if ! find /ps4hdd/home -name "*.img" -size +1G 2>/dev/null | grep -q .; then
-	echo ""
-	echo "No valid OS detected. Launching installer..."
-	echo ""
-	install-HDD.sh 2>&1 | tee /ps4hdd/system/boot/install.log
-	# Install done — fall through to normal boot (find .img below)
+# PS4 RetroBox — based on better-initramfs by feeRnt (https://github.com/feeRnt)
+cat << 'ART'
+
+
+ .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
+/ .. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \
+\ \/\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ \/ /
+ \/ /`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'\/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\       ███████████   █████████  █████ █████                                                     / /\ 
+/ /\ \     ░░███░░░░░███ ███░░░░░███░░███ ░░███                                                     / /\ \
+\ \/ /      ░███    ░███░███    ░░░  ░███  ░███ █                                                   \ \/ /
+ \/ /       ░██████████ ░░█████████  ░███████████                                                    \/ / 
+ / /\       ░███░░░░░░   ░░░░░░░░███ ░░░░░░░███░█                                                    / /\ 
+/ /\ \      ░███         ███    ░███       ░███░                                                    / /\ \
+\ \/ /      █████       ░░█████████        █████                                                    \ \/ /
+ \/ /      ░░░░░         ░░░░░░░░░        ░░░░░                                                      \/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /       ███████████             █████                       █████                                \/ / 
+ / /\      ░░███░░░░░███           ░░███                       ░░███                                 / /\ 
+/ /\ \      ░███    ░███   ██████  ███████   ████████   ██████  ░███████   ██████  █████ █████      / /\ \
+\ \/ /      ░██████████   ███░░███░░░███░   ░░███░░███ ███░░███ ░███░░███ ███░░███░░███ ░░███       \ \/ /
+ \/ /       ░███░░░░░███ ░███████   ░███     ░███ ░░░ ░███ ░███ ░███ ░███░███ ░███ ░░░█████░         \/ / 
+ / /\       ░███    ░███ ░███░░░    ░███ ███ ░███     ░███ ░███ ░███ ░███░███ ░███  ███░░░███        / /\ 
+/ /\ \      █████   █████░░██████   ░░█████  █████    ░░██████  ████████ ░░██████  █████ █████      / /\ \
+\ \/ /     ░░░░░   ░░░░░  ░░░░░░     ░░░░░  ░░░░░      ░░░░░░  ░░░░░░░░   ░░░░░░  ░░░░░ ░░░░░       \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\                                                                                                / /\ 
+/ /\ \                                                                                              / /\ \
+\ \/ /                                                                                              \ \/ /
+ \/ /                                                                                                \/ / 
+ / /\.--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--./ /\ 
+/ /\ \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \/\ \
+\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `' /
+ `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
+
+                                                                                                     
+                                                                                                     
+                       @@                                                    @@                      
+                 #=-=======-=#                                          #=-=======-=*                
+               @=-::::::::::::==++==+----------------------------=+=====--::::::::::-=@              
+              #-:::--=--=-:::::=----=-----------------------------=-----::::-==----:::-#             
+             +-:==:::-=--::-=---:---=----------------------------==--::=:=-::--+-=-:-=:-+            
+            +-=-:::-=====::::-==----=-----------------------------=:---+-:::-==-+-=::::=-+           
+           #=--::::=-:::=-:::::--::-=-----------------------------=::-=::::::====+-:::::-=*          
+           +--::-::-=---=:::-:::--:-=----------------------------==::-:----:::---::::-----+          
+          %-=-=-:--------=---==---:-=-----------------------------=:--=+==+=:::::::-==-=+=-%         
+          =:==+-::--=::---:::-==--:-=----------------------------==:---+::==:::::::-+-:-==-=         
+         *-:=::=-==--=---====-::--::==---------------------------=-:---=--=-::::::::==+=-=-:*        
+         =::--:::::--:::=-::::::========----------------------========-::::::------:::::--::=        
+        +-:::--::::=-:::=-:::::+=-:---:--+=::::--------::::-+=-:---::-+-::::-==+=-=::::--:::-+       
+        =-::::-=::::-----::::+=:==-----+=:-=-::-======-:::==:-+-----=+--+-:::==-===:::=-::::-=       
+       *-::::::::=----=----=+--+----::---*:-=-::------:::==:+=---::---+--+=----==---=-:::::::-*      
+       +-::::::::::::::::::-=:==--:::::---=:=-::-====-:::+-==--:::::---+:-=::::::::::::::::::-=      
+       +:::::::::::::::::::=-:==--:::::--==:==::-=##+-::-=-==---::::--==:-=-::::::::::::::::::=      
+       =:::::::::::::::::::-=--==-------==--=-:::-==-::::=-:==-------==---=:::::::::::::::::::=+     
+      %-:::::::::::::::::::--=-:=-=======:--=-:::::::::::=--:-========-:-=-:::::::::::::::::::-*     
+      *:::::::::::::::::::::---=-:-==--:-=---::::::::::::---=--:-==-:--=--:::::::::::::::::::::+     
+      =::::::::::::::::::::::-+=----------+################*=----------+=::::::::::::::::::::::=     
+      =:::::::::::::::::::::=*  #+=+++=+#                    %+=+++=+#  *=:::::::::::::::::::::-     
+     %:::::::::::::::::::::-+                                            +-:::::::::::::::::::::%    
+     *:::::::::::::::::::::=                                              =:::::::::::::::::::::*    
+     *::::::::::::::::::::-%                                              @-::::::::::::::::::::*    
+     =--:::::::::::::::::-#                                                #-:::::::::::::::::--=    
+     =::--:::::::::::::::+                                                  +:::::::::::::::--::=    
+     *:::::----::::::::-=+                                                   +-::::::::----:::::*    
+      +-:::::::::::-:::-+                                                    +-:::-:::::::::::-+     
+       +-:::::::::::::-+                                                      +=:::::::::::::-+      
+         +=-:::::::-=+                                                          +=-:::::::-=+        
+             +##*                                                                    *##+            
+                                                                                                     
+                                                                                                     
+
+ART
+echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
+echo "Based on better-initramfs by Piotr Karbowski"
+echo "  https://github.com/fff7d1bc/better-initramfs"
+echo "PS4 initramfs by feeRnt"
+echo "  https://github.com/feeRnt/ps4-linux-initramfs"
+echo ""
+echo "Press any key to continue..."
+read -t 5 _credits_answer 2>/dev/null
+
+# Find existing .img (>1GB, ignore failed partials)
+_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+
+# Fallback: find any .img regardless of size
+if [ -z "$_EXISTING_IMG" ]; then
+	_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' 2>/dev/null | head -1)"
 fi
 
-# Check if image is small (initial install) and remind about expansion
-_IMG_SIZE=$(stat -c %s "$(find /ps4hdd/home -name '*.img' -size +1G 2>/dev/null | head -1)" 2>/dev/null || echo 0)
-if [ "$_IMG_SIZE" -gt 0 ] && [ "$_IMG_SIZE" -lt 17179869184 ]; then
+if [ -n "$_EXISTING_IMG" ]; then
+	_IMG_MB=$(( $(stat -c %s "$_EXISTING_IMG") / 1048576 ))
+	echo "Existing .img found: $((_IMG_MB / 1024))GB ($_IMG_MB MB)"
+	echo "  Path: $_EXISTING_IMG"
 	echo ""
-	echo "NOTE: Image is $((_IMG_SIZE / 1073741824))GB. After boot, run:"
-	echo "  sudo setup-storage.sh"
-	echo "to expand to full size."
+	echo "  [Y] Delete and reinstall"
+	echo "  [N] Boot existing image (default)"
 	echo ""
+	echo "Auto-booting existing image in 15 seconds..."
+	_COUNTDOWN=15
+	while [ "$_COUNTDOWN" -gt 0 ]; do
+		printf "\r  [%2ds] " "$_COUNTDOWN"
+		_ANSWER=""
+		read -t 1 _ANSWER 2>/dev/null
+		case "$_ANSWER" in
+			y|Y)
+				echo ""
+				echo "Deleting existing .img..."
+				rm -f "$_EXISTING_IMG"
+				_EXISTING_IMG=""
+				break
+				;;
+			n|N)
+				echo ""
+				echo "Booting existing image."
+				break
+				;;
+		esac
+		_COUNTDOWN=$((_COUNTDOWN - 1))
+	done
+	if [ -n "$_EXISTING_IMG" ]; then
+		echo ""
+		echo "Booting existing image."
+	fi
+fi
+
+if [ -z "$_EXISTING_IMG" ]; then
+	echo "Launching installer..."
+	echo ""
+	install-HDD.sh 2>&1 | tee /ps4hdd/system/boot/install.log
+fi
+
+# Inline expansion: expand .img to target size BEFORE booting
+_IMG_FILE="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+_TARGET_FILE="/ps4hdd/home/.target_size"
+if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
+	_TARGET_GB=$(cat "$_TARGET_FILE" 2>/dev/null | tr -d '[:space:]')
+	_CUR_BYTES=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+	_CUR_GB=$((_CUR_BYTES / 1073741824))
+	if [ "$_TARGET_GB" -gt "$_CUR_GB" ] 2>/dev/null; then
+		echo ""
+		echo "  Install complete! Rootfs is ${_CUR_GB}GB."
+		echo ""
+		echo "  [1] Expand to ${_TARGET_GB}GB and boot (default)"
+		echo "  [2] Boot now with ${_CUR_GB}GB (no expansion)"
+		echo ""
+		echo "Auto-expanding in 15 seconds..."
+		_COUNTDOWN=15
+		_EXPAND=1
+		while [ "$_COUNTDOWN" -gt 0 ]; do
+			printf "\r  [%2ds] " "$_COUNTDOWN"
+			_ANSWER=""
+			read -t 1 _ANSWER 2>/dev/null
+			case "$_ANSWER" in
+				2) _EXPAND=0; echo ""; echo "Booting minimal ${_CUR_GB}GB image." ;;
+				1) _EXPAND=1; echo ""; echo "Expanding to ${_TARGET_GB}GB..." ;;
+			esac
+			[ "$_EXPAND" = "0" ] || [ "$_ANSWER" = "1" ] && break
+			_COUNTDOWN=$((_COUNTDOWN - 1))
+		done
+		if [ "$_EXPAND" -eq 1 ] 2>/dev/null; then
+			[ -z "$_ANSWER" ] && echo "" && echo "Expanding to ${_TARGET_GB}GB..."
+			echo "  This may take several minutes. Please be patient."
+			echo ""
+			_TARGET_MB=$((_TARGET_GB * 1024))
+			_DIFF_MB=$((_TARGET_MB - (_CUR_BYTES / 1048576)))
+			_SEEK_MB=$(( _CUR_BYTES / 1048576 ))
+			[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
+
+			echo "  Writing ${_DIFF_MB}MB zeros to extend file..."
+			dd if=/dev/zero of="$_IMG_FILE" bs=1M count=$_DIFF_MB seek=$_SEEK_MB 2>/dev/null &
+			_DD_PID=$!
+			sleep 2
+			while kill -0 $_DD_PID 2>/dev/null; do
+				_NOW=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+				_NOW_MB=$(( _NOW / 1048576 ))
+				_PCT=$(( _NOW_MB * 100 / _TARGET_MB ))
+				printf "\r  Extending file: %dMB / %dMB (%d%%) " "$_NOW_MB" "$_TARGET_MB" "$_PCT"
+				sleep 5
+			done
+			wait $_DD_PID
+			printf "\r  Extending file: %dMB / %dMB (100%%) ✓\n" "$_TARGET_MB" "$_TARGET_MB"
+
+			echo "  Resizing ext4 filesystem..."
+			resize2fs /dev/loop5 2>&1 &
+			_RS_PID=$!
+			_SPINNER='|/-\'
+			_SI=0
+			while kill -0 $_RS_PID 2>/dev/null; do
+				_C="${_SPINNER:$_SI:1}"
+				printf "\r  Resizing filesystem... %c " "$_C"
+				_SI=$(( (_SI + 1) % 4 ))
+				sleep 1
+			done
+			wait $_RS_PID
+			printf "\r  Resizing filesystem... done ✓\n"
+
+			sync
+			losetup -d /dev/loop5 2>/dev/null
+			echo "  Expansion complete."
+		fi
+		rm -f "$_TARGET_FILE"
+	fi
 fi
 
 # dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
