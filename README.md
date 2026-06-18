@@ -59,6 +59,8 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 - **Internal HDD install** — runs from 32GB `.img` file on PS4's encrypted HDD
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
+- **Multi-southbridge** — supports Aeolia, Belize, and Baikal with appropriate kernel selection
+- **Firmware-agnostic** — works on FW 5.05 through 13.02 (payload auto-detects FW at runtime)
 - **SSH server** enabled (user: `PS4`, password: `PS4`)
 - **Auto-boot** into EmulationStation on tty1
 - **Samba client** for loading ROMs from your PC over the network
@@ -88,6 +90,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 ## Requirements
 
 - Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir) — works on **any jailbreak-compatible FW** (5.05–13.02)
+- **Any PS4 model** — Aeolia (Fat CUH-1000/1100), Belize (Fat CUH-1200, Slim CUH-2000), or Baikal (Pro CUH-7000). Choose the correct kernel for your southbridge.
 - Windows PC on the **same network** as PS4
 - **Ethernet cable required** — connect PS4 to your router/switch before booting
 - WiFi is **not supported** on CUH-1000/1100 (Aeolia v1 southbridge)
