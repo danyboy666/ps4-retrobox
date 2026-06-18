@@ -57,7 +57,7 @@
 
 ## What This Project Does
 
-PS4 RetroBox turns your jailbroken PS4 Fat into a retro gaming machine running **EmulationStation** + **RetroArch**. It installs a minimal **Ubuntu 22.04** server environment directly onto the PS4's internal HDD — no USB drive needed after setup, no external hardware required.
+PS4 RetroBox turns your jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch**. It installs a minimal **Ubuntu 22.04** server environment directly onto the PS4's internal HDD — no USB drive needed after setup, no external hardware required.
 
 ### How It Works
 
@@ -65,7 +65,7 @@ The PS4's internal HDD is encrypted and uses a UFS2 filesystem. This project wor
 
 1. **Payload** — A small program (kexec) loads a Linux kernel and initramfs from `/data/linux/boot/` on the PS4's internal HDD
 2. **Initramfs** — Decrypts the PS4 HDD partition and mounts it
-3. **`.img` file** — A single ext4 filesystem image (like a virtual disk) stored at `/user/home/arch.img` on the PS4's existing OrbisOS partition
+3. **`.img` file** — A single ext4 filesystem image (like a virtual disk) stored at `/ps4hdd/home/arch.img` on the PS4's encrypted UFS partition
 4. **Loop-mount** — The `.img` file is loop-mounted as the root filesystem
 5. **`switch_root`** — The system hands off to Ubuntu, which boots into EmulationStation
 
@@ -133,7 +133,7 @@ The `es_input.cfg` is pre-configured for DualShock 4. The DS4 is identified by:
 |----------|-------|
 | **Device Name** | `Sony Interactive Entertainment Wireless Controller` |
 | **GUID** | `030000004c050000cc09000011810000` |
-| **Connection** | USB (Bluetooth not supported in Linux on PS4) |
+| **Connection** | USB (Bluetooth stack installed but DS4 Bluetooth pairing on PS4 Linux is untested) |
 
 **DS4 Button Mapping:**
 
@@ -196,7 +196,7 @@ nano ~/.emulationstation/ds4_led.cfg
 | `pulse` | Quick flash, slow fade (2s cycle) |
 | `off` | Lightbar off |
 
-**LED resets to blue when EmulationStation exits.**
+**LED behavior:** The DS4 LED script is called on EmulationStation startup. The reset-on-exit feature is not yet implemented (known bug — lightbar stays in custom color after quitting ES).
 
 ### How It Works
 
@@ -269,7 +269,8 @@ cat /var/log/syslog | tail  # System log
 |------|---------|
 | `/usr/local/bin/ds4-led.sh` | DS4 lightbar LED controller |
 | `/usr/local/bin/setup-samba.sh` | Samba share setup (edit PC_IP/SHARE first) |
-| `/usr/local/bin/ps4-dhcp-fallback.service` | Auto-DHCP on any network interface |
+| `ps4-dhcp-fallback.service` | Systemd service — auto-DHCP on any non-loopback interface |
+| `ps4-usb-reprobe.service` | Systemd service — re-enumerates USB devices at boot |
 
 ### Configuration Files
 
@@ -531,7 +532,7 @@ Use FileZilla or any FTP client:
 `bootargs.txt` contains kernel boot parameters that fix common issues like black screen and garbled display. It is loaded automatically by the payload.
 
 ```
-panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 video=HDMI-A-1:1920x1080@60
+panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 drm.edid_firmware=edid/1920x1080.bin video=HDMI-A-1:1920x1080@60
 ```
 
 | Parameter | Purpose |
@@ -543,9 +544,10 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 | `radeon.dpm=0` | Disable Radeon power management (prevents crashes) |
 | `amdgpu.dpm=0` | Disable AMDGPU power management (prevents crashes) |
 | `console=tty0` | Output to virtual console (TV screen) |
-| `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector (bypasses EDID, works with any TV including 4K) |
+| `drm.edid_firmware=edid/1920x1080.bin` | Force kernel to use built-in 1920x1080 EDID blob (prevents garbled/black screen — PS4 HDMI often fails EDID negotiation) |
+| `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector |
 
-**Note:** Some PS4 setups also need `drm.edid_firmware=edid/1920x1080.bin` to fix garbled/black screen. This forces the kernel to use a built-in 1920x1080 EDID blob instead of reading EDID from the TV (which can fail on PS4). feeRnt recommends this parameter. You can add it after `video=HDMI-A-1:1920x1080@60` in `bootargs.txt`.
+> **Note:** Both `drm.edid_firmware` and `video=` are included. The EDID blob ensures the kernel knows the display capabilities; the `video=` param forces the exact mode. feeRnt recommends the EDID approach for PS4.
 
 ### Phase 4: Install to Internal HDD
 
@@ -803,14 +805,14 @@ ROMs appear in EmulationStation after restarting it (press Start → Quit → ru
 | `payload-960-3gb.elf` | Optional — better GPU perf | 3GB | ✅ | ✅ |
 | `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB | ✅ | ✅ |
 
-**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** All payloads work — the garbled GUI issue was caused by display driver settings (`amdgpu.dc=0`), not VRAM size.
+**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** All payloads work equally — VRAM size does not affect display output.
 
 ## Recovery — How to Undo Everything
 
 Because Linux lives as a single `.img` file, removing it fully restores your PS4:
 
 1. **FTP** into your PS4 (or SSH if Linux is running)
-2. **Delete** `/user/home/arch.img` — this is the entire Linux installation
+2. **Delete** `/ps4hdd/home/arch.img` — this is the entire Linux installation
 3. **Delete** `/data/linux/boot/bzImage` and `/data/linux/boot/initramfs.cpio.gz` — the kernel and initramfs
 
 Your PS4 is now completely back to stock OrbisOS. No partition changes, no firmware modifications, no traces of Linux.
@@ -843,7 +845,7 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | Samba mount fails | Check PC IP, firewall, share name, credentials |
 | BIOS not found | Verify files in `/home/PS4/BIOS/` |
 | ROMs not showing | Check `ls /home/PS4/ROMs/`, restart EmulationStation |
-| HDD install fails | Try 1GB payload, re-download files, check FTP paths |
+| HDD install fails | Verify all 4 files at correct FTP paths. Check `/ps4hdd/system/boot/install.log` via SSH. Try 1GB payload for initial install. |
 | `mount -o ro /newroot failed` | Ensure `arch.tar.xz` is at `/user/system/boot/` via FTP |
 
 ## Building from Source
