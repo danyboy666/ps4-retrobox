@@ -41,7 +41,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 | **Ubuntu 22.04** | Minimal server rootfs (no desktop environment) |
 | **EmulationStation** | Retro gaming frontend — shows your ROMs in a TV-friendly interface |
 | **RetroArch** | Emulator backend — runs the actual games via libretro cores |
-| **15 emulators** | SNES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
+| **16 emulators** | SNES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
 | **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
 | **Network support** | Wired LAN for ROM transfer via Samba/SCP |
 
@@ -55,8 +55,8 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
-- **RetroArch** with 15+ libretro cores pre-installed
-- **Internal HDD install** — runs from 32GB `.img` file on PS4's encrypted HDD
+- **RetroArch** with 16 libretro cores pre-installed
+- **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (starts at 2.5GB, expands to 16-50GB on first boot)
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
 - **Multi-southbridge** — supports Aeolia, Belize, and Baikal with appropriate kernel selection
@@ -65,6 +65,46 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 - **Auto-boot** into EmulationStation on tty1
 - **Samba client** for loading ROMs from your PC over the network
 - **Safe & reversible** — delete the `.img` file via FTP to uninstall
+
+## Controller Setup
+
+### DualShock 4 (DS4)
+
+The `es_input.cfg` is pre-configured for DualShock 4. The DS4 is identified by:
+
+| Property | Value |
+|----------|-------|
+| **Device Name** | `Sony Interactive Entertainment Wireless Controller` |
+| **GUID** | `030000004c050000cc09000011810000` |
+| **Connection** | USB (Bluetooth not supported in Linux on PS4) |
+
+**DS4 Button Mapping:**
+
+| DS4 Button | ES Action | RetroArch |
+|------------|-----------|-----------|
+| D-Pad | Navigate | D-Pad |
+| Cross (X) | Confirm (A) | A |
+| Circle | Back (B) | B |
+| Triangle | Info | Y |
+| Square | Details | X |
+| L1 | Page Up | L1 |
+| R1 | Page Down | R1 |
+| L2 | Left Trigger | L2 |
+| R2 | Right Trigger | R2 |
+| Start | Menu | Start |
+| Select | Select | Select |
+| L3 Click | — | L3 |
+| R3 Click | — | R3 |
+
+**Keyboard Controls (USB keyboard):**
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate |
+| Enter | Confirm |
+| Escape | Back |
+| F1 | Menu |
+| F2 | Select |
 
 ## Supported Systems
 
@@ -123,8 +163,8 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
    - **Aeolia/Belize** (Fat CUH-1000/1100/1200, Slim CUH-2000): rename `bzImage_no-built-in-fw_Clang_fullLTO` → `bzImage`
    - **Baikal** (Pro CUH-7000): rename `bzImage_Baikal_5.4.247` → `bzImage`
 4. **FTP** 4 files to your PS4 (see Phase 3 below)
-5. **Jailbreak** → GoldHEN → Enable BinLoader → send 2GB payload
-6. **Run** `exec install-HDD.sh` → type `32` → wait for extraction to finish
+5. **Jailbreak** → GoldHEN → Enable BinLoader → send 1GB payload (for initial install only)
+6. **Wait for install** — the installer runs automatically (no keyboard needed). It creates a 2.5GB `.img`, extracts rootfs, then expands to your chosen size and boots.
 7. **Done** — Linux boots automatically into EmulationStation
 
 ### Daily Use — Method 1: Netcat (PC required)
@@ -291,7 +331,7 @@ There are several ways to send the payload from your PC to the PS4:
 
 **Method 1: Netcat (Windows/Mac/Linux)**
 ```bash
-netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
+netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 ```
 
 **Method 2: GoldHEN BinLoader (from PS4 browser)**
@@ -303,7 +343,7 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
 **Method 3: Windows payload sender apps**
 - Use any PS4 payload sender application (e.g., PS4 Payload Sender, BinLoader)
 - Enter PS4 IP and port 9020
-- Select `payload-960-1gb.elf`
+- Select `payload-960-2gb.elf`
 - Click Send
 
 **Method 4: Direct USB (if supported by exploit host)**
@@ -312,6 +352,8 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-1gb.elf
 - The exploit host may auto-detect it
 
 **Recommended for first install:** Use Method 1 (netcat) — it's the most reliable.
+
+> **⚠ Do NOT use the 1GB VRAM payload (`payload-960-1gb`) for daily gaming.** It only allocates 1GB of GPU memory, which is not enough for EmulationStation's theme rendering. This causes garbled graphics, white screens, and corrupted GUI. The 1GB payload is only used for the initial install. **Always use 2GB payload (`payload-960-2gb`) for daily use.**
 
 #### Step 4: Rescueshell
 
@@ -337,10 +379,11 @@ exec install-HDD.sh
 The script will:
 1. Auto-detect the PS4 HDD partition and decrypt it
 2. Auto-detect `arch.tar.xz` on the internal HDD
-3. Create a 3GB `.img` file on the internal HDD (minimal — expands on first boot)
+3. Create a 2.5GB `.img` file on the internal HDD
 4. Format it as ext4
 5. Extract the rootfs into it (takes 5-15 minutes)
-6. Print "Installation complete!" and init boots into Linux automatically
+6. Prompt you to expand to your chosen size (16/32/50GB) — auto-expands in 15 seconds
+7. Boot into Linux automatically
 
 **If an `.img` file already exists** — the script will refuse to run and tell you to delete it first. This prevents accidentally overwriting your existing install. To reinstall:
 ```bash
@@ -477,16 +520,16 @@ ROMs appear in EmulationStation after restarting it (press Start → Quit → ru
 
 #### Payload Summary
 
-| Payload | Use When | RAM to GPU | Netcat | Payload Loader |
-|---------|----------|------------|--------|----------------|
+| Payload | Use When | VRAM | Netcat | Payload Loader |
+|---------|----------|------|--------|----------------|
 | `payload-960-1gb.elf` | First install only | 1GB | ✅ | ✅ |
-| `payload-960-2gb.elf` | Daily gaming (recommended) | 2GB | ✅ | ✅ |
+| `payload-960-2gb.elf` | **Daily gaming (recommended)** | 2GB | ✅ | ✅ |
 | `payload-960-3gb.elf` | Optional — better GPU perf | 3GB | ✅ | ✅ |
 | `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB | ✅ | ✅ |
 
-**Tip:** If Linux fails to boot with 2GB payload, try the 1GB payload first. Some systems may need the lower RAM allocation to boot reliably.
+**⚠ 1GB VRAM causes garbled EmulationStation GUI.** With only 1GB allocated to the GPU, ES runs out of video memory when rendering themes. This causes white screens, missing textures, corrupted layouts, and garbled text. **Always use 2GB or higher after initial install.**
 
-**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** 3GB and 4GB payloads are optional and provided for testing.
+**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.**
 
 ## Recovery — How to Undo Everything
 
@@ -516,6 +559,7 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | Problem | Fix |
 |---------|-----|
 | Black screen | Use `bootargs.txt` params, try TV instead of monitor |
+| Garbled GUI / white screen | You're using 1GB payload for daily use. Switch to `payload-960-2gb` or higher. 1GB is only for initial install. |
 | No WiFi | WiFi not supported on CUH-1000/1100. Use Ethernet cable. |
 | No Bluetooth | Use USB BT dongle |
 | SSH refused | Ensure Ethernet cable connected, try `ping <PS4-IP>` |
