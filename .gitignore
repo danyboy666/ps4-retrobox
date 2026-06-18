@@ -1,8 +1,9 @@
 # Large binary files — tracked via Git LFS
-# *.tar.xz *.cpio.gz *.bin *.elf *.zip are tracked by LFS
+# community-files/arch.tar.xz, initramfs.cpio.gz, bzImage*, payload-* are tracked by LFS
 
-# Community binaries — tracked via LFS
-# community-files/bzImage* community-files/initramfs* community-files/payload-* are tracked by LFS
+# Release artifacts — do NOT add to repo (regenerated during release)
+*.zip
+ps4-ubuntu-es.tar.xz
 
 # Build artifacts
 /rootfs/
