@@ -60,7 +60,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 
 - **EmulationStation** frontend (compiled from source)
 - **RetroArch** with 16 libretro cores pre-installed
-- **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (starts at 3GB, expandable to 16-50GB on first boot)
+- **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (3GB minimal, or 16-50GB with expansion)
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
 - **Multi-southbridge** — supports Aeolia, Belize, and Baikal with appropriate kernel selection
@@ -555,8 +555,6 @@ netcat -w 5 <PS4-IP> 9020 < payload-960-2gb.elf
 
 **Recommended for first install:** Use Method 1 (netcat) — it's the most reliable.
 
-> **⚠ Do NOT use the 1GB VRAM payload (`payload-960-1gb`) for daily gaming.** It only allocates 1GB of GPU memory, which is not enough for EmulationStation's theme rendering. This causes garbled graphics, white screens, and corrupted GUI. The 1GB payload is only used for the initial install. **Always use 2GB payload (`payload-960-2gb`) for daily use.**
-
 #### Step 4: Rescueshell
 
 After the payload is sent, the PS4 screen shows white text on black background — this is the **rescueshell**. It's a minimal Linux command prompt.
@@ -581,12 +579,12 @@ exec install-HDD.sh
 The script will:
 1. Auto-detect the PS4 HDD partition and decrypt it
 2. Auto-detect `arch.tar.xz` on the internal HDD
-3. Create a 3GB `.img` file on the internal HDD
-4. Format it as ext4
-5. Extract the rootfs into it (takes 5-15 minutes)
-6. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
-7. Ask if you want to expand to your chosen size (16/32/50GB) — optional, can be skipped
-8. Boot into Linux automatically
+3. Ask if you want a **3GB minimal install** (fast, ~17 min) or a **larger size** (16/32/50GB)
+4. Create a 3GB `.img` file on the internal HDD
+5. Format it as ext4
+6. Extract the rootfs into it
+7. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
+8. Boot into Linux automatically (expansion happens on first boot if you chose a larger size)
 
 **If an `.img` file already exists** — the script will refuse to run and tell you to delete it first. This prevents accidentally overwriting your existing install. To reinstall:
 ```bash
@@ -594,7 +592,7 @@ rm /ps4hdd/home/arch.img
 exec install-HDD.sh
 ```
 
-**If it fails:** Try again with 1GB payload. Ensure all 4 files were uploaded via FTP to the correct paths.
+**If it fails:** Try again with 1GB payload for initial install. Ensure all 4 files were uploaded via FTP to the correct paths.
 
 #### Step 6: First Boot
 
@@ -747,14 +745,12 @@ ROMs appear in EmulationStation after restarting it (press Start → Quit → ru
 
 | Payload | Use When | VRAM | Netcat | Payload Loader |
 |---------|----------|------|--------|----------------|
-| `payload-960-1gb.elf` | First install only | 1GB | ✅ | ✅ |
+| `payload-960-1gb.elf` | Initial install | 1GB | ✅ | ✅ |
 | `payload-960-2gb.elf` | **Daily gaming (recommended)** | 2GB | ✅ | ✅ |
 | `payload-960-3gb.elf` | Optional — better GPU perf | 3GB | ✅ | ✅ |
 | `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB | ✅ | ✅ |
 
-**⚠ 1GB VRAM causes garbled EmulationStation GUI.** With only 1GB allocated to the GPU, ES runs out of video memory when rendering themes. This causes white screens, missing textures, corrupted layouts, and garbled text. **Always use 2GB or higher after initial install.**
-
-**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.**
+**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** All payloads work — the garbled GUI issue was caused by display driver settings (`amdgpu.dc=0`), not VRAM size.
 
 ## Recovery — How to Undo Everything
 
