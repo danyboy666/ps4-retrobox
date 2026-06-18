@@ -87,21 +87,40 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 
 ## Requirements
 
-- PS4 Fat **CUH-1001A** (Aeolia southbridge)
-- Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir)
+- Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir) — works on **any jailbreak-compatible FW** (5.05–13.02)
 - Windows PC on the **same network** as PS4
 - **Ethernet cable required** — connect PS4 to your router/switch before booting
 - WiFi is **not supported** on CUH-1000/1100 (Aeolia v1 southbridge)
 - **No USB drive required** — everything is transferred via FTP
+
+### Kernel by PS4 Model
+
+**The initramfs, rootfs, and payload are identical across all models.** Only the kernel (`bzImage`) changes based on your PS4's southbridge.
+
+| PS4 Model | Southbridge | Kernel | Download |
+|-----------|-------------|--------|----------|
+| **Fat CUH-1000/1100** | Aeolia | `bzImage` (6.15.4) | Included in release |
+| **Fat CUH-1200 / Slim CUH-2000** | Belize | `bzImage` (6.15.4) | Included in release |
+| **Pro CUH-7000** | Baikal | `bzImage_Baikal_5.4.247` | Included in release |
+
+**To identify your model:** Check the label on the back of your PS4. The model number starts with `CUH-` followed by 4 digits.
+
+**Aeolia vs Belize:** Both use the same kernel binary (`bzImage` 6.15.4 from feeRnt). The kernel auto-detects which southbridge is present at boot.
+
+**Baikal (PS4 Pro):** Requires a different kernel. Use `bzImage_Baikal_5.4.247` instead. Rename it to `bzImage` before FTP upload.
+
+> **Source:** Kernels by [feeRnt](https://github.com/feeRnt/ps4-linux-12xx/releases) (6.15.4-crashnt-4.7 for Aeolia/Belize, 5.4.247-neocine-1.1 for Baikal). Payload by [ps4-linux-loader](https://github.com/ps4-linux/ps4-linux-loader) v24b (firmware-agnostic, FW 5.05–13.02).
 
 ## Quick Start
 
 ### First Time Install (one-time setup)
 1. **Download** — grab `ps4-retrobox-v1.0.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
 2. **Extract** the zip on your PC
-3. **Rename** `bzImage_no-built-in-fw_Clang_fullLTO` to `bzImage`
+3. **Choose kernel** — rename the correct kernel to `bzImage`:
+   - **Aeolia/Belize** (Fat CUH-1000/1100/1200, Slim CUH-2000): rename `bzImage_no-built-in-fw_Clang_fullLTO` → `bzImage`
+   - **Baikal** (Pro CUH-7000): rename `bzImage_Baikal_5.4.247` → `bzImage`
 4. **FTP** 4 files to your PS4 (see Phase 3 below)
-5. **Jailbreak** → GoldHEN → Enable BinLoader → send 1GB payload
+5. **Jailbreak** → GoldHEN → Enable BinLoader → send 2GB payload
 6. **Run** `exec install-HDD.sh` → type `32` → wait for extraction to finish
 7. **Done** — Linux boots automatically into EmulationStation
 
@@ -197,12 +216,12 @@ From your PC, FTP these 4 files to the PS4:
 
 | Local File | Rename To | FTP Path | Size |
 |------------|-----------|----------|------|
-| `bzImage_no-built-in-fw_Clang_fullLTO` | **`bzImage`** | `/data/linux/boot/bzImage` | ~18MB |
+| `bzImage_no-built-in-fw_Clang_fullLTO` (Aeolia/Belize) **or** `bzImage_Baikal_5.4.247` (Pro) | **`bzImage`** | `/data/linux/boot/bzImage` | ~18MB |
 | `initramfs.cpio.gz` | (keep name) | `/data/linux/boot/initramfs.cpio.gz` | ~6MB |
 | `bootargs.txt` | (keep name) | `/data/linux/boot/bootargs.txt` | <1KB |
 | `arch.tar.xz` | (keep name) | `/user/system/boot/arch.tar.xz` | ~492MB |
 
-**Important:** You MUST rename `bzImage_no-built-in-fw_Clang_fullLTO` to just `bzImage` before uploading. The payload only looks for a file named `bzImage`.
+**Important:** You MUST rename the kernel file to just `bzImage` before uploading. The payload only looks for a file named `bzImage`.
 
 Use FileZilla or any FTP client:
 - Host: `<PS4-IP>`
