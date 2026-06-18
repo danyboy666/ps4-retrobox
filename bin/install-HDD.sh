@@ -155,6 +155,9 @@ fi
 rm -f /ps4hdd/.write_test
 echo "UFS mounted and writable."
 
+sleep 2
+clear
+
 # Auto-detect the .tar.* file
 _install_OS="$(ls /ps4hdd/system/boot/*.tar.* 2>/dev/null | head -1)"
 if [ -z "$_install_OS" ]; then
@@ -199,8 +202,8 @@ while [ "$_COUNTDOWN" -gt 0 ] && [ -z "$_TARGET_SIZE" ]; do
 					;;
 			esac
 			# Sanity check
-			if [ "$_TARGET_SIZE" -lt 3 ] 2>/dev/null; then
-				echo "  Too small (need at least 3GB). Using 32GB."
+			if [ "$_TARGET_SIZE" -lt 2 ] 2>/dev/null; then
+				echo "  Too small (need at least 2.5GB). Using 32GB."
 				_TARGET_SIZE=32
 			fi
 			if [ "$_TARGET_SIZE" -gt 500 ] 2>/dev/null; then
@@ -229,17 +232,16 @@ echo ""
 echo "  You do NOT need to do anything — no manual steps required."
 echo ""
 
-# Create minimal 3GB .img (enough for rootfs + ext4 overhead)
-_PARTSIZE=3
-_TOTAL_MB=$((_PARTSIZE * 1024))
+# Create minimal 2.5GB .img (rootfs ~2.4GB uncompressed + ext4 overhead)
+_TOTAL_MB=2560
 _IMG_FILE="/ps4hdd/home/$_install_OS_img"
 
 echo ""
-echo "=== Creating minimal ${_PARTSIZE}GB .img ==="
+echo "=== Creating minimal 2.5GB .img ==="
 
 # Try sparse creation first (truncate, instant)
 rm -f "$_IMG_FILE" 2>/dev/null
-truncate -s "${_PARTSIZE}G" "$_IMG_FILE" 2>/dev/null
+truncate -s "${_TOTAL_MB}M" "$_IMG_FILE" 2>/dev/null
 
 # Verify sparse file actually got created with real size
 _ACTUAL_SIZE=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
@@ -249,7 +251,7 @@ if [ "$_ACTUAL_SIZE" -gt 1048576 ]; then
 else
 	# UFS doesn't support sparse files, use real dd (slow)
 	echo "  UFS does not support sparse files."
-	echo "  Writing ${_PARTSIZE}GB of zeros (this is slow)..."
+	echo "  Writing 2.5GB of zeros (this is slow)..."
 	rm -f "$_IMG_FILE" 2>/dev/null
 	_SPARSE=0
 	_START=$(date +%s)
@@ -327,32 +329,6 @@ kill $_PROG_PID 2>/dev/null
 wait $_PROG_PID 2>/dev/null
 echo ""
 echo "Extraction complete!"
-
-echo "Fixing absolute symlinks..."
-cd /newroot
-# Convert absolute symlinks to relative (needed for mounting under /newroot)
-find . -maxdepth 4 -type l | while read -r _link; do
-	_target=$(readlink "$_link")
-	case "$_target" in
-		/*)
-			# Count directory depth of the link
-			_depth=$(echo "$(dirname "$_link")" | tr -cd '/' | wc -c)
-			# Build relative prefix: depth 2 => ../.., depth 3 => ../../..
-			_prefix=""
-			_i=0
-			while [ "$_i" -lt "$_depth" ]; do
-				_prefix="../${_prefix}"
-				_i=$((_i + 1))
-			done
-			# Remove leading slash from target
-			_target_noslash="${_target#/}"
-			rm -f "$_link"
-			ln -s "${_prefix}${_target_noslash}" "$_link"
-			;;
-	esac
-done
-cd -
-echo "Symlinks fixed."
 
 echo "Syncing..."
 sync
