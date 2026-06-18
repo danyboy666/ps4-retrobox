@@ -20,6 +20,9 @@ The PS4's internal HDD is encrypted and uses a UFS2 filesystem. This project wor
 Payload (kexec) → Kernel + Initramfs → Decrypt PS4 HDD
   → Find .img on existing partition → Loop-mount .img
   → switch_root → Ubuntu boots → EmulationStation launches
+
+ROMs + BIOS are stored on UFS (/ps4hdd/ROMs/, /ps4hdd/BIOS/)
+and bind-mounted into Ubuntu at boot.
 ```
 
 ### Why This Is Safe
@@ -51,12 +54,13 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 - **No USB drive needed** after initial setup — everything is self-contained
 - **Reversible** — delete the `.img` file via FTP to fully restore OrbisOS
 - **Ethernet required** — WiFi is not supported on CUH-1000/1100 models
+- **ROMs + BIOS on UFS** — stored on the PS4's internal UFS partition, separate from the `.img`, persist across reinstalls
 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
 - **RetroArch** with 16 libretro cores pre-installed
-- **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (starts at 2.5GB, expands to 16-50GB on first boot)
+- **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (starts at 3GB, expandable to 16-50GB on first boot)
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
 - **Multi-southbridge** — supports Aeolia, Belize, and Baikal with appropriate kernel selection
@@ -229,7 +233,38 @@ cat /var/log/syslog | tail  # System log
 
 ### ROM Directories
 
-All ROMs go in `~/ROMs/` (which is `/home/PS4/ROMs/`):
+ROMs can be stored in two locations:
+- **On UFS** (`/ps4hdd/ROMs/`) — recommended, persists across reinstalls, larger capacity
+- **Inside .img** (`~/ROMs/`) — space limited by .img size
+
+**UFS ROM directories** (created automatically during install):
+
+```
+/ps4hdd/ROMs/
+├── snes/
+├── n64/
+├── gba/
+├── gameboy/
+├── genesis/
+├── psx/
+├── tg16/
+├── nds/
+├── arcade/
+├── neogeo/
+├── atari2600/
+├── atari7800/
+├── sms/
+├── gg/
+├── c64/
+├── pcecd/
+├── bios/
+├── saves/
+└── screenshots/
+
+/ps4hdd/BIOS/     ← BIOS files go here
+```
+
+**Inside .img ROM directories:**
 
 ```
 ~/ROMs/
@@ -331,7 +366,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
    - **Baikal** (Pro CUH-7000): rename `bzImage_Baikal_5.4.247` → `bzImage`
 4. **FTP** 4 files to your PS4 (see Phase 3 below)
 5. **Jailbreak** → GoldHEN → Enable BinLoader → send 1GB payload (for initial install only)
-6. **Wait for install** — the installer runs automatically (no keyboard needed). It creates a 2.5GB `.img`, extracts rootfs, then expands to your chosen size and boots.
+6. **Wait for install** — the installer runs automatically (no keyboard needed). It creates a 3GB `.img`, extracts rootfs, then asks if you want to expand to your chosen size (optional — can be done later).
 7. **Done** — Linux boots automatically into EmulationStation
 
 ### Daily Use — Method 1: Netcat (PC required)
@@ -546,11 +581,12 @@ exec install-HDD.sh
 The script will:
 1. Auto-detect the PS4 HDD partition and decrypt it
 2. Auto-detect `arch.tar.xz` on the internal HDD
-3. Create a 2.5GB `.img` file on the internal HDD
+3. Create a 3GB `.img` file on the internal HDD
 4. Format it as ext4
 5. Extract the rootfs into it (takes 5-15 minutes)
-6. Prompt you to expand to your chosen size (16/32/50GB) — auto-expands in 15 seconds
-7. Boot into Linux automatically
+6. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
+7. Ask if you want to expand to your chosen size (16/32/50GB) — optional, can be skipped
+8. Boot into Linux automatically
 
 **If an `.img` file already exists** — the script will refuse to run and tell you to delete it first. This prevents accidentally overwriting your existing install. To reinstall:
 ```bash
@@ -598,9 +634,13 @@ Then run it:
 sudo setup-samba.sh
 ```
 
-Copy BIOS files to local storage:
+Copy BIOS files to UFS (recommended) or local storage:
 
 ```bash
+# To UFS (persists across reinstalls)
+cp /mnt/roms/BIOS/* /ps4hdd/BIOS/
+
+# Or to .img (limited space)
 cp /mnt/roms/BIOS/* /home/PS4/BIOS/
 ```
 
@@ -666,13 +706,19 @@ When done gaming:
 
 #### Adding ROMs
 
+ROMs can be stored in two locations:
+- **On UFS** (`/ps4hdd/ROMs/`) — recommended, persists across reinstalls, larger capacity
+- **Inside .img** (`~/ROMs/`) — space limited by .img size
+
 **Method 1: SCP/SFTP (recommended)**
 Copy ROMs from your PC over SSH:
 ```bash
-scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMs/SNES/
+# To UFS (recommended — persists across reinstalls)
+scp -r /path/to/roms/* PS4@<PS4-IP>:/ps4hdd/ROMs/SNES/
 # Password: PS4
-# Other ROM dirs: N64, GBA, GameBoy, Genesis, PlayStation, TurboGrafx16,
-#   NintendoDS, Arcade, NeoGeo, Atari2600, Atari7800, MasterSystem, GameGear, C64, PCEngineCD
+
+# Or to .img (limited space)
+scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMs/SNES/
 ```
 
 **Method 2: Samba share**
@@ -682,6 +728,18 @@ ssh PS4@<PS4-IP>   # Password: PS4
 sudo nano /usr/local/bin/setup-samba.sh
 ```
 Change `PC_IP` and `SHARE`, then run `sudo setup-samba.sh`.
+
+**Method 3: UFS Direct**
+Copy ROMs directly to the UFS partition via SCP:
+```bash
+# Large ROM collections — copy directly to UFS
+scp -r /path/to/roms/* PS4@<PS4-IP>:/ps4hdd/ROMs/Genesis/
+
+# BIOS files go to /ps4hdd/BIOS/
+scp BIOS/SCPH1001.bin PS4@<PS4-IP>:/ps4hdd/BIOS/
+```
+
+> **Note:** ROMs on UFS are automatically available in EmulationStation via bind mount.
 
 ROMs appear in EmulationStation after restarting it (press Start → Quit → run `startx`).
 
@@ -707,6 +765,8 @@ Because Linux lives as a single `.img` file, removing it fully restores your PS4
 3. **Delete** `/data/linux/boot/bzImage` and `/data/linux/boot/initramfs.cpio.gz` — the kernel and initramfs
 
 Your PS4 is now completely back to stock OrbisOS. No partition changes, no firmware modifications, no traces of Linux.
+
+> **Note:** ROMs and BIOS files on UFS (`/ps4hdd/ROMs/` and `/ps4hdd/BIOS/`) persist after `.img` deletion. They are separate from the Linux installation. Delete them manually if you want a complete cleanup.
 
 **If Linux won't boot:** The PS4 simply boots into OrbisOS normally. There is no way for this project to brick your console.
 
