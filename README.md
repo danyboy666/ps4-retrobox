@@ -2,6 +2,59 @@
 
 > **DISCLAIMER**: This project was assembled by an AI assistant (OpenCode). The author is testing this method on real hardware to verify it is valid and safe. Use at your own risk. Always ensure you have a way to recover your PS4 if something goes wrong. The author assumes no responsibility for any damage to your console.
 
+> **⚠ PROJECT STATUS — HEAVY DEVELOPMENT**  
+> This project is **not production-ready**. The core boot flow works (payload → kernel → initramfs → decrypt → Ubuntu), but there are **critical blocking issues** that prevent actual use. See the status checklist below. Do NOT follow these instructions expecting a working gaming setup yet — this is an engineering reference.
+
+## Project Status
+
+### What Works (tested on real hardware)
+
+- [x] Jailbreak + payload delivery (PSFree-Enhanced, GoldHEN BinLoader)
+- [x] Payload loads kernel + initramfs from internal HDD (`/data/linux/boot/`)
+- [x] Initramfs decrypts PS4 HDD partition (auto-detect partition 27/13)
+- [x] UFS2 mount + write verification (read-only mount issue resolved)
+- [x] WiFi fallback — sky2 driver working (eth0 up, DHCP assigned)
+- [x] SSH access — can log in as `PS4` user
+- [x] All 4 payloads functional (1GB/2GB/3GB/4GB VRAM)
+- [x] GitHub release v1.0 with all assets (arch.tar.xz, initramfs, kernel, payloads)
+- [x] 57 commits of iterative development, all pushed
+
+### Critical Issues (blocking actual use)
+
+- [ ] **Garbled screen in EmulationStation** — white screen with random blocks/pixels covering text. Root cause investigated: removed `amdgpu.dc=0`, added Mesa env vars, but issue persists. Next step: try `drm.edid_firmware=edid/1920x1080.bin` bootarg (feeRnt's recommended approach for PS4).
+- [ ] **Keyboard + controller not working in Ubuntu** — udev enabled, input rules created, PS4 user added to input group, USB reprobe service added. Still not working. Needs SSH diagnostics on real hardware (`cat /proc/bus/input/devices`, `ls /dev/input/`, `ps aux | grep udevd`).
+- [ ] **Xorg input driver conflict** — xorg.conf forces `evdev` driver, but `40-libinput.conf` also claims input devices with `libinput`. May prevent input from reaching ES.
+
+### Known Bugs
+
+- [ ] **Init expansion bug** — `resize2fs /dev/loop5` called without first doing `losetup /dev/loop5` to associate the image file. Expansion silently fails.
+- [ ] **`mke2fs -j` creates ext3, not ext4** — init mounts as `-t ext4` but the filesystem lacks ext4 features (extent-based allocation, etc.).
+- [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
+- [ ] **`os_filesystem_check` ignores errors** — `e2fsck` with uncorrectable errors still allows mount to proceed.
+
+### Not Yet Tested
+
+- [ ] EmulationStation display (garbled screen blocks this)
+- [ ] RetroArch gameplay
+- [ ] DS4 LED control (`ds4-led.sh`)
+- [ ] Samba ROM transfer from PC
+- [ ] Multi-OS support (only one `.img` at a time)
+- [ ] Expansion flow (16/32/50GB)
+- [ ] PS4 Pro (Baikal) kernel
+- [ ] Multiple TV/monitor compatibility
+
+### Roadmap
+
+1. Fix display output — try `drm.edid_firmware=edid/1920x1080.bin` in bootargs.txt
+2. Fix input — SSH diagnostics, check udev status, investigate evdev vs libinput conflict
+3. Fix expansion bug — add `losetup /dev/loop5 $_IMG_FILE` before `resize2fs`
+4. Fix ext4 creation — `mke2fs -t ext4` instead of `mke2fs -j`
+5. Real-hardware validation of all 16 emulated systems
+6. Performance testing on different PS4 models (Fat/Slim/Pro)
+7. Clean up README — remove unverified claims, add accurate troubleshooting
+
+---
+
 ## What This Project Does
 
 PS4 RetroBox turns your jailbroken PS4 Fat into a retro gaming machine running **EmulationStation** + **RetroArch**. It installs a minimal **Ubuntu 22.04** server environment directly onto the PS4's internal HDD — no USB drive needed after setup, no external hardware required.
@@ -492,7 +545,7 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 | `console=tty0` | Output to virtual console (TV screen) |
 | `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector (bypasses EDID, works with any TV including 4K) |
 
-**Important:** Do NOT use `drm.edid_firmware=edid/1920x1080.bin` — this file doesn't exist in the kernel and causes error messages. Use `video=HDMI-A-1:1920x1080@60` instead.
+**Note:** Some PS4 setups also need `drm.edid_firmware=edid/1920x1080.bin` to fix garbled/black screen. This forces the kernel to use a built-in 1920x1080 EDID blob instead of reading EDID from the TV (which can fail on PS4). feeRnt recommends this parameter. You can add it after `video=HDMI-A-1:1920x1080@60` in `bootargs.txt`.
 
 ### Phase 4: Install to Internal HDD
 
@@ -782,7 +835,7 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | Problem | Fix |
 |---------|-----|
 | Black screen | Use `bootargs.txt` params, try TV instead of monitor |
-| Garbled GUI / white screen | You're using 1GB payload for daily use. Switch to `payload-960-2gb` or higher. 1GB is only for initial install. |
+| Garbled GUI / white screen | Known issue — display driver initialization problem. Try adding `drm.edid_firmware=edid/1920x1080.bin` to `bootargs.txt`. Also check PS4 video settings: 1080p, HDR OFF, Deep Color OFF, HDCP OFF. |
 | No WiFi | WiFi not supported on CUH-1000/1100. Use Ethernet cable. |
 | No Bluetooth | Use USB BT dongle |
 | SSH refused | Ensure Ethernet cable connected, try `ping <PS4-IP>` |
