@@ -133,6 +133,9 @@ fi
 rm -f /ps4hdd/.write_test
 echo "UFS mounted and writable."
 
+sleep 2
+clear
+
 # PS4 RetroBox — based on better-initramfs by feeRnt (https://github.com/feeRnt)
 cat << 'ART'
 
