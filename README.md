@@ -106,6 +106,173 @@ The `es_input.cfg` is pre-configured for DualShock 4. The DS4 is identified by:
 | F1 | Menu |
 | F2 | Select |
 
+## DS4 Lightbar LED Controller
+
+The DS4 controller's lightbar changes color when EmulationStation boots. Customize it by editing the config file.
+
+### Configuration
+
+Edit `~/.emulationstation/ds4_led.cfg` via SSH:
+
+```bash
+ssh PS4@<PS4-IP>   # Password: PS4
+nano ~/.emulationstation/ds4_led.cfg
+```
+
+```xml
+<?xml version="1.0"?>
+<config>
+  <string name="Color" value="purple" />
+  <string name="Pattern" value="solid" />
+</config>
+```
+
+**Colors:** `purple` (default), `red`, `green`, `blue`, `orange`, `cyan`, `magenta`, `yellow`, `white`, `off`
+
+**Patterns:**
+
+| Pattern | Effect |
+|---------|--------|
+| `solid` | Constant light (default) |
+| `breathing` | Slow fade in/out (1.5s cycle) |
+| `fast_breathing` | Quick fade in/out (0.5s cycle) |
+| `pulse` | Quick flash, slow fade (2s cycle) |
+| `off` | Lightbar off |
+
+**LED resets to blue when EmulationStation exits.**
+
+### How It Works
+
+- `/usr/local/bin/ds4-led.sh` — LED controller script
+- Reads `~/.emulationstation/ds4_led.cfg` on ES startup
+- Auto-detects DS4 LED devices via `/sys/class/leds/input*`
+- Uses Linux kernel LED subsystem (timer trigger for breathing effects)
+
+## CLI Access — Dropping to Command Line
+
+You can access a Linux command line without killing EmulationStation.
+
+### Method 1: SSH from PC (recommended)
+
+```bash
+ssh PS4@<PS4-IP>
+# Password: PS4
+```
+
+### Method 2: Virtual terminal on PS4
+
+If you have a USB keyboard connected:
+
+1. Press **Ctrl+Alt+F2** to switch to tty2 (command line)
+2. Log in as `PS4` (password: `PS4`)
+3. When done, type `exit` and press **Ctrl+Alt+F1** to return to EmulationStation
+
+### Method 3: Kill EmulationStation (returns to tty1 shell)
+
+```bash
+# From SSH or tty2
+killall emulationstation
+```
+
+EmulationStation exits and you get a shell prompt on tty1. To restart:
+
+```bash
+startx
+```
+
+### Useful CLI Commands
+
+```bash
+# Check system info
+uname -a                    # Kernel version
+free -h                     # RAM usage
+df -h                       # Disk usage
+
+# Check network
+ip a                        # IP addresses
+ping -c 3 google.com        # Test internet
+
+# Restart EmulationStation
+startx                      # Or: emulationstation &
+
+# Shutdown
+sudo shutdown -h now        # Safe shutdown
+sudo reboot                 # Restart PS4
+
+# Check logs
+dmesg                       # Kernel messages
+cat /var/log/syslog | tail  # System log
+```
+
+## Helper Scripts & File Locations
+
+### System Scripts
+
+| Path | Purpose |
+|------|---------|
+| `/usr/local/bin/ds4-led.sh` | DS4 lightbar LED controller |
+| `/usr/local/bin/setup-samba.sh` | Samba share setup (edit PC_IP/SHARE first) |
+| `/usr/local/bin/ps4-dhcp-fallback.service` | Auto-DHCP on any network interface |
+
+### Configuration Files
+
+| Path | Purpose |
+|------|---------|
+| `~/.emulationstation/es_systems.cfg` | System definitions (ROM paths, emulators) |
+| `~/.emulationstation/es_settings.cfg` | ES settings (theme, resolution, VSync) |
+| `~/.emulationstation/es_input.cfg` | Controller/keyboard mappings |
+| `~/.emulationstation/ds4_led.cfg` | DS4 LED color/pattern config |
+| `~/.xinitrc` | X11 startup (ES launch, LED, DPMS) |
+| `/etc/X11/xorg.conf` | X11 display/input config |
+| `/etc/NetworkManager/system-connections/Wired connection.nmconn` | Network config |
+| `/data/linux/boot/bootargs.txt` | Kernel boot parameters |
+
+### ROM Directories
+
+All ROMs go in `~/ROMs/` (which is `/home/PS4/ROMs/`):
+
+```
+~/ROMs/
+├── SNES/
+├── N64/
+├── GBA/
+├── GameBoy/
+├── Genesis/
+├── PlayStation/
+├── TurboGrafx16/
+├── NintendoDS/
+├── Arcade/
+├── NeoGeo/
+├── Atari2600/
+├── Atari7800/
+├── MasterSystem/
+├── GameGear/
+├── C64/
+├── PCEngineCD/
+├── BIOS/         ← Put BIOS files here
+├── saves/
+└── screenshots/
+```
+
+### Libretro Cores
+
+Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
+
+| Core | System |
+|------|--------|
+| `bsnes_mercury_balanced_libretro.so` | SNES |
+| `mupen64plus_libretro.so` | N64 |
+| `mgba_libretro.so` | GBA |
+| `gambatte_libretro.so` | Game Boy |
+| `genesis_plus_gx_libretro.so` | Genesis, SMS, Game Gear |
+| `mednafen_psx_libretro.so` | PlayStation |
+| `mednafen_pce_fast_libretro.so` | TurboGrafx-16, PC Engine CD |
+| `desmume_libretro.so` | Nintendo DS |
+| `fbneo_libretro.so` | Arcade, Neo Geo |
+| `stella_libretro.so` | Atari 2600 |
+| `prosystem_libretro.so` | Atari 7800 |
+| `vice_x64_libretro.so` | Commodore 64 |
+
 ## Supported Systems
 
 | System | Core | BIOS Required |
