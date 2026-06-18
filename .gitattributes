@@ -1,0 +1,5 @@
+*.tar.xz filter=lfs diff=lfs merge=lfs -text
+*.cpio.gz filter=lfs diff=lfs merge=lfs -text
+community-files/bzImage* filter=lfs diff=lfs merge=lfs -text
+community-files/payload-* filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
