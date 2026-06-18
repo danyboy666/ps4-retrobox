@@ -16,8 +16,9 @@
 - [x] WiFi fallback — sky2 driver working (eth0 up, DHCP assigned)
 - [x] SSH access — can log in as `PS4` user
 - [x] All 4 payloads functional (1GB/2GB/3GB/4GB VRAM)
+- [x] Install flow: 3GB base + optional expansion (16/32/50GB) during install
 - [x] GitHub release v1.0 with all assets (arch.tar.xz, initramfs, kernel, payloads)
-- [x] 57 commits of iterative development, all pushed
+- [x] 57+ commits of iterative development, all pushed
 
 ### Critical Issues (blocking actual use)
 
@@ -27,8 +28,6 @@
 
 ### Known Bugs
 
-- [ ] **Init expansion bug** — `resize2fs /dev/loop5` called without first doing `losetup /dev/loop5` to associate the image file. Expansion silently fails.
-- [ ] **`mke2fs -j` creates ext3, not ext4** — init mounts as `-t ext4` but the filesystem lacks ext4 features (extent-based allocation, etc.).
 - [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 - [ ] **`os_filesystem_check` ignores errors** — `e2fsck` with uncorrectable errors still allows mount to proceed.
 
@@ -39,7 +38,6 @@
 - [ ] DS4 LED control (`ds4-led.sh`)
 - [ ] Samba ROM transfer from PC
 - [ ] Multi-OS support (only one `.img` at a time)
-- [ ] Expansion flow (16/32/50GB)
 - [ ] PS4 Pro (Baikal) kernel
 - [ ] Multiple TV/monitor compatibility
 
@@ -47,11 +45,9 @@
 
 1. Fix display output — try `drm.edid_firmware=edid/1920x1080.bin` in bootargs.txt
 2. Fix input — SSH diagnostics, check udev status, investigate evdev vs libinput conflict
-3. Fix expansion bug — add `losetup /dev/loop5 $_IMG_FILE` before `resize2fs`
-4. Fix ext4 creation — `mke2fs -t ext4` instead of `mke2fs -j`
-5. Real-hardware validation of all 16 emulated systems
-6. Performance testing on different PS4 models (Fat/Slim/Pro)
-7. Clean up README — remove unverified claims, add accurate troubleshooting
+3. Real-hardware validation of all 16 emulated systems
+4. Performance testing on different PS4 models (Fat/Slim/Pro)
+5. Clean up README — remove unverified claims, add accurate troubleshooting
 
 ---
 
@@ -419,9 +415,11 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
    - **Aeolia/Belize** (Fat CUH-1000/1100/1200, Slim CUH-2000): rename `bzImage_no-built-in-fw_Clang_fullLTO` → `bzImage`
    - **Baikal** (Pro CUH-7000): rename `bzImage_Baikal_5.4.247` → `bzImage`
 4. **FTP** 4 files to your PS4 (see Phase 3 below)
-5. **Jailbreak** → GoldHEN → Enable BinLoader → send 1GB payload (for initial install only)
-6. **Wait for install** — the installer runs automatically (no keyboard needed). It creates a 3GB `.img`, extracts rootfs, then asks if you want to expand to your chosen size (optional — can be done later).
+5. **Jailbreak** → GoldHEN → Enable BinLoader → send **1GB payload** (see note below)
+6. **Wait for install** — the installer runs automatically. It creates a 3GB `.img`, extracts rootfs, then asks if you want to expand (16/32/50GB) or keep 3GB.
 7. **Done** — Linux boots automatically into EmulationStation
+
+> **Why use the 1GB payload for install?** The VRAM payload size determines how much RAM is reserved for the GPU. A 1GB payload reserves only 1GB for GPU, leaving ~3GB for CPU/system — this is critical because tar extraction of the rootfs is memory-intensive. A 2GB+ payload would leave less system RAM and could cause the install to fail or be very slow. For daily gaming after install, use the 2GB payload (more GPU RAM = better game performance).
 
 ### Daily Use — Method 1: Netcat (PC required)
 1. **Jailbreak** → GoldHEN → Enable BinLoader
@@ -634,12 +632,14 @@ exec install-HDD.sh
 The script will:
 1. Auto-detect the PS4 HDD partition and decrypt it
 2. Auto-detect `arch.tar.xz` on the internal HDD
-3. Ask if you want a **3GB minimal install** (fast, ~17 min) or a **larger size** (16/32/50GB)
-4. Create a 3GB `.img` file on the internal HDD
-5. Format it as ext4
-6. Extract the rootfs into it
-7. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
-8. Boot into Linux automatically (expansion happens on first boot if you chose a larger size)
+3. Create a 3GB `.img` file on the internal HDD
+4. Format it as ext4
+5. Extract the rootfs into it
+6. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
+7. Ask: **"Keep 3GB or expand?"**
+   - **[1] Keep 3GB** — boot now (fastest)
+   - **[2] Expand** — choose size (16/32/50GB or custom), expansion happens immediately
+8. Boot into Linux automatically
 
 **If an `.img` file already exists** — the script will refuse to run and tell you to delete it first. This prevents accidentally overwriting your existing install. To reinstall:
 ```bash
@@ -800,12 +800,12 @@ ROMs appear in EmulationStation after restarting it (press Start → Quit → ru
 
 | Payload | Use When | VRAM | Netcat | Payload Loader |
 |---------|----------|------|--------|----------------|
-| `payload-960-1gb.elf` | Initial install | 1GB | ✅ | ✅ |
-| `payload-960-2gb.elf` | **Daily gaming (recommended)** | 2GB | ✅ | ✅ |
-| `payload-960-3gb.elf` | Optional — better GPU perf | 3GB | ✅ | ✅ |
-| `payload-960-4gb.elf` | Optional — maximum GPU perf | 4GB | ✅ | ✅ |
+| `payload-960-1gb.elf` | **Initial install only** — leaves max RAM for extraction | 1GB | ✅ | ✅ |
+| `payload-960-2gb.elf` | **Daily gaming (recommended)** — balanced GPU/system RAM | 2GB | ✅ | ✅ |
+| `payload-960-3gb.elf` | Optional — more GPU RAM for demanding games | 3GB | ✅ | ✅ |
+| `payload-960-4gb.elf` | Optional — maximum GPU RAM | 4GB | ✅ | ✅ |
 
-**Note:** Higher VRAM = less RAM for CPU/system. 3GB/4GB may cause instability on PS4 Fat with only 4GB total RAM. **2GB is recommended for daily use.** All payloads work equally — VRAM size does not affect display output.
+**Note:** VRAM payload = GPU reserved RAM. PS4 Fat has 4GB total. A 1GB payload leaves ~3GB for system (best for install). A 2GB payload leaves ~2GB for system (good for daily use). 3GB/4GB may cause instability due to limited system RAM.
 
 ## Recovery — How to Undo Everything
 
