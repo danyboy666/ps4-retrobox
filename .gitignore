@@ -1,16 +1,8 @@
-# Large binary files (hosted on GitHub Releases)
-*.tar.xz
-*.tar.gz
-*.zip
-*.bin
-*.elf
-*.gz
+# Large binary files — tracked via Git LFS
+# *.tar.xz *.cpio.gz *.bin *.elf *.zip are tracked by LFS
 
-# Community binaries
-community-files/ps4-ubuntu-es.tar.xz
-community-files/bzImage*
-community-files/initramfs*
-community-files/payload-*
+# Community binaries — tracked via LFS
+# community-files/bzImage* community-files/initramfs* community-files/payload-* are tracked by LFS
 
 # Build artifacts
 /rootfs/
