@@ -217,7 +217,12 @@ echo "Based on better-initramfs by Piotr Karbowski"
 echo "  https://github.com/fff7d1bc/better-initramfs"
 echo "PS4 initramfs by feeRnt"
 echo "  https://github.com/feeRnt/ps4-linux-initramfs"
+echo "Kernels by feeRnt, DFAUS, crashniels"
+echo "  https://github.com/feeRnt/ps4-linux-12xx"
+echo "Payload by ArabPixel & rmuxnet"
+echo "  https://github.com/ps4-linux/ps4-linux-loader"
 echo ""
+sleep 3
 echo "Press any key to continue..."
 read -t 5 _credits_answer 2>/dev/null
 

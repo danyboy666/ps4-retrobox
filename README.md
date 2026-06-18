@@ -551,10 +551,14 @@ The build script:
 
 - [feeRnt](https://github.com/feeRnt/ps4-linux-initramfs) — Open-source initramfs with PS4 HDD support
 - [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel 6.15.4 for Aeolia/Belize
+- [DFAUS](https://github.com/DFAUS-git/ps4-baikal-5.4.247-kernel) — PS4 Linux kernel 5.4.247 for Baikal (Pro)
 - [crashniels](https://github.com/crashniels/linux) — Kernel source with WiFi/BT patches
+- [ArabPixel](https://github.com/ArabPixel) + [rmuxnet](https://github.com/rmuxnet) — Firmware-agnostic PS4 Linux loader (v24b)
+- [Ps3itaTeam](https://github.com/Ps3itaTeam), [Nazky](https://github.com/Nazky), [hippie68](https://github.com/hippie68) — Original PS4 initramfs
+- [Piotr Karbowski](https://github.com/fff7d1bc/better-initramfs) — better-initramfs base
 - [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
-- [ps4boot](https://github.com/ps4boot/ps4-linux-payloads) — PS4 Linux payloads
+- [danyboy666](https://github.com/danyboy666) — PS4 RetroBox project
 
 ## License
 

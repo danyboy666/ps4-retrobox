@@ -89,7 +89,12 @@ echo "Based on better-initramfs by Piotr Karbowski"
 echo "  https://github.com/fff7d1bc/better-initramfs"
 echo "PS4 initramfs by feeRnt"
 echo "  https://github.com/feeRnt/ps4-linux-initramfs"
+echo "Kernels by feeRnt, DFAUS, crashniels"
+echo "  https://github.com/feeRnt/ps4-linux-12xx"
+echo "Payload by ArabPixel & rmuxnet"
+echo "  https://github.com/ps4-linux/ps4-linux-loader"
 echo ""
+sleep 3
 
 # Interrupt window — press any key to drop to rescueshell
 echo "Press any key in 5 seconds to drop to rescue shell..."
