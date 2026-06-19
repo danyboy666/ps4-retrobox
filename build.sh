@@ -165,13 +165,83 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin PS4 %I $TERM
 EOF
 
-cat > "$ROOTFS/home/PS4/.xinitrc" << 'EOF'
+# === xorg.conf (baked in) ===
+echo "=== Creating xorg.conf ==="
+mkdir -p "$ROOTFS/etc/X11"
+cat > "$ROOTFS/etc/X11/xorg.conf" << 'XORGEOF'
+Section "Device"
+    Identifier  "AMDGPU"
+    Driver      "amdgpu"
+    Option      "AccelMethod" "glamor"
+    Option      "DRI" "3"
+    Option      "TearFree" "true"
+EndSection
+
+Section "Monitor"
+    Identifier  "HDMI-A-0"
+    Option      "PreferredMode" "1920x1080"
+EndSection
+
+Section "Screen"
+    Identifier  "Default Screen"
+    Device      "AMDGPU"
+    Monitor     "HDMI-A-0"
+    DefaultDepth 24
+    SubSection "Display"
+        Depth 24
+        Modes "1920x1080"
+    EndSubSection
+EndSection
+
+Section "InputClass"
+    Identifier  "DS4 Gamepad"
+    MatchProduct "Sony Interactive Entertainment Wireless Controller"
+    Option      "ModeRelative" "false"
+EndSection
+
+Section "InputClass"
+    Identifier  "Keyboard"
+    MatchIsKeyboard "on"
+    Option      "XkbLayout" "us"
+EndSection
+XORGEOF
+
+# === xinitrc (baked in) ===
+echo "=== Creating .xinitrc ==="
+cat > "$ROOTFS/home/PS4/.xinitrc" << 'XINITEOF'
 #!/bin/bash
+
+# PS4 RetroBox — xinitrc
+# Disables power management, sets 1080p, hides cursor, starts ES
+
+# Disable DPMS and screensaver
 xset -dpms
 xset s off
 xset s noblank
+
+# Force 1080p resolution
+xrandr --output HDMI-A-0 --mode 1920x1080 2>/dev/null || \
+xrandr --output HDMI-0 --mode 1920x1080 2>/dev/null || true
+
+# Hide mouse cursor
+xsetroot -cursor_name none 2>/dev/null || true
+
+# Disable cursor blinking
+xsetroot -cursor_name left_ptr 2>/dev/null || true
+
+# Set DS4 LED color (red) — if available
+for led in /sys/class/leds/:*::brightness; do
+    echo 0 > "$led" 2>/dev/null
+done
+if [ -d /sys/class/leds ]; then
+    for led_path in /sys/class/leds/*::brightness; do
+        [ -w "$led_path" ] && echo 255 > "$led_path" 2>/dev/null
+    done
+fi
+
+# Start EmulationStation
 exec emulationstation
-EOF
+XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
 cat > "$ROOTFS/home/PS4/.bash_profile" << 'EOF'
@@ -180,6 +250,62 @@ if [ -z "$DISPLAY" ] && [ $(tty) = /dev/tty1 ]; then
 fi
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
+
+# === Create EmulationStation config files ===
+echo "=== Creating EmulationStation configs ==="
+mkdir -p "$ROOTFS/home/PS4/.emulationstation"
+
+# es_settings.cfg
+cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
+<?xml version="1.0"?>
+<config>
+  <string name="AudioDevice" value="Default" />
+  <string name="GamelistViewStyle" value="automatic" />
+  <string name="Language" value="en" />
+  <string name="ThemeSet" value="carbon" />
+  <string name="UserTheme" value="" />
+  <bool name="DrawFramerate" value="false" />
+  <bool name="ShowHelpPrompts" value="true" />
+  <bool name="ShowHiddenFiles" value="false" />
+  <bool name="ShowMissingGames" value="true" />
+  <bool name="MultiThreadedMedi" value="true" />
+  <string name="MediaSystemInfo" value="true" />
+  <string name="StartupSystem" value="" />
+  <string name="ScreenSaverBehavior" value="dim" />
+  <bool name="ScreenSaverEnabled" value="false" />
+  <string name="VideoDriver" value="default" />
+</config>
+ESCFG
+
+# es_input.cfg (ES 2.0.1a format — keyboard + DS4)
+cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
+<?xml version="1.0"?>
+<inputConfig>
+  <inputAction type="set">
+    <input name="Up" type="key" id="1073741906" value="1" />
+    <input name="Down" type="key" id="1073741905" value="1" />
+    <input name="Left" type="key" id="1073741904" value="1" />
+    <input name="Right" type="key" id="1073741903" value="1" />
+    <input name="A" type="key" id="13" value="1" />
+    <input name="B" type="key" id="27" value="1" />
+    <input name="Start" type="key" id="1073741918" value="1" />
+    <input name="Select" type="key" id="1073741919" value="1" />
+  </inputAction>
+  <inputAction type="set">
+    <input name="Up" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="Down" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="Left" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="Right" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="A" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="B" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="Start" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+    <input name="Select" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
+  </inputAction>
+</inputConfig>
+INPUTEOF
+
+echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
+echo "ES config: es_input.cfg (keyboard + DS4 with correct GUID)"
 
 # === Create directories ===
 echo "=== Creating directories ==="
@@ -381,6 +507,60 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   </system>
 </systemList>
 ESCFG
+
+# === Install real RetroPie carbon theme ===
+echo "=== Installing RetroPie carbon theme ==="
+
+# ES 2.0.1a looks in ~/.emulationstation/themes/ AND /etc/emulationstation/themes/
+THEME_DIR="$ROOTFS/etc/emulationstation/themes"
+mkdir -p "$THEME_DIR"
+
+# Clone user's own carbon theme fork
+cd /tmp
+rm -rf es-theme-carbon
+git clone https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
+    git clone https://github.com/RetroPie/es-theme-carbon.git 2>/dev/null || \
+    echo "Warning: Could not clone carbon theme. Downloaded themes may be missing."
+
+if [ -d "es-theme-carbon" ]; then
+    cp -r es-theme-carbon "$THEME_DIR/carbon"
+    echo "Theme installed: $THEME_DIR/carbon"
+else
+    echo "ERROR: carbon theme clone failed"
+    exit 1
+fi
+
+# Convert indexed/paletted PNGs to RGB (fixes amdgpu garbling)
+echo "Converting indexed PNGs to RGB..."
+if command -v convert &>/dev/null; then
+    find "$THEME_DIR/carbon" -name '*.png' | while read png; do
+        _type=$(identify -format '%[color-type]' "$png" 2>/dev/null || echo "")
+        if [ "$_type" = "3" ] || [ "$_type" = "Indexed" ]; then
+            convert "$png" -type TrueColor "$png" 2>/dev/null && \
+                echo "  Converted: $(basename $png)"
+        fi
+    done
+elif command -v python3 &>/dev/null; then
+    find "$THEME_DIR/carbon" -name '*.png' -exec python3 -c "
+import sys
+try:
+    from PIL import Image
+    for f in sys.argv[1:]:
+        img = Image.open(f)
+        if img.mode == 'P':
+            img = img.convert('RGB')
+            img.save(f)
+            print(f'  Converted: {f}')
+except Exception:
+    pass
+" {} +
+fi
+
+# Create symlink from user themes dir (ES checks both paths)
+mkdir -p "$ROOTFS/home/PS4/.emulationstation"
+ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
+
+echo "Theme: carbon (RetroPie, formatVersion=3)"
 
 chown -R 1001:1001 "$ROOTFS/home/PS4"
 
