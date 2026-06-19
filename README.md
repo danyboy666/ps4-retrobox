@@ -2,8 +2,8 @@
 
 > **DISCLAIMER**: This project was assembled by an AI assistant (OpenCode). The author is testing this method on real hardware to verify it is valid and safe. Use at your own risk. Always ensure you have a way to recover your PS4 if something goes wrong. The author assumes no responsibility for any damage to your console.
 
-> **⚠ PROJECT STATUS — HEAVY DEVELOPMENT**  
-> This project is **not production-ready**. The core boot flow works (payload → kernel → initramfs → decrypt → Ubuntu), but there are **critical blocking issues** that prevent actual use. See the status checklist below. Do NOT follow these instructions expecting a working gaming setup yet — this is an engineering reference.
+> **⚠ PROJECT STATUS — ACTIVE TESTING**  
+> Core boot flow works end-to-end. Display, input, and theme rendering are being validated on real hardware. See the status checklist below.
 
 ## Project Status
 
@@ -22,22 +22,23 @@
 
 ### Critical Issues (blocking actual use)
 
-- [x] ~~**Garbled screen in EmulationStation**~~ — Fixed: removed `drm.edid_firmware=edid/1920x1080.bin` from bootargs.txt (firmware file didn't exist in rootfs, causing error -2 spam and fallback display modes)
-- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: DS4 button IDs corrected (Cross=button 0, Circle=button 1), hat values fixed (UP=1, RIGHT=2, DOWN=4, LEFT=8), keyboard SDL2 keycodes updated (arrows=1073741903-1073741906)
+- [x] ~~**Garbled screen in EmulationStation**~~ — Fixed: removed `drm.edid_firmware=edid/1920x1080.bin` from bootargs.txt. Fixed HDMI connector mismatch: `video=HDMI-A-1` changed to `video=HDMI-A-0` in bootargs.txt to match xorg.conf.
+- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: es_input.cfg rewritten with correct SDL2 keycodes (arrows=1073741903-1073741906), proper `<inputList>` XML format, DS4 button IDs corrected (Cross=0, Circle=1), duplicate pageup/pagedown/leftshoulder/rightshoulder mappings removed.
 - [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh. Fixed busybox ash brace expansion bug (`mkdir -p /ps4hdd/ROMs/{snes,...}` created one literal directory).
+- [x] ~~**Home directory permissions denied**~~ — Fixed: install-HDD.sh now runs `chown -R 1001:1001 /newroot/home/PS4` after tar extraction. Archive re-tarred with `--owner=1001 --group=1001`.
+- [x] ~~**xinitrc LED permission errors**~~ — Fixed: removed `/sys/class/leds/` writes that required root. LED control deferred to future implementation.
 
 ### Known Bugs
 
-- [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 - [ ] **`os_filesystem_check` ignores errors** — `e2fsck` with uncorrectable errors still allows mount to proceed.
+- [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 
 ### Not Yet Tested
 
 - [x] EmulationStation display — ES window created successfully, all 16 systems showing
 - [x] DS4 controller input — detected by ES as "Sony Interactive Entertainment Wireless Controller"
-- [x] Keyboard input — Microsoft wireless keyboard detected
+- [x] Keyboard input — Microsoft wireless keyboard detected, SDL2 keycodes configured
 - [ ] RetroArch gameplay
-- [ ] DS4 LED control (`ds4-led.sh`)
 - [ ] Samba ROM transfer from PC
 - [ ] Multi-OS support (only one `.img` at a time)
 - [ ] PS4 Pro (Baikal) kernel
@@ -45,11 +46,13 @@
 
 ### Roadmap
 
-1. ~~Fix display output~~ — Done (removed missing EDID firmware from bootargs)
-2. ~~Fix input~~ — Done (corrected DS4 button IDs, keyboard SDL2 keycodes, ROM paths)
-3. Real-hardware validation of all 16 emulated systems
-4. Performance testing on different PS4 models (Fat/Slim/Pro)
-5. Clean up README — remove unverified claims, add accurate troubleshooting
+1. ~~Fix display output~~ — Done (removed missing EDID firmware, fixed HDMI-A-0 connector)
+2. ~~Fix input~~ — Done (SDL2 keycodes, `<inputList>` format, DS4 button IDs, ROM paths, ownership)
+3. ~~Fix garbled background~~ — Done (bootargs.txt `video=HDMI-A-0` matches xorg.conf)
+4. ~~Fix home directory permissions~~ — Done (chown in install-HDD.sh, numeric uid in archive)
+5. Real-hardware validation of all 16 emulated systems
+6. Performance testing on different PS4 models (Fat/Slim/Pro)
+7. Clean up README — remove unverified claims, add accurate troubleshooting
 
 ---
 
