@@ -332,8 +332,8 @@ cd /newroot
 ) &
 _PROG_PID=$!
 
-# Extract at full speed (no per-file overhead)
-tar xf "/ps4hdd/system/boot/$_install_OS"
+# Extract at full speed (--no-same-owner: all files become root, chown fixes home later)
+tar xf "/ps4hdd/system/boot/$_install_OS" --no-same-owner
 
 # Kill progress tracker
 kill $_PROG_PID 2>/dev/null

@@ -530,32 +530,6 @@ else
     exit 1
 fi
 
-# Convert indexed/paletted PNGs to RGB (fixes amdgpu garbling)
-echo "Converting indexed PNGs to RGB..."
-if command -v convert &>/dev/null; then
-    find "$THEME_DIR/carbon" -name '*.png' | while read png; do
-        _type=$(identify -format '%[color-type]' "$png" 2>/dev/null || echo "")
-        if [ "$_type" = "3" ] || [ "$_type" = "Indexed" ]; then
-            convert "$png" -type TrueColor "$png" 2>/dev/null && \
-                echo "  Converted: $(basename $png)"
-        fi
-    done
-elif command -v python3 &>/dev/null; then
-    find "$THEME_DIR/carbon" -name '*.png' -exec python3 -c "
-import sys
-try:
-    from PIL import Image
-    for f in sys.argv[1:]:
-        img = Image.open(f)
-        if img.mode == 'P':
-            img = img.convert('RGB')
-            img.save(f)
-            print(f'  Converted: {f}')
-except Exception:
-    pass
-" {} +
-fi
-
 # Create symlink from user themes dir (ES checks both paths)
 mkdir -p "$ROOTFS/home/PS4/.emulationstation"
 ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
