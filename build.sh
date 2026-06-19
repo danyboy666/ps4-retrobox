@@ -103,7 +103,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libretro-beetle-pce-fast libretro-beetle-psx \
     libretro-bsnes-mercury-balanced libretro-desmume \
     libretro-gambatte libretro-genesisplusgx \
-    libretro-mgba libretro-mupen64plus libretro-snes9x"
+    libretro-mgba libretro-mupen64plus libretro-nestopia libretro-snes9x"
 
 # === Install extras ===
 echo "=== Installing extras ==="
@@ -285,9 +285,9 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
   </inputConfig>
   <inputConfig type="joystick" deviceName="Sony Interactive Entertainment Wireless Controller" deviceGUID="030000004c050000cc09000011810000">
     <input name="up" type="hat" id="0" value="1" />
-    <input name="down" type="hat" id="0" value="2" />
+    <input name="down" type="hat" id="0" value="8" />
     <input name="left" type="hat" id="0" value="4" />
-    <input name="right" type="hat" id="0" value="8" />
+    <input name="right" type="hat" id="0" value="2" />
     <input name="a" type="button" id="1" value="1" />
     <input name="b" type="button" id="0" value="1" />
     <input name="x" type="button" id="3" value="1" />
@@ -312,6 +312,7 @@ echo "=== Creating directories ==="
 mkdir -p "$ROOTFS/home/PS4/BIOS"
 mkdir -p "$ROOTFS/home/PS4/ROMs/saves"
 mkdir -p "$ROOTFS/home/PS4/ROMs/screenshots"
+mkdir -p "$ROOTFS/home/PS4/ROMs/nes"
 mkdir -p "$ROOTFS/mnt/roms"
 chown -R 1001:1001 "$ROOTFS/home/PS4"
 
@@ -369,6 +370,15 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/bsnes_mercury_balanced_libretro.so %ROM%</command>
     <platform>snes</platform>
     <theme>snes</theme>
+  </system>
+  <system>
+    <name>nes</name>
+    <fullname>Nintendo Entertainment System</fullname>
+    <path>/home/PS4/ROMs/nes</path>
+    <extension>.nes .zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
+    <platform>nes</platform>
+    <theme>nes</theme>
   </system>
   <system>
     <name>n64</name>
@@ -525,6 +535,58 @@ git clone https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
 if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     echo "Theme installed: $THEME_DIR/carbon"
+
+    # === Convert all SVGs to PNGs ===
+    # FreeImage (linked by ES 2.0.1a) crashes on SVGs — convert to RGB PNGs on host
+    if command -v rsvg-convert &>/dev/null; then
+        echo "Converting SVGs to PNGs (rsvg-convert)..."
+        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
+            png="${svg%.svg}.png"
+            rsvg-convert -w 512 "$svg" -o "$png" 2>/dev/null && rm "$svg"
+        done
+    elif command -v python3 &>/dev/null; then
+        echo "Converting SVGs to PNGs (python3 cairosvg)..."
+        find "$THEME_DIR/carbon" -name '*.svg' -print0 | xargs -0 -I{} python3 -c "
+import sys
+try:
+    import cairosvg
+    cairosvg.svg2png(url='{}', write_to='{}.png'.format('{}'[:-4]), output_width=512)
+    import os; os.remove('{}')
+except: pass
+" 2>/dev/null
+    fi
+
+    # === Update all .svg references in XML to .png ===
+    echo "Updating .svg references in theme XMLs to .png..."
+    find "$THEME_DIR/carbon" -name '*.xml' -exec \
+        sed -i 's|\.svg</path>|.png</path>|g' {} +
+
+    # === Convert indexed/paletted PNGs to RGB (fixes amdgpu FreeImage garbling) ===
+    if command -v convert &>/dev/null; then
+        echo "Converting indexed PNGs to RGB..."
+        find "$THEME_DIR/carbon" -name '*.png' | while read png; do
+            _type=$(identify -format '%[color-type]' "$png" 2>/dev/null || echo "")
+            if [ "$_type" = "3" ] || [ "$_type" = "Indexed" ]; then
+                convert "$png" -type TrueColor "$png" 2>/dev/null && \
+                    echo "  Converted: $(basename $png)"
+            fi
+        done
+    elif command -v python3 &>/dev/null; then
+        find "$THEME_DIR/carbon" -name '*.png' -exec python3 -c "
+import sys
+try:
+    from PIL import Image
+    for f in sys.argv[1:]:
+        img = Image.open(f)
+        if img.mode == 'P':
+            img = img.convert('RGB')
+            img.save(f)
+            print(f'  Converted: {f}')
+except: pass
+" {} + 2>/dev/null
+    fi
+
+    echo "Theme: SVGs→PNGs, indexed PNGs→RGB"
 else
     echo "ERROR: carbon theme clone failed"
     exit 1
