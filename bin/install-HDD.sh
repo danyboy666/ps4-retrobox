@@ -341,6 +341,10 @@ wait $_PROG_PID 2>/dev/null
 echo ""
 echo "Extraction complete!"
 
+# Fix ownership — busybox tar may not resolve uid/gid correctly
+echo "Fixing file ownership..."
+chown -R 1001:1001 /newroot/home/PS4
+
 echo "Syncing..."
 sync
 
