@@ -345,6 +345,13 @@ echo "Extraction complete!"
 echo "Fixing file ownership..."
 chown -R 1001:1001 /newroot/home/PS4
 
+# Fix setuid bits — busybox tar/cpio strips them
+echo "Restoring setuid bits..."
+chmod u+s /newroot/usr/bin/sudo
+chmod u+s /newroot/usr/bin/su
+chmod u+s /newroot/usr/bin/passwd
+chmod u+s /newroot/usr/bin/pkexec
+
 echo "Syncing..."
 sync
 
