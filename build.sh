@@ -98,12 +98,15 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # === Install RetroArch + cores ===
 echo "=== Installing RetroArch + cores ==="
+run_chroot "apt-get update"
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch retroarch-assets libretro-core-info \
     libretro-beetle-pce-fast libretro-beetle-psx \
     libretro-bsnes-mercury-balanced libretro-desmume \
     libretro-gambatte libretro-genesisplusgx \
-    libretro-mgba libretro-mupen64plus libretro-nestopia libretro-snes9x"
+    libretro-mgba libretro-mupen64plus libretro-snes9x" || true
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y libretro-nestopia" || \
+    echo "Warning: libretro-nestopia not available, NES core may be missing"
 
 # === Install extras ===
 echo "=== Installing extras ==="
@@ -562,103 +565,25 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
 </systemList>
 ESCFG
 
-# === Install real RetroPie carbon theme ===
+# === Install RetroPie carbon theme ===
 echo "=== Installing RetroPie carbon theme ==="
 
 # ES 2.0.1a looks in ~/.emulationstation/themes/ AND /etc/emulationstation/themes/
 THEME_DIR="$ROOTFS/etc/emulationstation/themes"
 mkdir -p "$THEME_DIR"
 
-# Install rsvg-convert on HOST for SVG->PNG conversion (FreeImage crashes on SVGs)
-if ! command -v rsvg-convert &>/dev/null; then
-    echo "Installing rsvg-convert for SVG->PNG conversion..."
-    apt-get install -y librsvg2-bin 2>/dev/null || true
-fi
-
 # Clone the carbon theme (try user fork first, fall back to RetroPie)
 cd /tmp
 rm -rf es-theme-carbon
-git clone https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
-    git clone https://github.com/RetroPie/es-theme-carbon.git 2>/dev/null || \
-    echo "Warning: Could not clone carbon theme. Downloaded themes may be missing."
+git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
+    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git 2>/dev/null || \
+    echo "Warning: Could not clone carbon theme."
 
 if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     echo "Theme installed: $THEME_DIR/carbon"
-
-    # === Convert all SVGs to PNGs (ES 2.0.1a FreeImage crashes on SVGs) ===
-    _svg_count=$(find "$THEME_DIR/carbon" -name '*.svg' | wc -l)
-    echo "Found $_svg_count SVGs to convert..."
-
-    if command -v rsvg-convert &>/dev/null; then
-        echo "Converting SVGs to PNGs (rsvg-convert)..."
-        _converted=0
-        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
-            png="${svg%.svg}.png"
-            if rsvg-convert -w 512 "$svg" -o "$png" 2>/dev/null; then
-                rm "$svg"
-                _converted=$((_converted + 1))
-            fi
-        done
-        echo "Converted SVGs with rsvg-convert"
-    elif command -v python3 &>/dev/null; then
-        echo "Converting SVGs to PNGs (python3 cairosvg)..."
-        pip3 install cairosvg 2>/dev/null || true
-        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
-            png="${svg%.svg}.png"
-            python3 -c "
-import cairosvg, sys
-try:
-    cairosvg.svg2png(url=sys.argv[1], write_to=sys.argv[2], output_width=512)
-    import os; os.remove(sys.argv[1])
-except: pass
-" "$svg" "$png" 2>/dev/null
-        done
-        echo "Converted SVGs with cairosvg"
-    else
-        echo "WARNING: No SVG converter available. Installing librsvg2-bin..."
-        apt-get install -y librsvg2-bin 2>/dev/null && \
-        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
-            png="${svg%.svg}.png"
-            rsvg-convert -w 512 "$svg" -o "$png" 2>/dev/null && rm "$svg"
-        done
-    fi
-
-    # === CRITICAL: Delete any remaining SVGs (ES segfaults on them) ===
-    _remaining=$(find "$THEME_DIR/carbon" -name '*.svg' | wc -l)
-    if [ "$_remaining" -gt 0 ]; then
-        echo "WARNING: $_remaining SVGs could not be converted. Deleting to prevent crash..."
-        find "$THEME_DIR/carbon" -name '*.svg' -delete
-    fi
-
-    # === Update all .svg references in XML to .png ===
-    echo "Updating .svg references in theme XMLs to .png..."
-    find "$THEME_DIR/carbon" -name '*.xml' -exec \
-        sed -i 's|\.svg</path>|.png</path>|g' {} +
-
-    # === Also fix .svg references in other attribute formats ===
-    find "$THEME_DIR/carbon" -name '*.xml' -exec \
-        sed -i 's|\.svg"|.png"|g' {} +
-
-    # === Convert indexed/paletted PNGs to RGB (fixes amdgpu FreeImage garbling) ===
-    if command -v python3 &>/dev/null; then
-        pip3 install Pillow 2>/dev/null || true
-        find "$THEME_DIR/carbon" -name '*.png' -exec python3 -c "
-import sys
-try:
-    from PIL import Image
-    for f in sys.argv[1:]:
-        img = Image.open(f)
-        if img.mode == 'P':
-            img = img.convert('RGB')
-            img.save(f)
-            print(f'  Converted indexed: {f}')
-except: pass
-" {} + 2>/dev/null
-    fi
-
-    _png_count=$(find "$THEME_DIR/carbon" -name '*.png' | wc -l)
-    echo "Theme: $_png_count PNGs ready, 0 SVGs remaining"
+    _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
+    echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
 else
     echo "ERROR: carbon theme clone failed"
     exit 1
