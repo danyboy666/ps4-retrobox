@@ -196,6 +196,21 @@ EndSection
 Section "InputClass"
     Identifier  "DS4 Gamepad"
     MatchProduct "Sony Interactive Entertainment Wireless Controller"
+    MatchDevicePath "/dev/input/event*"
+    Driver      "libinput"
+EndSection
+
+Section "InputClass"
+    Identifier  "DS4 Gamepad by USB ID"
+    MatchUSBID  "054c:05c4|054c:09cc"
+    MatchDevicePath "/dev/input/event*"
+    Driver      "libinput"
+EndSection
+
+Section "InputClass"
+    Identifier  "DS4 js0 joystick"
+    MatchProduct "Sony Interactive Entertainment Wireless Controller"
+    MatchDevicePath "/dev/input/js*"
     Option      "ModeRelative" "false"
 EndSection
 
@@ -213,6 +228,10 @@ cat > "$ROOTFS/home/PS4/.xinitrc" << 'XINITEOF'
 
 # PS4 RetroBox — xinitrc
 # Disables power management, sets 1080p, hides cursor, starts ES
+
+# Kill any lingering ES processes from previous X sessions
+killall -9 emulationstation 2>/dev/null
+sleep 1
 
 # Disable DPMS and screensaver
 xset -dpms
@@ -235,7 +254,8 @@ XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
 cat > "$ROOTFS/home/PS4/.bash_profile" << 'EOF'
-if [ -z "$DISPLAY" ] && [ $(tty) = /dev/tty1 ]; then
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! pgrep -x Xorg > /dev/null 2>&1; then
+    killall -9 emulationstation 2>/dev/null
     startx
 fi
 EOF
@@ -285,8 +305,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
   </inputConfig>
   <inputConfig type="joystick" deviceName="Sony Interactive Entertainment Wireless Controller" deviceGUID="030000004c050000cc09000011810000">
     <input name="up" type="hat" id="0" value="1" />
-    <input name="down" type="hat" id="0" value="8" />
-    <input name="left" type="hat" id="0" value="4" />
+    <input name="down" type="hat" id="0" value="4" />
+    <input name="left" type="hat" id="0" value="8" />
     <input name="right" type="hat" id="0" value="2" />
     <input name="a" type="button" id="1" value="1" />
     <input name="b" type="button" id="0" value="1" />
