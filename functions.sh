@@ -528,6 +528,10 @@ boot_newroot() {
 			fi
 		done
 	fi
+	# Restore setuid bits — tar/cpio may strip them
+	for _suid in usr/bin/sudo usr/bin/su usr/bin/passwd usr/bin/pkexec; do
+		[ -e "/newroot/$_suid" ] && chmod u+s "/newroot/$_suid" 2>/dev/null
+	done
 	exec env -i \
 		TERM="${TERM:-linux}" \
 		PATH="${PATH:-/bin:/sbin:/usr/bin:/usr/sbin}" \
