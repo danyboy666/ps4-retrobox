@@ -229,16 +229,6 @@ xsetroot -cursor_name none 2>/dev/null || true
 # Disable cursor blinking
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
-# Set DS4 LED color (red) — if available
-for led in /sys/class/leds/:*::brightness; do
-    echo 0 > "$led" 2>/dev/null
-done
-if [ -d /sys/class/leds ]; then
-    for led_path in /sys/class/leds/*::brightness; do
-        [ -w "$led_path" ] && echo 255 > "$led_path" 2>/dev/null
-    done
-fi
-
 # Start EmulationStation
 exec emulationstation
 XINITEOF
@@ -277,35 +267,45 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
 </config>
 ESCFG
 
-# es_input.cfg (ES 2.0.1a format — keyboard + DS4)
+# es_input.cfg (ES 2.0.1a format — <inputList> with SDL2 keycodes)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
 <?xml version="1.0"?>
-<inputConfig>
-  <inputAction type="set">
-    <input name="Up" type="key" id="1073741906" value="1" />
-    <input name="Down" type="key" id="1073741905" value="1" />
-    <input name="Left" type="key" id="1073741904" value="1" />
-    <input name="Right" type="key" id="1073741903" value="1" />
-    <input name="A" type="key" id="13" value="1" />
-    <input name="B" type="key" id="27" value="1" />
-    <input name="Start" type="key" id="1073741918" value="1" />
-    <input name="Select" type="key" id="1073741919" value="1" />
-  </inputAction>
-  <inputAction type="set">
-    <input name="Up" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="Down" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="Left" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="Right" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="A" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="B" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="Start" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-    <input name="Select" type="joystick" id="030000004c050000cc09000011810000" value="1" deviceName="Sony Interactive Entertainment Wireless Controller" />
-  </inputAction>
-</inputConfig>
+<inputList>
+  <inputConfig type="keyboard" deviceName="Keyboard" deviceGUID="-1">
+    <input name="up" type="key" id="1073741906" value="1" />
+    <input name="down" type="key" id="1073741905" value="1" />
+    <input name="left" type="key" id="1073741904" value="1" />
+    <input name="right" type="key" id="1073741903" value="1" />
+    <input name="a" type="key" id="13" value="1" />
+    <input name="b" type="key" id="27" value="1" />
+    <input name="start" type="key" id="1073741918" value="1" />
+    <input name="select" type="key" id="1073741919" value="1" />
+    <input name="pageup" type="key" id="1073741912" value="1" />
+    <input name="pagedown" type="key" id="1073741913" value="1" />
+  </inputConfig>
+  <inputConfig type="joystick" deviceName="Sony Interactive Entertainment Wireless Controller" deviceGUID="030000004c050000cc09000011810000">
+    <input name="up" type="hat" id="0" value="1" />
+    <input name="down" type="hat" id="0" value="2" />
+    <input name="left" type="hat" id="0" value="4" />
+    <input name="right" type="hat" id="0" value="8" />
+    <input name="a" type="button" id="1" value="1" />
+    <input name="b" type="button" id="0" value="1" />
+    <input name="x" type="button" id="3" value="1" />
+    <input name="y" type="button" id="2" value="1" />
+    <input name="start" type="button" id="9" value="1" />
+    <input name="select" type="button" id="8" value="1" />
+    <input name="leftshoulder" type="button" id="4" value="1" />
+    <input name="rightshoulder" type="button" id="5" value="1" />
+    <input name="lefttrigger" type="axis" id="2" value="1" />
+    <input name="righttrigger" type="axis" id="5" value="1" />
+    <input name="leftstick" type="button" id="10" value="1" />
+    <input name="rightstick" type="button" id="11" value="1" />
+  </inputConfig>
+</inputList>
 INPUTEOF
 
 echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
-echo "ES config: es_input.cfg (keyboard + DS4 with correct GUID)"
+echo "ES config: es_input.cfg (SDL2 keycodes, DS4 with correct GUID, no duplicate buttons)"
 
 # === Create directories ===
 echo "=== Creating directories ==="
