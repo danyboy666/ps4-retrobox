@@ -172,7 +172,6 @@ cat > "$ROOTFS/etc/X11/xorg.conf" << 'XORGEOF'
 Section "Device"
     Identifier  "AMDGPU"
     Driver      "amdgpu"
-    Option      "AccelMethod" "glamor"
     Option      "DRI" "3"
     Option      "TearFree" "true"
 EndSection
@@ -248,8 +247,8 @@ xsetroot -cursor_name none 2>/dev/null || true
 # Disable cursor blinking
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
-# Start EmulationStation
-exec emulationstation
+# Start EmulationStation (software GL to avoid glamor/Kaveri crash)
+exec env LIBGL_ALWAYS_SOFTWARE=1 emulationstation
 XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
@@ -260,6 +259,31 @@ if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! pgrep -x Xorg > /dev/nul
 fi
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
+
+# === Create EmulationStation systemd service ===
+echo "=== Creating ES systemd service ==="
+mkdir -p "$ROOTFS/etc/systemd/system"
+cat > "$ROOTFS/etc/systemd/system/emulationstation.service" << 'ESSERVICE'
+[Unit]
+Description=EmulationStation Frontend
+After=graphical.target
+
+[Service]
+Type=simple
+User=PS4
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/PS4/.Xauthority
+Environment=HOME=/home/PS4
+Environment=LIBGL_ALWAYS_SOFTWARE=1
+ExecStartPre=/usr/bin/sleep 5
+ExecStart=/usr/local/bin/emulationstation --no-splash
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target
+ESSERVICE
+run_chroot "systemctl enable emulationstation.service"
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -545,7 +569,13 @@ echo "=== Installing RetroPie carbon theme ==="
 THEME_DIR="$ROOTFS/etc/emulationstation/themes"
 mkdir -p "$THEME_DIR"
 
-# Clone user's own carbon theme fork
+# Install rsvg-convert on HOST for SVG->PNG conversion (FreeImage crashes on SVGs)
+if ! command -v rsvg-convert &>/dev/null; then
+    echo "Installing rsvg-convert for SVG->PNG conversion..."
+    apt-get install -y librsvg2-bin 2>/dev/null || true
+fi
+
+# Clone the carbon theme (try user fork first, fall back to RetroPie)
 cd /tmp
 rm -rf es-theme-carbon
 git clone https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
@@ -556,24 +586,49 @@ if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     echo "Theme installed: $THEME_DIR/carbon"
 
-    # === Convert all SVGs to PNGs ===
-    # FreeImage (linked by ES 2.0.1a) crashes on SVGs — convert to RGB PNGs on host
+    # === Convert all SVGs to PNGs (ES 2.0.1a FreeImage crashes on SVGs) ===
+    _svg_count=$(find "$THEME_DIR/carbon" -name '*.svg' | wc -l)
+    echo "Found $_svg_count SVGs to convert..."
+
     if command -v rsvg-convert &>/dev/null; then
         echo "Converting SVGs to PNGs (rsvg-convert)..."
+        _converted=0
+        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
+            png="${svg%.svg}.png"
+            if rsvg-convert -w 512 "$svg" -o "$png" 2>/dev/null; then
+                rm "$svg"
+                _converted=$((_converted + 1))
+            fi
+        done
+        echo "Converted SVGs with rsvg-convert"
+    elif command -v python3 &>/dev/null; then
+        echo "Converting SVGs to PNGs (python3 cairosvg)..."
+        pip3 install cairosvg 2>/dev/null || true
+        find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
+            png="${svg%.svg}.png"
+            python3 -c "
+import cairosvg, sys
+try:
+    cairosvg.svg2png(url=sys.argv[1], write_to=sys.argv[2], output_width=512)
+    import os; os.remove(sys.argv[1])
+except: pass
+" "$svg" "$png" 2>/dev/null
+        done
+        echo "Converted SVGs with cairosvg"
+    else
+        echo "WARNING: No SVG converter available. Installing librsvg2-bin..."
+        apt-get install -y librsvg2-bin 2>/dev/null && \
         find "$THEME_DIR/carbon" -name '*.svg' -print0 | while IFS= read -r -d '' svg; do
             png="${svg%.svg}.png"
             rsvg-convert -w 512 "$svg" -o "$png" 2>/dev/null && rm "$svg"
         done
-    elif command -v python3 &>/dev/null; then
-        echo "Converting SVGs to PNGs (python3 cairosvg)..."
-        find "$THEME_DIR/carbon" -name '*.svg' -print0 | xargs -0 -I{} python3 -c "
-import sys
-try:
-    import cairosvg
-    cairosvg.svg2png(url='{}', write_to='{}.png'.format('{}'[:-4]), output_width=512)
-    import os; os.remove('{}')
-except: pass
-" 2>/dev/null
+    fi
+
+    # === CRITICAL: Delete any remaining SVGs (ES segfaults on them) ===
+    _remaining=$(find "$THEME_DIR/carbon" -name '*.svg' | wc -l)
+    if [ "$_remaining" -gt 0 ]; then
+        echo "WARNING: $_remaining SVGs could not be converted. Deleting to prevent crash..."
+        find "$THEME_DIR/carbon" -name '*.svg' -delete
     fi
 
     # === Update all .svg references in XML to .png ===
@@ -581,17 +636,13 @@ except: pass
     find "$THEME_DIR/carbon" -name '*.xml' -exec \
         sed -i 's|\.svg</path>|.png</path>|g' {} +
 
+    # === Also fix .svg references in other attribute formats ===
+    find "$THEME_DIR/carbon" -name '*.xml' -exec \
+        sed -i 's|\.svg"|.png"|g' {} +
+
     # === Convert indexed/paletted PNGs to RGB (fixes amdgpu FreeImage garbling) ===
-    if command -v convert &>/dev/null; then
-        echo "Converting indexed PNGs to RGB..."
-        find "$THEME_DIR/carbon" -name '*.png' | while read png; do
-            _type=$(identify -format '%[color-type]' "$png" 2>/dev/null || echo "")
-            if [ "$_type" = "3" ] || [ "$_type" = "Indexed" ]; then
-                convert "$png" -type TrueColor "$png" 2>/dev/null && \
-                    echo "  Converted: $(basename $png)"
-            fi
-        done
-    elif command -v python3 &>/dev/null; then
+    if command -v python3 &>/dev/null; then
+        pip3 install Pillow 2>/dev/null || true
         find "$THEME_DIR/carbon" -name '*.png' -exec python3 -c "
 import sys
 try:
@@ -601,12 +652,13 @@ try:
         if img.mode == 'P':
             img = img.convert('RGB')
             img.save(f)
-            print(f'  Converted: {f}')
+            print(f'  Converted indexed: {f}')
 except: pass
 " {} + 2>/dev/null
     fi
 
-    echo "Theme: SVGs→PNGs, indexed PNGs→RGB"
+    _png_count=$(find "$THEME_DIR/carbon" -name '*.png' | wc -l)
+    echo "Theme: $_png_count PNGs ready, 0 SVGs remaining"
 else
     echo "ERROR: carbon theme clone failed"
     exit 1
