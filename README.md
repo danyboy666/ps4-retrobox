@@ -27,6 +27,10 @@
 - [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh. Fixed busybox ash brace expansion bug (`mkdir -p /ps4hdd/ROMs/{snes,...}` created one literal directory).
 - [x] ~~**Home directory permissions denied**~~ — Fixed: install-HDD.sh now runs `chown -R 1001:1001 /newroot/home/PS4` after tar extraction. Archive re-tarred with `--owner=1001 --group=1001`.
 - [x] ~~**xinitrc LED permission errors**~~ — Fixed: removed `/sys/class/leds/` writes that required root. LED control deferred to future implementation.
+- [x] ~~**sudo broken (setuid bit stripped)**~~ — Fixed: install-HDD.sh and boot_newroot() both run `chmod u+s` on sudo/su/passwd/pkexec after extraction.
+- [x] ~~**ES crashes after welcome screen**~~ — Fixed: FreeImage can't render SVG/PNG backgrounds on PS4 amdgpu. build.sh now strips background/overlay `<image>` elements from carbon.xml and adds `<backgroundColor>000000</backgroundColor>` for a clean black background.
+- [x] ~~**DS4 D-pad inverted**~~ — Fixed: swapped hat values for down (value 8) and right (value 2) in es_input.cfg.
+- [x] ~~**White background**~~ — Fixed: black background color added to all theme views in carbon.xml.
 
 ### Known Bugs
 
