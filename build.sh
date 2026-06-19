@@ -421,7 +421,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMs/tg16</path>
     <extension>.pce .cue</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
-    <platform>pce</platform>
+    <platform>pcengine</platform>
     <theme>pce</theme>
   </system>
   <system>
@@ -475,7 +475,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMs/sms</path>
     <extension>.sms .bin .gen</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
-    <platform>sms</platform>
+    <platform>mastersystem</platform>
     <theme>sms</theme>
   </system>
   <system>
@@ -484,7 +484,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMs/gg</path>
     <extension>.gg .bin .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
-    <platform>gg</platform>
+    <platform>gamegear</platform>
     <theme>gg</theme>
   </system>
   <system>
@@ -502,7 +502,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMs/pcecd</path>
     <extension>.cue .chd .iso</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
-    <platform>pce</platform>
+    <platform>pcengine</platform>
     <theme>pcecd</theme>
   </system>
 </systemList>
