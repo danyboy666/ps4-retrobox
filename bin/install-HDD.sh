@@ -174,41 +174,43 @@ echo "Target image: $_install_OS_img"
 # Ask for target size with menu and countdown
 echo ""
 echo "Select target size for Linux installation:"
-echo "  [1] 16 GB  (minimal, lots of ROMs later)"
-echo "  [2] 32 GB  (recommended)"
-echo "  [3] 50 GB  (lots of ROMs)"
-echo "  [4] Custom size"
+echo "  [1] Keep 3GB minimal — boot now (default)"
+echo "  [2] 16 GB"
+echo "  [3] 32 GB"
+echo "  [4] 50 GB"
+echo "  [5] Custom size"
 echo ""
-echo "Default: 32GB in 10 seconds..."
-_COUNTDOWN=10
+echo "Default: 3GB in 15 seconds..."
+_COUNTDOWN=15
 _TARGET_SIZE=""
 while [ "$_COUNTDOWN" -gt 0 ] && [ -z "$_TARGET_SIZE" ]; do
-	printf "\r  Choice [1-4]: %2ds " "$_COUNTDOWN"
+	printf "\r  Choice [1-5]: %2ds " "$_COUNTDOWN"
 	_CHOICE=""
 	read -t 1 _CHOICE 2>/dev/null
 	case "$_CHOICE" in
-		1) _TARGET_SIZE=16 ;;
-		2) _TARGET_SIZE=32 ;;
-		3) _TARGET_SIZE=50 ;;
-		4)
+		1) _TARGET_SIZE=3 ;;
+		2) _TARGET_SIZE=16 ;;
+		3) _TARGET_SIZE=32 ;;
+		4) _TARGET_SIZE=50 ;;
+		5)
 			echo ""
 			echo -n "  Enter size in GB: "
 			read _TARGET_SIZE
 			# Validate input is a number
 			case "$_TARGET_SIZE" in
 				""|[!0-9]*)
-					echo "  Invalid input. Using 32GB."
-					_TARGET_SIZE=32
+					echo "  Invalid input. Using 3GB minimal."
+					_TARGET_SIZE=3
 					;;
 			esac
 			# Sanity check
-			if [ "$_TARGET_SIZE" -lt 2 ] 2>/dev/null; then
-				echo "  Too small (need at least 2.5GB). Using 32GB."
-				_TARGET_SIZE=32
+			if [ "$_TARGET_SIZE" -lt 3 ] 2>/dev/null; then
+				echo "  Too small (need at least 3GB). Using 3GB minimal."
+				_TARGET_SIZE=3
 			fi
 			if [ "$_TARGET_SIZE" -gt 500 ] 2>/dev/null; then
-				echo "  That's huge! Using 32GB."
-				_TARGET_SIZE=32
+				echo "  That's huge! Using 3GB minimal."
+				_TARGET_SIZE=3
 			fi
 			break
 			;;
@@ -216,28 +218,32 @@ while [ "$_COUNTDOWN" -gt 0 ] && [ -z "$_TARGET_SIZE" ]; do
 	_COUNTDOWN=$((_COUNTDOWN - 1))
 done
 if [ -z "$_TARGET_SIZE" ]; then
-	_TARGET_SIZE=32
+	_TARGET_SIZE=3
 	echo ""
-	echo "  Auto-selected: 32GB"
+	echo "  Auto-selected: 3GB minimal"
+fi
+
+# Only write .target_size if user chose expansion (not minimal)
+if [ "$_TARGET_SIZE" -gt 3 ] 2>/dev/null; then
+	echo ""
+	echo "Target size: ${_TARGET_SIZE}GB"
+	echo "$_TARGET_SIZE" > /ps4hdd/home/.target_size
+	echo ""
+	echo "  Image will be expanded to ${_TARGET_SIZE}GB on next boot."
+else
+	_TARGET_SIZE=3
+	rm -f /ps4hdd/home/.target_size
+	echo ""
+	echo "  Booting 3GB minimal image."
 fi
 echo ""
-echo "Target size: ${_TARGET_SIZE}GB"
-echo "$_TARGET_SIZE" > /ps4hdd/home/.target_size
 
-echo ""
-echo "=== How this works ==="
-echo "  This creates the .img file and extracts the rootfs."
-echo "  Storage will be expanded to ${_TARGET_SIZE}GB automatically before boot."
-echo ""
-echo "  You do NOT need to do anything — no manual steps required."
-echo ""
-
-# Create minimal 2.5GB .img (rootfs ~2.4GB uncompressed + ext4 overhead)
-_TOTAL_MB=2560
+# Create 3GB .img (rootfs ~2.3GB uncompressed + ext4 overhead + headroom)
+_TOTAL_MB=3072
 _IMG_FILE="/ps4hdd/home/$_install_OS_img"
 
 echo ""
-echo "=== Creating minimal 2.5GB .img ==="
+echo "=== Creating 3GB .img ==="
 
 # Try sparse creation first (truncate, instant)
 rm -f "$_IMG_FILE" 2>/dev/null
@@ -251,7 +257,7 @@ if [ "$_ACTUAL_SIZE" -gt 1048576 ]; then
 else
 	# UFS doesn't support sparse files, use real dd (slow)
 	echo "  UFS does not support sparse files."
-	echo "  Writing 2.5GB of zeros (this is slow)..."
+	echo "  Writing 3GB of zeros (this is slow)..."
 	rm -f "$_IMG_FILE" 2>/dev/null
 	_SPARSE=0
 	_START=$(date +%s)
@@ -336,11 +342,21 @@ sync
 umount /newroot 2>/dev/null
 losetup -d /dev/loop5 2>/dev/null
 
+# Create ROM and BIOS directories on UFS (optional storage)
+echo ""
+echo "Creating storage directories on UFS..."
+mkdir -p /ps4hdd/ROMs/snes /ps4hdd/ROMs/n64 /ps4hdd/ROMs/gba /ps4hdd/ROMs/gameboy /ps4hdd/ROMs/genesis /ps4hdd/ROMs/psx /ps4hdd/ROMs/tg16 /ps4hdd/ROMs/nds /ps4hdd/ROMs/arcade /ps4hdd/ROMs/neogeo /ps4hdd/ROMs/atari2600 /ps4hdd/ROMs/atari7800 /ps4hdd/ROMs/sms /ps4hdd/ROMs/gg /ps4hdd/ROMs/c64 /ps4hdd/ROMs/pcecd /ps4hdd/ROMs/bios /ps4hdd/ROMs/saves /ps4hdd/ROMs/screenshots
+mkdir -p /ps4hdd/BIOS
+echo "  ROMs: /ps4hdd/ROMs/"
+echo "  BIOS: /ps4hdd/BIOS/"
+
 echo
 echo "=== Install complete! ==="
 echo ""
-echo "The system will now expand the .img to ${_TARGET_SIZE}GB and boot into Linux."
-echo
+echo "  ROMs: /ps4hdd/ROMs/"
+echo "  BIOS: /ps4hdd/BIOS/"
+echo ""
 echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
-echo "Based on better-initramfs by Piotr Karbowski"
+echo "Initramfs based on better-initramfs by Piotr Karbowski (BSD-3-Clause)"
+echo "  https://bitbucket.org/piotrkarbowski/better-initramfs"
 echo "PS4 initramfs by feeRnt — https://github.com/feeRnt/ps4-linux-initramfs"

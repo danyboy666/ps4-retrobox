@@ -216,8 +216,8 @@ cat << 'ART'
 
 ART
 echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
-echo "Based on better-initramfs by Piotr Karbowski"
-echo "  https://github.com/fff7d1bc/better-initramfs"
+echo "Initramfs based on better-initramfs by Piotr Karbowski (BSD-3-Clause)"
+echo "  https://bitbucket.org/piotrkarbowski/better-initramfs"
 echo "PS4 initramfs by feeRnt"
 echo "  https://github.com/feeRnt/ps4-linux-initramfs"
 echo "Kernels by feeRnt, DFAUS, crashniels"
@@ -290,8 +290,8 @@ if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 		echo ""
 		echo "  Install complete! Rootfs is ${_CUR_GB}GB."
 		echo ""
-		echo "  [1] Expand to ${_TARGET_GB}GB and boot (default)"
-		echo "  [2] Boot now with ${_CUR_GB}GB (no expansion)"
+		echo "  [1] Expand to ${_TARGET_GB}GB (recommended for more ROMs)"
+		echo "  [2] Boot now with ${_CUR_GB}GB (expansion can be done later)"
 		echo ""
 		echo "Auto-expanding in 15 seconds..."
 		_COUNTDOWN=15
@@ -398,6 +398,18 @@ if [ ! -d /newroot/ps4hdd ]; then
 	mkdir /newroot/ps4hdd
 fi
 mount /ps4hdd /newroot/ps4hdd
+
+# Bind mount ROMs from UFS into Ubuntu
+if [ -d /ps4hdd/ROMs ]; then
+	mkdir -p /newroot/home/PS4/ROMs
+	mount --bind /ps4hdd/ROMs /newroot/home/PS4/ROMs
+fi
+
+# Bind mount BIOS from UFS into Ubuntu
+if [ -d /ps4hdd/BIOS ]; then
+	mkdir -p /newroot/home/PS4/BIOS
+	mount --bind /ps4hdd/BIOS /newroot/home/PS4/BIOS
+fi
 # # End of PS4 specific section
 
 boot_newroot

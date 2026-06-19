@@ -238,7 +238,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>snes</name>
     <fullname>Super Nintendo</fullname>
-    <path>/mnt/roms/SNES</path>
+    <path>/home/PS4/ROMs/snes</path>
     <extension>.sfc .smc</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/bsnes_mercury_balanced_libretro.so %ROM%</command>
     <platform>snes</platform>
@@ -247,7 +247,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>n64</name>
     <fullname>Nintendo 64</fullname>
-    <path>/mnt/roms/N64</path>
+    <path>/home/PS4/ROMs/n64</path>
     <extension>.n64 .z64 .v64</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
     <platform>n64</platform>
@@ -256,7 +256,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>gba</name>
     <fullname>Game Boy Advance</fullname>
-    <path>/mnt/roms/GBA</path>
+    <path>/home/PS4/ROMs/gba</path>
     <extension>.gba</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
     <platform>gba</platform>
@@ -265,7 +265,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>gb</name>
     <fullname>Game Boy / Color</fullname>
-    <path>/mnt/roms/GameBoy</path>
+    <path>/home/PS4/ROMs/gameboy</path>
     <extension>.gb .gbc</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gb</platform>
@@ -274,7 +274,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>genesis</name>
     <fullname>Sega Genesis / Mega Drive</fullname>
-    <path>/mnt/roms/Genesis</path>
+    <path>/home/PS4/ROMs/genesis</path>
     <extension>.md .bin .gen .smd</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>genesis</platform>
@@ -283,7 +283,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>psx</name>
     <fullname>Sony PlayStation</fullname>
-    <path>/mnt/roms/PlayStation</path>
+    <path>/home/PS4/ROMs/psx</path>
     <extension>.bin .cue .iso .pbp .chd</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
     <platform>psx</platform>
@@ -292,7 +292,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>pce</name>
     <fullname>TurboGrafx-16</fullname>
-    <path>/mnt/roms/TurboGrafx16</path>
+    <path>/home/PS4/ROMs/tg16</path>
     <extension>.pce .cue</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>pce</platform>
@@ -301,11 +301,83 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>nds</name>
     <fullname>Nintendo DS</fullname>
-    <path>/mnt/roms/NintendoDS</path>
+    <path>/home/PS4/ROMs/nds</path>
     <extension>.nds .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/desmume_libretro.so %ROM%</command>
     <platform>nds</platform>
     <theme>nds</theme>
+  </system>
+  <system>
+    <name>arcade</name>
+    <fullname>Arcade</fullname>
+    <path>/home/PS4/ROMs/arcade</path>
+    <extension>.zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <platform>arcade</platform>
+    <theme>arcade</theme>
+  </system>
+  <system>
+    <name>neogeo</name>
+    <fullname>Neo Geo</fullname>
+    <path>/home/PS4/ROMs/neogeo</path>
+    <extension>.zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <platform>neogeo</platform>
+    <theme>neogeo</theme>
+  </system>
+  <system>
+    <name>atari2600</name>
+    <fullname>Atari 2600</fullname>
+    <path>/home/PS4/ROMs/atari2600</path>
+    <extension>.a26 .bin .rom</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
+    <platform>atari2600</platform>
+    <theme>atari2600</theme>
+  </system>
+  <system>
+    <name>atari7800</name>
+    <fullname>Atari 7800</fullname>
+    <path>/home/PS4/ROMs/atari7800</path>
+    <extension>.a78 .bin</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
+    <platform>atari7800</platform>
+    <theme>atari7800</theme>
+  </system>
+  <system>
+    <name>sms</name>
+    <fullname>Sega Master System</fullname>
+    <path>/home/PS4/ROMs/sms</path>
+    <extension>.sms .bin .gen</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <platform>sms</platform>
+    <theme>sms</theme>
+  </system>
+  <system>
+    <name>gg</name>
+    <fullname>Sega Game Gear</fullname>
+    <path>/home/PS4/ROMs/gg</path>
+    <extension>.gg .bin .zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <platform>gg</platform>
+    <theme>gg</theme>
+  </system>
+  <system>
+    <name>c64</name>
+    <fullname>Commodore 64</fullname>
+    <path>/home/PS4/ROMs/c64</path>
+    <extension>.d64 .t64 .crt .prg</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/vice_x64_libretro.so %ROM%</command>
+    <platform>c64</platform>
+    <theme>c64</theme>
+  </system>
+  <system>
+    <name>pcecd</name>
+    <fullname>PC Engine CD</fullname>
+    <path>/home/PS4/ROMs/pcecd</path>
+    <extension>.cue .chd .iso</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <platform>pce</platform>
+    <theme>pcecd</theme>
   </system>
 </systemList>
 ESCFG

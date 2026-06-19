@@ -22,9 +22,9 @@
 
 ### Critical Issues (blocking actual use)
 
-- [ ] **Garbled screen in EmulationStation** — white screen with random blocks/pixels covering text. Root cause investigated: removed `amdgpu.dc=0`, added Mesa env vars, but issue persists. Next step: try `drm.edid_firmware=edid/1920x1080.bin` bootarg (feeRnt's recommended approach for PS4).
-- [ ] **Keyboard + controller not working in Ubuntu** — udev enabled, input rules created, PS4 user added to input group, USB reprobe service added. Still not working. Needs SSH diagnostics on real hardware (`cat /proc/bus/input/devices`, `ls /dev/input/`, `ps aux | grep udevd`).
-- [ ] **Xorg input driver conflict** — xorg.conf forces `evdev` driver, but `40-libinput.conf` also claims input devices with `libinput`. May prevent input from reaching ES.
+- [x] ~~**Garbled screen in EmulationStation**~~ — Fixed: removed `drm.edid_firmware=edid/1920x1080.bin` from bootargs.txt (firmware file didn't exist in rootfs, causing error -2 spam and fallback display modes)
+- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: DS4 button IDs corrected (Cross=button 0, Circle=button 1), hat values fixed (UP=1, RIGHT=2, DOWN=4, LEFT=8), keyboard SDL2 keycodes updated (arrows=1073741903-1073741906)
+- [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh. Fixed busybox ash brace expansion bug (`mkdir -p /ps4hdd/ROMs/{snes,...}` created one literal directory).
 
 ### Known Bugs
 
@@ -33,7 +33,9 @@
 
 ### Not Yet Tested
 
-- [ ] EmulationStation display (garbled screen blocks this)
+- [x] EmulationStation display — ES window created successfully, all 16 systems showing
+- [x] DS4 controller input — detected by ES as "Sony Interactive Entertainment Wireless Controller"
+- [x] Keyboard input — Microsoft wireless keyboard detected
 - [ ] RetroArch gameplay
 - [ ] DS4 LED control (`ds4-led.sh`)
 - [ ] Samba ROM transfer from PC
@@ -43,8 +45,8 @@
 
 ### Roadmap
 
-1. Fix display output — try `drm.edid_firmware=edid/1920x1080.bin` in bootargs.txt
-2. Fix input — SSH diagnostics, check udev status, investigate evdev vs libinput conflict
+1. ~~Fix display output~~ — Done (removed missing EDID firmware from bootargs)
+2. ~~Fix input~~ — Done (corrected DS4 button IDs, keyboard SDL2 keycodes, ROM paths)
 3. Real-hardware validation of all 16 emulated systems
 4. Performance testing on different PS4 models (Fat/Slim/Pro)
 5. Clean up README — remove unverified claims, add accurate troubleshooting
@@ -530,7 +532,7 @@ Use FileZilla or any FTP client:
 `bootargs.txt` contains kernel boot parameters that fix common issues like black screen and garbled display. It is loaded automatically by the payload.
 
 ```
-panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 drm.edid_firmware=edid/1920x1080.bin video=HDMI-A-1:1920x1080@60
+panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 video=HDMI-A-1:1920x1080@60
 ```
 
 | Parameter | Purpose |
@@ -542,10 +544,9 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 | `radeon.dpm=0` | Disable Radeon power management (prevents crashes) |
 | `amdgpu.dpm=0` | Disable AMDGPU power management (prevents crashes) |
 | `console=tty0` | Output to virtual console (TV screen) |
-| `drm.edid_firmware=edid/1920x1080.bin` | Force kernel to use built-in 1920x1080 EDID blob (prevents garbled/black screen — PS4 HDMI often fails EDID negotiation) |
 | `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector |
 
-> **Note:** Both `drm.edid_firmware` and `video=` are included. The EDID blob ensures the kernel knows the display capabilities; the `video=` param forces the exact mode. feeRnt recommends the EDID approach for PS4.
+> **Note:** Do NOT add `drm.edid_firmware=edid/1920x1080.bin` — the EDID firmware file does not exist in the rootfs and causes garbled display when referenced.
 
 ### Phase 4: Install to Internal HDD
 
@@ -837,7 +838,7 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | Problem | Fix |
 |---------|-----|
 | Black screen | Use `bootargs.txt` params, try TV instead of monitor |
-| Garbled GUI / white screen | Known issue — display driver initialization problem. Try adding `drm.edid_firmware=edid/1920x1080.bin` to `bootargs.txt`. Also check PS4 video settings: 1080p, HDR OFF, Deep Color OFF, HDCP OFF. |
+| Garbled GUI / white screen | Was caused by missing EDID firmware in bootargs.txt. Fixed by removing `drm.edid_firmware=edid/1920x1080.bin`. Also check PS4 video settings: 1080p, HDR OFF, Deep Color OFF, HDCP OFF. |
 | No WiFi | WiFi not supported on CUH-1000/1100. Use Ethernet cable. |
 | No Bluetooth | Use USB BT dongle |
 | SSH refused | Ensure Ethernet cable connected, try `ping <PS4-IP>` |
@@ -871,16 +872,29 @@ The build script:
 
 ## Credits
 
-- [feeRnt](https://github.com/feeRnt/ps4-linux-initramfs) — Open-source initramfs with PS4 HDD support
-- [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel 6.15.4 for Aeolia/Belize
+### Initramfs (derivative chain)
+
+The init and functions.sh are derived from better-initramfs, modified in stages:
+
+1. **[Piotr Karbowski](https://bitbucket.org/piotrkarbowski/better-initramfs)** — better-initramfs (BSD-3-Clause license, 2010-2018). Original initramfs framework: all core functions (einfo/ewarn/rescueshell/run/run_hooks/emount/eumount/moveDev/cleanup/boot_newroot), mount system, storage layer detection, hook system. ~60% of init and ~95% of functions.sh are unmodified from this project.
+2. **[feeRnt](https://github.com/feeRnt/ps4-linux-initramfs)** — PS4 adaptation of better-initramfs. Added PS4 HDD decryption (cryptsetup + AES-XTS), UFS2 mount, Aeolia/Belize/Baikal southbridge detection, boot menu, partition manager.
+3. **[danyboy666](https://github.com/danyboy666/ps4-retrobox)** — PS4 RetroBox modifications. Auto-detect boot, .img file management, filesystem expansion, installer (install-HDD.sh), ROM/BIOS bind mounts, non-interactive boot flow.
+
+### Kernels
+
+- [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel 6.15.4-crashnt-4.7 for Aeolia/Belize
 - [DFAUS](https://github.com/DFAUS-git/ps4-baikal-5.4.247-kernel) — PS4 Linux kernel 5.4.247 for Baikal (Pro)
 - [crashniels](https://github.com/crashniels/linux) — Kernel source with WiFi/BT patches
-- [ArabPixel](https://github.com/ArabPixel) + [rmuxnet](https://github.com/rmuxnet) — Firmware-agnostic PS4 Linux loader (v24b)
-- [Ps3itaTeam](https://github.com/Ps3itaTeam), [Nazky](https://github.com/Nazky), [hippie68](https://github.com/hippie68) — Original PS4 initramfs
-- [Piotr Karbowski](https://github.com/fff7d1bc/better-initramfs) — better-initramfs base
-- [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation
+
+### Payload & loader
+
+- [ArabPixel](https://github.com/ArabPixel) + [rmuxnet](https://github.com/rmuxnet) — Firmware-agnostic PS4 Linux loader (ps4-linux-loader v24b)
+- [Ps3itaTeam](https://github.com/Ps3itaTeam), [Nazky](https://github.com/Nazky), [hippie68](https://github.com/hippie68) — Original PS4 initramfs concepts
+
+### Software
+
+- [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation frontend
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
-- [danyboy666](https://github.com/danyboy666) — PS4 RetroBox project
 
 ## License
 

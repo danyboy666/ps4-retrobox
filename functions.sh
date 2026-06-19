@@ -516,9 +516,18 @@ cleanup() {
 }
 
 boot_newroot() {
-	init="${init:-/sbin/init}"
+	init="${init:-sbin/init}"
 	einfo "Switching root to /newroot and executing ${init}."
-	if ! [ -x "/newroot/${init}" ]; then die "There is no executable '/newroot/${init}'."; fi
+	if ! [ -e "/newroot/${init}" ]; then
+		ewarn "'/newroot/${init}' not found, trying alternatives..."
+		for _alt in usr/sbin/init usr/bin/systemd sbin/init usr/lib/systemd/systemd; do
+			if [ -e "/newroot/$_alt" ]; then
+				init="$_alt"
+				einfo "Using init: ${init}"
+				break
+			fi
+		done
+	fi
 	exec env -i \
 		TERM="${TERM:-linux}" \
 		PATH="${PATH:-/bin:/sbin:/usr/bin:/usr/sbin}" \
@@ -619,8 +628,27 @@ eumount() {
 moveDev() {
 	einfo "Moving /dev to /newroot/dev..."
 	if mountpoint -q /dev/pts; then umount -l /dev/pts; fi
-	if use mdev; then run echo '' > /proc/sys/kernel/hotplug; fi
-	run mount --move /dev /newroot/dev
+	if use mdev; then echo '' > /proc/sys/kernel/hotplug 2>/dev/null; fi
+	mkdir -p /newroot/dev 2>/dev/null
+	if mountpoint -q /dev; then
+		if mount --move /dev /newroot/dev 2>/dev/null; then
+			einfo "/dev moved to /newroot/dev."
+			return 0
+		fi
+		ewarn "mount --move /dev failed, trying bind mount..."
+		if mount --bind /dev /newroot/dev 2>/dev/null; then
+			einfo "/dev bind-mounted to /newroot/dev."
+			return 0
+		fi
+		ewarn "mount --bind /dev also failed."
+	fi
+	ewarn "Creating essential /dev nodes manually..."
+	for _n in null zero random urandom console tty; do
+		if [ ! -e "/newroot/dev/$_n" ]; then
+			cp -a "/dev/$_n" "/newroot/dev/$_n" 2>/dev/null
+		fi
+	done
+	ewarn "Continuing without full /dev tree."
 }
 
 rootdelay() {
