@@ -238,8 +238,8 @@ echo "    Run 'sudo setup-samba.sh' on PS4 first,"
 echo "    then mount \\\\PS4_RETROBOX\\PS4_ROMs from PC"
 echo ""
 echo "  ROM folders: snes, nes, n64, gba, gameboy,"
-echo "    genesis, psx, tg16, nds, arcade, neogeo,"
-echo "    atari2600, atari7800, sms, gg, c64, pcecd"
+echo "    genesis, psx, tg16, arcade, neogeo,"
+echo "    atari2600, atari7800, sms, gg, pcecd"
 echo "=========================================="
 echo ""
 
@@ -361,7 +361,7 @@ losetup -d /dev/loop5 2>/dev/null
 # Create ROM and BIOS directories on UFS (optional storage)
 echo ""
 echo "Creating storage directories on UFS..."
-mkdir -p /ps4hdd/ROMs/snes /ps4hdd/ROMs/nes /ps4hdd/ROMs/n64 /ps4hdd/ROMs/gba /ps4hdd/ROMs/gameboy /ps4hdd/ROMs/genesis /ps4hdd/ROMs/psx /ps4hdd/ROMs/tg16 /ps4hdd/ROMs/nds /ps4hdd/ROMs/arcade /ps4hdd/ROMs/neogeo /ps4hdd/ROMs/atari2600 /ps4hdd/ROMs/atari7800 /ps4hdd/ROMs/sms /ps4hdd/ROMs/gg /ps4hdd/ROMs/c64 /ps4hdd/ROMs/pcecd /ps4hdd/ROMs/bios /ps4hdd/ROMs/saves /ps4hdd/ROMs/screenshots
+mkdir -p /ps4hdd/ROMs/snes /ps4hdd/ROMs/nes /ps4hdd/ROMs/n64 /ps4hdd/ROMs/gba /ps4hdd/ROMs/gameboy /ps4hdd/ROMs/genesis /ps4hdd/ROMs/psx /ps4hdd/ROMs/tg16 /ps4hdd/ROMs/arcade /ps4hdd/ROMs/neogeo /ps4hdd/ROMs/atari2600 /ps4hdd/ROMs/atari7800 /ps4hdd/ROMs/sms /ps4hdd/ROMs/gg /ps4hdd/ROMs/pcecd /ps4hdd/ROMs/bios /ps4hdd/ROMs/saves /ps4hdd/ROMs/screenshots
 mkdir -p /ps4hdd/BIOS
 echo "  ROMs: /ps4hdd/ROMs/"
 echo "  BIOS: /ps4hdd/BIOS/"

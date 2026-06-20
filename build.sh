@@ -102,7 +102,7 @@ run_chroot "apt-get update"
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch retroarch-assets libretro-core-info \
     libretro-beetle-pce-fast libretro-beetle-psx \
-    libretro-bsnes-mercury-balanced libretro-desmume \
+    libretro-bsnes-mercury-balanced \
     libretro-gambatte libretro-genesisplusgx \
     libretro-mgba libretro-mupen64plus libretro-nestopia libretro-snes9x" || true
 
@@ -110,7 +110,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
 BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
-for core in nestopia fbneo stella prosystem vice_x64; do
+for core in nestopia fbneo stella prosystem; do
     echo "  Downloading ${core}_libretro.so..."
     wget -q -O "$LIBRETRO_DIR/${core}_libretro.so.zip" "$BUILDBOT/${core}_libretro.so.zip" 2>/dev/null && \
         cd "$LIBRETRO_DIR" && unzip -o "${core}_libretro.so.zip" 2>/dev/null && \
@@ -231,13 +231,6 @@ Section "InputClass"
 EndSection
 
 Section "InputClass"
-    Identifier  "DS4 js0 joystick"
-    MatchProduct "Sony Interactive Entertainment Wireless Controller"
-    MatchDevicePath "/dev/input/js*"
-    Option      "ModeRelative" "false"
-EndSection
-
-Section "InputClass"
     Identifier  "Keyboard"
     MatchIsKeyboard "on"
     Option      "XkbLayout" "us"
@@ -325,10 +318,10 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="right" type="key" id="1073741903" value="1" />
     <input name="a" type="key" id="13" value="1" />
     <input name="b" type="key" id="27" value="1" />
-    <input name="start" type="key" id="1073741918" value="1" />
-    <input name="select" type="key" id="1073741919" value="1" />
-    <input name="pageup" type="key" id="1073741912" value="1" />
-    <input name="pagedown" type="key" id="1073741913" value="1" />
+    <input name="start" type="key" id="1073741882" value="1" />
+    <input name="select" type="key" id="1073741883" value="1" />
+    <input name="pageup" type="key" id="1073741899" value="1" />
+    <input name="pagedown" type="key" id="1073741902" value="1" />
   </inputConfig>
 </inputList>
 INPUTEOF
@@ -365,6 +358,21 @@ method=auto
 NMEOF
 chmod 600 "$ROOTFS/etc/NetworkManager/system-connections/Wired connection 1.nmconnection"
 
+# Override: manage ALL NetworkManager interfaces (default Ubuntu server unmanages wired)
+mkdir -p "$ROOTFS/etc/NetworkManager/conf.d"
+cat > "$ROOTFS/etc/NetworkManager/conf.d/10-managed-ethernet.conf" << 'NMOVERRIDE'
+[keyfile]
+unmanaged-devices=none
+NMOVERRIDE
+
+# === Input kernel modules ===
+echo "=== Loading input modules ==="
+mkdir -p "$ROOTFS/etc/modules-load.d"
+cat > "$ROOTFS/etc/modules-load.d/input.conf" << 'INPUTMOD'
+joydev
+usbhid
+INPUTMOD
+
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
 [Unit]
@@ -398,11 +406,10 @@ cat >> "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
    force group = PS4
 SAMBAEOF
 
-# === NFS exports for ROMs ===
-echo "=== Configuring NFS exports ==="
+# === NFS client ===
+echo "=== Configuring NFS client ==="
 cat > "$ROOTFS/etc/exports" << 'NFSEOF'
-# PS4 RetroBox NFS exports — ROMs shared over LAN
-/ps4hdd/ROMs *(rw,sync,no_subtree_check,no_root_squash,all_squash,anonuid=1000,anongid=1000)
+# NFS client only — mount ROMs from PC via: sudo mount -t nfs <IP>:<share> /mnt/roms
 NFSEOF
 
 # === Create Samba setup helper ===
@@ -525,15 +532,6 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <theme>pce</theme>
   </system>
   <system>
-    <name>nds</name>
-    <fullname>Nintendo DS</fullname>
-    <path>/home/PS4/ROMs/nds</path>
-    <extension>.nds .zip</extension>
-    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/desmume_libretro.so %ROM%</command>
-    <platform>nds</platform>
-    <theme>nds</theme>
-  </system>
-  <system>
     <name>arcade</name>
     <fullname>Arcade</fullname>
     <path>/home/PS4/ROMs/arcade</path>
@@ -586,15 +584,6 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>gamegear</platform>
     <theme>gg</theme>
-  </system>
-  <system>
-    <name>c64</name>
-    <fullname>Commodore 64</fullname>
-    <path>/home/PS4/ROMs/c64</path>
-    <extension>.d64 .t64 .crt .prg</extension>
-    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/vice_x64_libretro.so %ROM%</command>
-    <platform>c64</platform>
-    <theme>c64</theme>
   </system>
   <system>
     <name>pcecd</name>

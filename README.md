@@ -39,7 +39,7 @@
 
 ### Not Yet Tested
 
-- [x] EmulationStation display — ES window created successfully, all 17 systems showing
+- [x] EmulationStation display — ES window created successfully, all 15 systems showing
 - [x] DS4 controller input — detected by ES as "Sony Interactive Entertainment Wireless Controller"
 - [x] Keyboard input — Microsoft wireless keyboard detected, SDL2 keycodes configured
 - [ ] RetroArch gameplay
@@ -54,7 +54,7 @@
 2. ~~Fix input~~ — Done (SDL2 keycodes, `<inputList>` format, DS4 button IDs, ROM paths, ownership)
 3. ~~Fix garbled background~~ — Done (bootargs.txt `video=HDMI-A-0` matches xorg.conf)
 4. ~~Fix home directory permissions~~ — Done (chown in install-HDD.sh, numeric uid in archive)
-5. Real-hardware validation of all 17 emulated systems
+5. Real-hardware validation of all 15 emulated systems
 6. Performance testing on different PS4 models (Fat/Slim/Pro)
 7. Clean up README — remove unverified claims, add accurate troubleshooting
 
@@ -102,7 +102,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 | **Ubuntu 22.04** | Minimal server rootfs (no desktop environment) |
 | **EmulationStation** | Retro gaming frontend — shows your ROMs in a TV-friendly interface |
 | **RetroArch** | Emulator backend — runs the actual games via libretro cores |
-| **17 emulators** | SNES, NES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
+| **15 systems** | SNES, NES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, PC Engine CD |
 | **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
 | **Network support** | Wired LAN for ROM transfer via Samba/SCP |
 
@@ -117,7 +117,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
-- **RetroArch** with 17 libretro cores pre-installed
+- **RetroArch** with 15 libretro cores pre-installed
 - **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (3GB minimal, or 16-50GB with expansion)
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
@@ -308,14 +308,12 @@ ROMs can be stored in two locations:
 ├── genesis/
 ├── psx/
 ├── tg16/
-├── nds/
 ├── arcade/
 ├── neogeo/
 ├── atari2600/
 ├── atari7800/
 ├── sms/
 ├── gg/
-├── c64/
 ├── pcecd/
 ├── bios/
 ├── saves/
@@ -336,14 +334,12 @@ ROMs can be stored in two locations:
 ├── Genesis/
 ├── PlayStation/
 ├── TurboGrafx16/
-├── NintendoDS/
 ├── Arcade/
 ├── NeoGeo/
 ├── Atari2600/
 ├── Atari7800/
 ├── MasterSystem/
 ├── GameGear/
-├── C64/
 ├── PCEngineCD/
 ├── BIOS/         ← Put BIOS files here
 ├── saves/
@@ -364,11 +360,9 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | `genesis_plus_gx_libretro.so` | Genesis, SMS, Game Gear |
 | `mednafen_psx_libretro.so` | PlayStation |
 | `mednafen_pce_fast_libretro.so` | TurboGrafx-16, PC Engine CD |
-| `desmume_libretro.so` | Nintendo DS |
 | `fbneo_libretro.so` | Arcade, Neo Geo |
 | `stella_libretro.so` | Atari 2600 |
 | `prosystem_libretro.so` | Atari 7800 |
-| `vice_x64_libretro.so` | Commodore 64 |
 
 ## Supported Systems
 
@@ -382,14 +376,12 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | Sega Genesis | Genesis Plus GX | No |
 | Sony PlayStation | Mednafen PSX | Yes (SCPH1001.bin) |
 | TurboGrafx-16 | Mednafen PCE Fast | Yes (syscard3.pce) |
-| Nintendo DS | DeSmuME | No |
 | Arcade | FinalBurn Neo | No |
 | Neo Geo | FinalBurn Neo | No |
 | Atari 2600 | Stella | No |
 | Atari 7800 | ProSystem | No |
 | Sega Master System | Genesis Plus GX | No |
 | Sega Game Gear | Genesis Plus GX | No |
-| Commodore 64 | VICE | No |
 | PC Engine CD | Mednafen PCE Fast | Yes (syscard3.pce) |
 
 ## Requirements
@@ -468,14 +460,12 @@ C:\PS4_ROMs\
 ├── Genesis\
 ├── PlayStation\
 ├── TurboGrafx16\
-├── NintendoDS\
 ├── Arcade\
 ├── NeoGeo\
 ├── Atari2600\
 ├── Atari7800\
 ├── MasterSystem\
 ├── GameGear\
-├── C64\
 ├── PCEngineCD\
 └── BIOS\
 ```
