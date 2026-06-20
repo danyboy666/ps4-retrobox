@@ -264,8 +264,8 @@ xsetroot -cursor_name none 2>/dev/null || true
 # Disable cursor blinking
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
-# Start EmulationStation (software GL to avoid glamor/Kaveri crash)
-exec env LIBGL_ALWAYS_SOFTWARE=1 emulationstation
+# Start EmulationStation with hardware GL + vsync
+exec env vblank_mode=1 __GL_SYNC_TO_VBLANK=1 emulationstation
 XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
@@ -407,12 +407,47 @@ cat > "$ROOTFS/etc/modules-load.d/input.conf" << 'INPUTMOD'
 usbhid
 INPUTMOD
 
-# === DS4 udev rule ===
+# === DS4 udev rules ===
 mkdir -p "$ROOTFS/etc/udev/rules.d"
 cat > "$ROOTFS/etc/udev/rules.d/99-ds4-usbhid.rules" << 'UDEV'
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
 UDEV
+
+# DS4 joystick hidden from SDL2 (prevent wizard blocking keyboard)
+cat > "$ROOTFS/etc/udev/rules.d/99-no-ds4-joystick.rules" << 'UDEV'
+KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", ENV{ID_INPUT_JOYSTICK}="0"
+KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", ENV{ID_INPUT_JOYSTICK}="0"
+UDEV
+
+# DS4 force hid-generic (avoids playstation driver disconnect loop)
+cat > "$ROOTFS/etc/udev/rules.d/97-ds4-force-generic.rules" << 'UDEV'
+ACTION=="add", SUBSYSTEM=="hid", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", RUN+="/usr/local/bin/ds4-force-generic.sh %k"
+ACTION=="add", SUBSYSTEM=="hid", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", RUN+="/usr/local/bin/ds4-force-generic.sh %k"
+UDEV
+
+mkdir -p "$ROOTFS/usr/local/bin"
+cat > "$ROOTFS/usr/local/bin/ds4-force-generic.sh" << 'SCRIPT'
+#!/bin/bash
+# Force DS4 from playstation driver to hid-generic
+HID_DEV="$1"
+SYSFS="/sys/bus/hid/devices/$HID_DEV"
+logger "ds4-force-generic: processing $HID_DEV"
+sleep 0.2
+DRIVER=$(readlink "$SYSFS/driver" 2>/dev/null | xargs basename 2>/dev/null)
+logger "ds4-force-generic: $HID_DEV currently on $DRIVER"
+if [ "$DRIVER" = "playstation" ]; then
+    logger "ds4-force-generic: unbinding $HID_DEV from playstation"
+    echo "$HID_DEV" > /sys/bus/hid/drivers/playstation/unbind 2>/dev/null
+    sleep 0.1
+    logger "ds4-force-generic: binding $HID_DEV to hid-generic"
+    echo "$HID_DEV" > /sys/bus/hid/drivers/hid-generic/bind 2>/dev/null
+    logger "ds4-force-generic: done - $HID_DEV now on hid-generic"
+else
+    logger "ds4-force-generic: $HID_DEV not on playstation (driver=$DRIVER), skipping"
+fi
+SCRIPT
+chmod +x "$ROOTFS/usr/local/bin/ds4-force-generic.sh"
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
@@ -658,6 +693,9 @@ if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     # Rename theme folders that don't match es_systems.cfg theme names
     [ -d "$THEME_DIR/carbon/pce-cd" ] && mv "$THEME_DIR/carbon/pce-cd" "$THEME_DIR/carbon/pcecd"
+    [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/pce"
+    [ -d "$THEME_DIR/carbon/mastersystem" ] && mv "$THEME_DIR/carbon/mastersystem" "$THEME_DIR/carbon/sms"
+    [ -d "$THEME_DIR/carbon/gamegear" ] && mv "$THEME_DIR/carbon/gamegear" "$THEME_DIR/carbon/gg"
     echo "Theme installed: $THEME_DIR/carbon"
     _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
     echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
