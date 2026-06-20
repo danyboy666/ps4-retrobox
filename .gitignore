@@ -4,6 +4,7 @@
 # Release artifacts — do NOT add to repo (regenerated during release)
 *.zip
 ps4-ubuntu-es.tar.xz
+/arch.tar.xz
 
 # Build artifacts
 /rootfs/
