@@ -115,7 +115,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # === Compile EmulationStation ===
 echo "=== Compiling EmulationStation ==="
-run_chroot "cd /tmp && git clone https://github.com/Aloshi/EmulationStation.git ES-build"
+run_chroot "cd /tmp && rm -rf ES-build && git clone https://github.com/Aloshi/EmulationStation.git ES-build"
 
 # Patch round() conflict
 run_chroot "cd /tmp/ES-build && \
@@ -388,6 +388,7 @@ SAMBA
 chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 
 # === Configure RetroArch ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
