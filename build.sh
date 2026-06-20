@@ -610,7 +610,7 @@ done
 
 # === Package rootfs as arch.tar.xz ===
 echo "=== Packaging rootfs ==="
-tar -cJf arch.tar.xz -C "$ROOTFS" \
+tar -cJf community-files/arch.tar.xz -C "$ROOTFS" \
     --exclude='./proc' --exclude='./sys' --exclude='./run' \
     --exclude='./dev' --exclude='./tmp' .
 
@@ -618,7 +618,7 @@ tar -cJf arch.tar.xz -C "$ROOTFS" \
 echo "=== Downloading feeRnt initramfs ==="
 if command -v gh &>/dev/null; then
     gh release download "$FEEINT_INITRAMFS_TAG" -R feeRnt/ps4-linux-initramfs \
-        -p "initramfs.cpio.gz" -D . --clobber 2>/dev/null || \
+        -p "initramfs.cpio.gz" -D community-files --clobber 2>/dev/null || \
     echo "Warning: Could not download initramfs via gh. Download manually from:"
     echo "  https://github.com/feeRnt/ps4-linux-initramfs/releases/tag/$FEEINT_INITRAMFS_TAG"
 else
@@ -628,11 +628,11 @@ fi
 
 echo ""
 echo "=== Build complete! ==="
-echo "Files:"
-echo "  arch.tar.xz          $(du -h arch.tar.xz | cut -f1)  (Ubuntu rootfs)"
-echo "  initramfs.cpio.gz    $(du -h initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (feeRnt initramfs)"
-echo "  bzImage*             (kernel - download from community-files or GitHub)"
-echo "  payload-960-*.elf    (payloads - download from community-files or GitHub)"
+echo "Files in community-files/:"
+echo "  arch.tar.xz          $(du -h community-files/arch.tar.xz | cut -f1)  (Ubuntu rootfs)"
+echo "  initramfs.cpio.gz    $(du -h community-files/initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (feeRnt initramfs)"
+echo "  bzImage*             (kernel - already in community-files)"
+echo "  payload-960-*.elf    (payloads - already in community-files)"
 echo ""
 echo "FTP these 3 files to your PS4:"
 echo "  1. bzImage*           -> /data/linux/boot/bzImage"
