@@ -426,6 +426,12 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="06
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
 UDEV
 
+# DS4 joystick hidden from SDL2 (prevent joystick wizard from blocking keyboard input)
+cat > "$ROOTFS/etc/udev/rules.d/99-no-ds4-joystick.rules" << 'UDEV'
+KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", ENV{ID_INPUT_JOYSTICK}="0"
+KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", ENV{ID_INPUT_JOYSTICK}="0"
+UDEV
+
 # DS4 force sony driver (playstation driver causes USB disconnect after 5-8s)
 cat > "$ROOTFS/etc/udev/rules.d/97-ds4-force-sony.rules" << 'UDEV'
 ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", RUN+="/usr/local/bin/ds4-force-sony.sh"
@@ -464,25 +470,30 @@ chmod +x "$ROOTFS/usr/local/bin/ds4-force-sony.sh"
 cat > "$ROOTFS/usr/local/bin/ds4-monitor.sh" << 'SCRIPT'
 #!/bin/bash
 # Continuously monitor for DS4 on playstation driver and move to sony
+LOG=/var/log/ds4-monitor.log
+echo "$(date) ds4-monitor started" >> "$LOG"
 while true; do
-    for dev in /sys/bus/hid/devices/0003:054C:09CC.* /sys/bus/hid/devices/0003:054C:05C4.*; do
+    for dev in $(find /sys/bus/hid/devices/ -maxdepth 1 \( -name "*054C*" -o -name "*054c*" \) 2>/dev/null); do
         [ -d "$dev" ] || continue
         DEVID=$(basename "$dev")
         DRIVER=$(basename "$(readlink "$dev/driver" 2>/dev/null)" 2>/dev/null)
         if [ "$DRIVER" = "playstation" ]; then
-            logger -t ds4-monitor "Moving $DEVID from playstation to sony"
-            echo "$DEVID" > /sys/bus/hid/drivers/playstation/unbind 2>/dev/null
-            sleep 0.1
-            echo "$DEVID" > /sys/bus/hid/drivers/sony/bind 2>/dev/null
-            if [ $? -eq 0 ]; then
-                logger -t ds4-monitor "SUCCESS: $DEVID on sony"
+            echo "$DEVID" > /sys/bus/hid/drivers/playstation/unbind 2>>"$LOG"
+            RETRY=0
+            while [ $RETRY -lt 10 ]; do
+                echo "$DEVID" > /sys/bus/hid/drivers/sony/bind 2>>"$LOG" && break
+                RETRY=$((RETRY+1))
+                sleep 0.01
+            done
+            if [ $RETRY -ge 10 ]; then
+                echo "$(date) sony bind failed, trying hid-generic for $DEVID" >> "$LOG"
+                echo "$DEVID" > /sys/bus/hid/drivers/hid-generic/bind 2>>"$LOG"
             else
-                echo "$DEVID" > /sys/bus/hid/drivers/hid-generic/bind 2>/dev/null
-                logger -t ds4-monitor "Fallback: $DEVID on hid-generic"
+                echo "$(date) SUCCESS: $DEVID on sony after $RETRY retries" >> "$LOG"
             fi
         fi
     done
-    sleep 0.2
+    sleep 0.02
 done
 SCRIPT
 chmod +x "$ROOTFS/usr/local/bin/ds4-monitor.sh"
