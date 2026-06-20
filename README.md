@@ -397,11 +397,13 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 
 **The initramfs, rootfs, and payload are identical across all models.** Only the kernel (`bzImage`) changes based on your PS4's southbridge.
 
-| PS4 Model | Southbridge | Kernel | Download |
-|-----------|-------------|--------|----------|
-| **Fat CUH-1000/1100** | Aeolia | `bzImage` (6.15.4) | Included in release |
-| **Fat CUH-1200 / Slim CUH-2000** | Belize | `bzImage` (6.15.4) | Included in release |
-| **Pro CUH-7000** | Baikal | `bzImage_Baikal_5.4.247` | Included in release |
+| PS4 Model | Southbridge | Kernel | Tested? |
+|-----------|-------------|--------|---------|
+| **Fat CUH-1000/1100** | Aeolia | `bzImage_no-built-in-fw_Clang_fullLTO` | ✅ Tested |
+| **Fat CUH-1200 / Slim CUH-2000** | Belize | `bzImage_no-built-in-fw_Clang_fullLTO` | ❌ Not tested |
+| **Pro CUH-7000** | Baikal | `bzImage_Baikal_5.4.247` | ❌ Not tested |
+
+> **⚠ TESTING LIMITATION:** This build has only been tested on a PS4 Fat CUH-1000/1100 (Aeolia southbridge) with `bzImage_no-built-in-fw_Clang_fullLTO`. The Baikal kernel (`bzImage_Baikal_5.4.247`) for PS4 Pro and the Belize southbridge (CUH-1200/Slim) have **not** been tested on real hardware. They may work but are unverified. Feedback from other PS4 model users is welcome.
 
 **To identify your model:** Check the label on the back of your PS4. The model number starts with `CUH-` followed by 4 digits.
 
