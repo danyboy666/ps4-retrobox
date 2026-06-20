@@ -39,7 +39,7 @@
 
 ### Not Yet Tested
 
-- [x] EmulationStation display — ES window created successfully, all 16 systems showing
+- [x] EmulationStation display — ES window created successfully, all 17 systems showing
 - [x] DS4 controller input — detected by ES as "Sony Interactive Entertainment Wireless Controller"
 - [x] Keyboard input — Microsoft wireless keyboard detected, SDL2 keycodes configured
 - [ ] RetroArch gameplay
@@ -54,7 +54,7 @@
 2. ~~Fix input~~ — Done (SDL2 keycodes, `<inputList>` format, DS4 button IDs, ROM paths, ownership)
 3. ~~Fix garbled background~~ — Done (bootargs.txt `video=HDMI-A-0` matches xorg.conf)
 4. ~~Fix home directory permissions~~ — Done (chown in install-HDD.sh, numeric uid in archive)
-5. Real-hardware validation of all 16 emulated systems
+5. Real-hardware validation of all 17 emulated systems
 6. Performance testing on different PS4 models (Fat/Slim/Pro)
 7. Clean up README — remove unverified claims, add accurate troubleshooting
 
@@ -102,7 +102,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 | **Ubuntu 22.04** | Minimal server rootfs (no desktop environment) |
 | **EmulationStation** | Retro gaming frontend — shows your ROMs in a TV-friendly interface |
 | **RetroArch** | Emulator backend — runs the actual games via libretro cores |
-| **16 emulators** | SNES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
+| **17 emulators** | SNES, NES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Nintendo DS, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, Commodore 64, PC Engine CD |
 | **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
 | **Network support** | Wired LAN for ROM transfer via Samba/SCP |
 
@@ -117,7 +117,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
-- **RetroArch** with 16 libretro cores pre-installed
+- **RetroArch** with 17 libretro cores pre-installed
 - **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (3GB minimal, or 16-50GB with expansion)
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
@@ -301,6 +301,7 @@ ROMs can be stored in two locations:
 ```
 /ps4hdd/ROMs/
 ├── snes/
+├── nes/
 ├── n64/
 ├── gba/
 ├── gameboy/
@@ -328,6 +329,7 @@ ROMs can be stored in two locations:
 ```
 ~/ROMs/
 ├── SNES/
+├── NES/
 ├── N64/
 ├── GBA/
 ├── GameBoy/
@@ -355,6 +357,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | Core | System |
 |------|--------|
 | `bsnes_mercury_balanced_libretro.so` | SNES |
+| `nestopia_libretro.so` | NES |
 | `mupen64plus_libretro.so` | N64 |
 | `mgba_libretro.so` | GBA |
 | `gambatte_libretro.so` | Game Boy |
@@ -372,6 +375,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | System | Core | BIOS Required |
 |--------|------|---------------|
 | Super Nintendo | bsnes-mercury-balanced | No |
+| Nintendo Entertainment System | Nestopia | No |
 | Nintendo 64 | mupen64plus | No |
 | Game Boy Advance | mGBA | Optional (gba_bios.bin) |
 | Game Boy / Color | Gambatte | No |
@@ -457,6 +461,7 @@ Create a shared folder on your Windows PC:
 ```
 C:\PS4_ROMs\
 ├── SNES\
+├── NES\
 ├── N64\
 ├── GBA\
 ├── GameBoy\
