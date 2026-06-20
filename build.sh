@@ -365,6 +365,17 @@ mkdir -p "$ROOTFS/mnt/roms"
 for sys in snes nes n64 gba gameboy genesis psx tg16 arcade neogeo atari2600 atari7800 sms gg pcecd; do
     mkdir -p "$ROOTFS/home/PS4/ROMs/$sys"
 done
+
+# Create empty gamelists so ES can parse systems on first boot
+echo "=== Creating empty gamelists ==="
+GAMEDIR="$ROOTFS/home/PS4/.emulationstation/gamelists"
+for sys in snes nes n64 gba gb genesis psx pce arcade neogeo atari2600 atari7800 sms gg pcecd; do
+    mkdir -p "$GAMEDIR/$sys"
+    echo '<?xml version="1.0"?>' > "$GAMEDIR/$sys/gamelist.xml"
+    echo '<gameList />' >> "$GAMEDIR/$sys/gamelist.xml"
+done
+echo "Gamelists: $(find $GAMEDIR -name gamelist.xml | wc -l) empty systems"
+
 chown -R 1000:1000 "$ROOTFS/home/PS4"
 
 # === NetworkManager wired connection ===
@@ -683,11 +694,12 @@ echo "=== Installing RetroPie carbon theme ==="
 THEME_DIR="$ROOTFS/etc/emulationstation/themes"
 mkdir -p "$THEME_DIR"
 
-# Clone the carbon theme (try user fork first, fall back to RetroPie)
+# Clone the carbon theme (try user fork first, fall back to RetroPie 2021)
 cd /tmp
 rm -rf es-theme-carbon
 git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
-    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git 2>/dev/null || \
+    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon-2021.git es-theme-carbon 2>/dev/null || \
+    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
     echo "Warning: Could not clone carbon theme."
 
 if [ -d "es-theme-carbon" ]; then
