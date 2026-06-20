@@ -153,6 +153,14 @@ run_chroot "chmod 440 /etc/sudoers.d/PS4"
 echo "=== Configuring SSH ==="
 run_chroot "systemctl enable ssh.service"
 
+# Force password authentication on
+mkdir -p "$ROOTFS/etc/ssh/sshd_config.d"
+cat > "$ROOTFS/etc/ssh/sshd_config.d/00-ps4retrobox.conf" << 'SSHEOF'
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+UsePAM yes
+SSHEOF
+
 cat > "$ROOTFS/etc/systemd/system/regenerate-ssh-keys.service" << 'EOF'
 [Unit]
 Description=Regenerate SSH host keys on first boot
@@ -335,7 +343,67 @@ mkdir -p "$ROOTFS/home/PS4/ROMs/saves"
 mkdir -p "$ROOTFS/home/PS4/ROMs/screenshots"
 mkdir -p "$ROOTFS/home/PS4/ROMs/nes"
 mkdir -p "$ROOTFS/mnt/roms"
-chown -R 1001:1001 "$ROOTFS/home/PS4"
+chown -R 1000:1000 "$ROOTFS/home/PS4"
+
+# === NetworkManager wired connection ===
+echo "=== Configuring NetworkManager ==="
+mkdir -p "$ROOTFS/etc/NetworkManager/system-connections"
+cat > "$ROOTFS/etc/NetworkManager/system-connections/Wired connection 1.nmconnection" << 'NMEOF'
+[connection]
+id=Wired connection 1
+type=ethernet
+autoconnect=true
+
+[ipv4]
+method=auto
+never-default=false
+
+[ipv6]
+method=auto
+
+[ethernet]
+NMEOF
+chmod 600 "$ROOTFS/etc/NetworkManager/system-connections/Wired connection 1.nmconnection"
+
+# === DHCP fallback service ===
+cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
+[Unit]
+Description=Fallback DHCP on any non-loopback interface
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "for iface in /sys/class/net/*/; do iface=$(basename $iface); [ \"$iface\" = \"lo\" ] && continue; nmcli device set $iface managed yes 2>/dev/null || true; done"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+DHCPEOF
+ln -sf /etc/systemd/system/ps4-dhcp-fallback.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/ps4-dhcp-fallback.service"
+
+# === Samba ROM share ===
+echo "=== Configuring Samba share ==="
+cat >> "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
+
+[PS4_ROMs]
+   comment = PS4 RetroBox ROMs
+   path = /ps4hdd/ROMs
+   browseable = yes
+   read only = no
+   guest ok = yes
+   create mask = 0664
+   directory mask = 0775
+   force user = PS4
+   force group = PS4
+SAMBAEOF
+
+# === NFS exports for ROMs ===
+echo "=== Configuring NFS exports ==="
+cat > "$ROOTFS/etc/exports" << 'NFSEOF'
+# PS4 RetroBox NFS exports — ROMs shared over LAN
+/ps4hdd/ROMs *(rw,sync,no_subtree_check,no_root_squash,all_squash,anonuid=1000,anongid=1000)
+NFSEOF
 
 # === Create Samba setup helper ===
 cat > "$ROOTFS/usr/local/bin/setup-samba.sh" << 'SAMBA'
@@ -351,7 +419,7 @@ echo "Mounting //$PC_IP/$SHARE to /mnt/roms ..."
 sudo mkdir -p /mnt/roms
 
 if ! grep -q "$SHARE" /etc/fstab; then
-    echo "//$PC_IP/$SHARE /mnt/roms cifs user=$USER,password=$PASS,uid=1001,gid=1001,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0" | sudo tee -a /etc/fstab
+    echo "//$PC_IP/$SHARE /mnt/roms cifs user=$USER,password=$PASS,uid=1000,gid=1000,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0" | sudo tee -a /etc/fstab
     echo "Added to /etc/fstab"
 fi
 
@@ -556,6 +624,8 @@ git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/nul
 
 if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
+    # Rename theme folders that don't match es_systems.cfg theme names
+    [ -d "$THEME_DIR/carbon/pce-cd" ] && mv "$THEME_DIR/carbon/pce-cd" "$THEME_DIR/carbon/pcecd"
     echo "Theme installed: $THEME_DIR/carbon"
     _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
     echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
@@ -570,7 +640,7 @@ ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
 
 echo "Theme: carbon (RetroPie, formatVersion=3)"
 
-chown -R 1001:1001 "$ROOTFS/home/PS4"
+chown -R 1000:1000 "$ROOTFS/home/PS4"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
