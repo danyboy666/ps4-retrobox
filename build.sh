@@ -75,7 +75,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # === Install Samba + NFS ===
 echo "=== Installing Samba + NFS ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    samba samba-common-bin nfs-kernel-server nfs-common"
+    samba samba-common-bin nfs-common nfs-utils rpcbind"
 
 # === Install CIFS utils ===
 echo "=== Installing CIFS utils ==="
@@ -307,7 +307,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
 </config>
 ESCFG
 
-# es_input.cfg (keyboard only — ES auto-detects joystick via input wizard)
+# es_input.cfg (keyboard + DS4 joystick)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
 <?xml version="1.0"?>
 <inputList>
@@ -323,19 +323,47 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="pageup" type="key" id="1073741899" value="1" />
     <input name="pagedown" type="key" id="1073741902" value="1" />
   </inputConfig>
+  <inputConfig type="joystick" deviceName="Sony Interactive Entertainment Wireless Controller" deviceGUID="030000004c050000cc09000000016800">
+    <input name="up" type="hat" id="0" value="1" />
+    <input name="down" type="hat" id="0" value="4" />
+    <input name="left" type="hat" id="0" value="8" />
+    <input name="right" type="hat" id="0" value="2" />
+    <input name="a" type="button" id="1" value="1" />
+    <input name="b" type="button" id="0" value="1" />
+    <input name="x" type="button" id="3" value="1" />
+    <input name="y" type="button" id="2" value="1" />
+    <input name="start" type="button" id="9" value="1" />
+    <input name="select" type="button" id="8" value="1" />
+    <input name="leftshoulder" type="button" id="4" value="1" />
+    <input name="rightshoulder" type="button" id="5" value="1" />
+    <input name="lefttrigger" type="axis" id="2" value="1" />
+    <input name="righttrigger" type="axis" id="5" value="1" />
+    <input name="leftstick" type="button" id="11" value="1" />
+    <input name="rightstick" type="button" id="12" value="1" />
+    <input name="leftanalogleft" type="axis" id="0" value="-1" />
+    <input name="leftanalogright" type="axis" id="0" value="1" />
+    <input name="leftanalogup" type="axis" id="1" value="-1" />
+    <input name="leftanalogdown" type="axis" id="1" value="1" />
+    <input name="rightanalogleft" type="axis" id="3" value="-1" />
+    <input name="rightanalogright" type="axis" id="3" value="1" />
+    <input name="rightanalogup" type="axis" id="4" value="-1" />
+    <input name="rightanalogdown" type="axis" id="4" value="1" />
+  </inputConfig>
 </inputList>
 INPUTEOF
 
 echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
-echo "ES config: es_input.cfg (keyboard only — DS4 auto-detected via input wizard)"
+echo "ES config: es_input.cfg (keyboard + DS4 joystick)"
 
 # === Create directories ===
 echo "=== Creating directories ==="
 mkdir -p "$ROOTFS/home/PS4/BIOS"
 mkdir -p "$ROOTFS/home/PS4/ROMs/saves"
 mkdir -p "$ROOTFS/home/PS4/ROMs/screenshots"
-mkdir -p "$ROOTFS/home/PS4/ROMs/nes"
 mkdir -p "$ROOTFS/mnt/roms"
+for sys in snes nes n64 gba gameboy genesis psx tg16 arcade neogeo atari2600 atari7800 sms gg pcecd; do
+    mkdir -p "$ROOTFS/home/PS4/ROMs/$sys"
+done
 chown -R 1000:1000 "$ROOTFS/home/PS4"
 
 # === NetworkManager wired connection ===
@@ -358,20 +386,33 @@ method=auto
 NMEOF
 chmod 600 "$ROOTFS/etc/NetworkManager/system-connections/Wired connection 1.nmconnection"
 
-# Override: manage ALL NetworkManager interfaces (default Ubuntu server unmanages wired)
+# Override: force NM to manage ALL interfaces including Ethernet
 mkdir -p "$ROOTFS/etc/NetworkManager/conf.d"
 cat > "$ROOTFS/etc/NetworkManager/conf.d/10-managed-ethernet.conf" << 'NMOVERRIDE'
-[keyfile]
-unmanaged-devices=none
+[device]
+match-device=interface-name:eth*
+managed=true
 NMOVERRIDE
+
+# Remove Ubuntu's default file that unmanages Ethernet
+cat > "$ROOTFS/usr/lib/NetworkManager/conf.d/10-globally-managed-devices.conf" << 'NMLIB'
+[keyfile]
+unmanaged-devices=
+NMLIB
 
 # === Input kernel modules ===
 echo "=== Loading input modules ==="
 mkdir -p "$ROOTFS/etc/modules-load.d"
 cat > "$ROOTFS/etc/modules-load.d/input.conf" << 'INPUTMOD'
-joydev
 usbhid
 INPUTMOD
+
+# === DS4 udev rule ===
+mkdir -p "$ROOTFS/etc/udev/rules.d"
+cat > "$ROOTFS/etc/udev/rules.d/99-ds4-usbhid.rules" << 'UDEV'
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
+UDEV
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
@@ -406,8 +447,10 @@ cat >> "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
    force group = PS4
 SAMBAEOF
 
-# === NFS client ===
+# === NFS client only ===
 echo "=== Configuring NFS client ==="
+run_chroot "systemctl disable nfs-server.service 2>/dev/null || true"
+run_chroot "systemctl mask nfs-server.service 2>/dev/null || true"
 cat > "$ROOTFS/etc/exports" << 'NFSEOF'
 # NFS client only — mount ROMs from PC via: sudo mount -t nfs <IP>:<share> /mnt/roms
 NFSEOF
@@ -464,7 +507,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Super Nintendo</fullname>
     <path>/home/PS4/ROMs/snes</path>
     <extension>.sfc .smc</extension>
-    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/bsnes_mercury_balanced_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
     <platform>snes</platform>
     <theme>snes</theme>
   </system>
@@ -630,6 +673,24 @@ ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
 echo "Theme: carbon (RetroPie, formatVersion=3)"
 
 chown -R 1000:1000 "$ROOTFS/home/PS4"
+
+# === Remove unneeded cores and info files ===
+echo "=== Cleaning up unneeded cores ==="
+LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
+rm -f "$LIBRETRO_DIR/desmume_libretro.so" "$LIBRETRO_DIR/desmume.libretro"
+rm -f "$LIBRETRO_DIR/vice_x64_libretro.so" "$LIBRETRO_DIR/vice_x64.libretro"
+echo "Remaining cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l)"
+
+# Remove unneeded .info files — keep only what we use
+INFO_DIR="$ROOTFS/usr/share/libretro/info"
+KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info"
+cd "$INFO_DIR"
+for f in *.info; do
+    if ! echo "$KEEP_INFO" | grep -qw "$f"; then
+        rm -f "$f"
+    fi
+done
+echo "Remaining info files: $(ls "$INFO_DIR"/*.info 2>/dev/null | wc -l)"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
