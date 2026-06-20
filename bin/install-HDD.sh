@@ -343,7 +343,7 @@ echo "Extraction complete!"
 
 # Fix ownership — busybox tar may not resolve uid/gid correctly
 echo "Fixing file ownership..."
-chown -R 1001:1001 /newroot/home/PS4
+chown -R 1000:1000 /newroot/home/PS4
 
 # Fix setuid bits — busybox tar/cpio strips them
 echo "Restoring setuid bits..."
