@@ -264,15 +264,16 @@ xsetroot -cursor_name none 2>/dev/null || true
 # Disable cursor blinking
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
-# Start EmulationStation with hardware GL + vsync
-exec env vblank_mode=1 __GL_SYNC_TO_VBLANK=1 emulationstation
+# Start EmulationStation (software GL + vsync)
+exec env LIBGL_ALWAYS_SOFTWARE=1 vblank_mode=1 __GL_SYNC_TO_VBLANK=1 emulationstation
 XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
 cat > "$ROOTFS/home/PS4/.bash_profile" << 'EOF'
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! pgrep -x Xorg > /dev/null 2>&1; then
     killall -9 emulationstation 2>/dev/null
-    startx
+    rm -f /tmp/.X0-lock /tmp/.X1-lock
+    startx -- :0
 fi
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
