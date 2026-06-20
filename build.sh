@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+# No set -e — we handle errors explicitly to avoid silent build failures
 
 ROOTFS="/mnt/ps4root"
 REPO="danyboy666/ps4-retrobox"
@@ -104,9 +104,22 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libretro-beetle-pce-fast libretro-beetle-psx \
     libretro-bsnes-mercury-balanced libretro-desmume \
     libretro-gambatte libretro-genesisplusgx \
-    libretro-mgba libretro-mupen64plus libretro-snes9x" || true
-run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y libretro-nestopia" || \
-    echo "Warning: libretro-nestopia not available, NES core may be missing"
+    libretro-mgba libretro-mupen64plus libretro-nestopia libretro-snes9x" || true
+
+# === Download missing libretro cores from buildbot ===
+echo "=== Downloading missing libretro cores ==="
+LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
+BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
+for core in nestopia fbneo stella prosystem vice_x64; do
+    echo "  Downloading ${core}_libretro.so..."
+    wget -q -O "$LIBRETRO_DIR/${core}_libretro.so.zip" "$BUILDBOT/${core}_libretro.so.zip" 2>/dev/null && \
+        cd "$LIBRETRO_DIR" && unzip -o "${core}_libretro.so.zip" 2>/dev/null && \
+        rm -f "${core}_libretro.so.zip" && \
+        echo "    OK: ${core}_libretro.so" || \
+        echo "    FAILED: ${core}_libretro.so"
+done
+chmod 644 "$LIBRETRO_DIR"/*.so 2>/dev/null
+echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
 
 # === Install extras ===
 echo "=== Installing extras ==="
@@ -263,30 +276,9 @@ fi
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === Create EmulationStation systemd service ===
-echo "=== Creating ES systemd service ==="
-mkdir -p "$ROOTFS/etc/systemd/system"
-cat > "$ROOTFS/etc/systemd/system/emulationstation.service" << 'ESSERVICE'
-[Unit]
-Description=EmulationStation Frontend
-After=graphical.target
-
-[Service]
-Type=simple
-User=PS4
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/PS4/.Xauthority
-Environment=HOME=/home/PS4
-Environment=LIBGL_ALWAYS_SOFTWARE=1
-ExecStartPre=/usr/bin/sleep 5
-ExecStart=/usr/local/bin/emulationstation --no-splash
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=graphical.target
-ESSERVICE
-run_chroot "systemctl enable emulationstation.service"
+# NOTE: No systemd service for ES — it must start from .bash_profile -> startx -> .xinitrc
+# so it gets keyboard input from the console X session. systemd-started ES cannot
+# receive keyboard events from the console.
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -314,7 +306,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
 </config>
 ESCFG
 
-# es_input.cfg (ES 2.0.1a format — <inputList> with SDL2 keycodes)
+# es_input.cfg (keyboard only — ES auto-detects joystick via input wizard)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
 <?xml version="1.0"?>
 <inputList>
@@ -330,29 +322,11 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="pageup" type="key" id="1073741912" value="1" />
     <input name="pagedown" type="key" id="1073741913" value="1" />
   </inputConfig>
-  <inputConfig type="joystick" deviceName="Sony Interactive Entertainment Wireless Controller" deviceGUID="030000004c050000cc09000011810000">
-    <input name="up" type="hat" id="0" value="1" />
-    <input name="down" type="hat" id="0" value="4" />
-    <input name="left" type="hat" id="0" value="8" />
-    <input name="right" type="hat" id="0" value="2" />
-    <input name="a" type="button" id="1" value="1" />
-    <input name="b" type="button" id="0" value="1" />
-    <input name="x" type="button" id="3" value="1" />
-    <input name="y" type="button" id="2" value="1" />
-    <input name="start" type="button" id="9" value="1" />
-    <input name="select" type="button" id="8" value="1" />
-    <input name="leftshoulder" type="button" id="4" value="1" />
-    <input name="rightshoulder" type="button" id="5" value="1" />
-    <input name="lefttrigger" type="axis" id="2" value="1" />
-    <input name="righttrigger" type="axis" id="5" value="1" />
-    <input name="leftstick" type="button" id="10" value="1" />
-    <input name="rightstick" type="button" id="11" value="1" />
-  </inputConfig>
 </inputList>
 INPUTEOF
 
 echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
-echo "ES config: es_input.cfg (SDL2 keycodes, DS4 with correct GUID, no duplicate buttons)"
+echo "ES config: es_input.cfg (keyboard only — DS4 auto-detected via input wizard)"
 
 # === Create directories ===
 echo "=== Creating directories ==="
