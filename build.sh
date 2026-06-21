@@ -86,7 +86,8 @@ echo "=== Installing Graphics stack ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     mesa-vulkan-drivers libdrm-amdgpu1 libgl1-mesa-dri libgl1-mesa-glx \
     libglu1-mesa libegl1-mesa xserver-xorg-video-amdgpu \
-    xinit xterm x11-xserver-utils xserver-xorg-input-libinput"
+    xinit xterm x11-xserver-utils xserver-xorg-input-libinput \
+    libdrm-tests"
 
 # === Install EmulationStation build deps ===
 echo "=== Installing EmulationStation build deps ==="
@@ -294,7 +295,7 @@ Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "rm -f /tmp/.X0-lock /tmp/.X1-lock"
 ExecStart=/bin/bash -c "/usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp & sleep 7 && exec emulationstation"
-Restart=on-failure
+Restart=always
 RestartSec=3
 
 [Install]
@@ -436,89 +437,11 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="06
 SUBSYSTEM=="input", ATTRS{idVendor}=="045e", ATTRS{idProduct}=="0745", ENV{ID_INPUT_JOYSTICK}="0"
 UDEV
 
-# === DS4 keepalive daemon ===
-echo "=== Installing DS4 keepalive daemon ==="
-cat > "$ROOTFS/usr/local/src/ds4-keepalive.c" << 'KEEPALIVE_EOF'
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <errno.h>
-#include <signal.h>
-#define DS4_VID 0x054c
-#define DS4_PID_ORIG 0x05c4
-#define DS4_PID_V2 0x09cc
-#define KEEPALIVE_MS 2000
-#define REPORT_SIZE 32
-#define SCAN_WAIT_S 10
-static volatile int running = 1;
-static void handle_signal(int sig) { (void)sig; running = 0; }
-static const unsigned char keepalive_report[REPORT_SIZE] = {
-    0x05, 0xff, 0x00, 0x00, 0x00, 0x00, 0x10,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00
-};
-static int check_ds4(const char *name) {
-    char path[256]; FILE *f; char line[128]; int match = 0;
-    snprintf(path, sizeof(path), "/sys/class/hidraw/%s/device/uevent", name);
-    f = fopen(path, "r"); if (!f) return 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "HID_ID=")) {
-            int vid = 0, pid = 0;
-            if (sscanf(line, "HID_ID=%x:%x", &vid, &pid) == 2)
-                if (vid == DS4_VID && (pid == DS4_PID_ORIG || pid == DS4_PID_V2)) match = 1;
-        }
-    }
-    fclose(f); return match;
-}
-static int find_ds4(char *out, size_t len) {
-    DIR *d = opendir("/sys/class/hidraw"); struct dirent *ent;
-    if (!d) return -1;
-    while ((ent = readdir(d)) != NULL) {
-        if (ent->d_name[0] == '.') continue;
-        if (check_ds4(ent->d_name)) {
-            snprintf(out, len, "/dev/%s", ent->d_name);
-            closedir(d); return 0;
-        }
-    }
-    closedir(d); return -1;
-}
-static int keepalive_loop(const char *devpath) {
-    int fd = open(devpath, O_WRONLY | O_NONBLOCK);
-    if (fd < 0) return -1;
-    fprintf(stderr, "ds4-keepalive: connected on %s\n", devpath);
-    while (running) {
-        if (access(devpath, F_OK) < 0) break;
-        ssize_t n = write(fd, keepalive_report, REPORT_SIZE);
-        if (n < 0) { if (errno == ENODEV || errno == EIO) break; break; }
-        usleep(KEEPALIVE_MS * 1000);
-    }
-    close(fd); fprintf(stderr, "ds4-keepalive: device lost\n");
-    return 0;
-}
-int main(void) {
-    char devpath[128];
-    signal(SIGTERM, handle_signal); signal(SIGINT, handle_signal);
-    fprintf(stderr, "ds4-keepalive: daemon started\n");
-    while (running) {
-        if (find_ds4(devpath, sizeof(devpath)) == 0) keepalive_loop(devpath);
-        if (running) sleep(SCAN_WAIT_S);
-    }
-    return 0;
-}
-KEEPALIVE_EOF
-run_chroot "cd /usr/local/src && gcc -O2 -o /usr/local/bin/ds4-keepalive ds4-keepalive.c -Wall -Wextra && rm -f ds4-keepalive.c"
-echo "DS4 keepalive: compiled"
-
 # === HDMI hotplug watcher ===
 echo "=== Installing HDMI watcher ==="
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-FB_BLANK="/sys/class/graphics/fb0/blank"
 POLL_INTERVAL=3
 LAST_STATE=""
 echo "hdmi-watcher: monitoring $DRM_STATUS"
@@ -526,10 +449,8 @@ while true; do
     if [ -f "$DRM_STATUS" ]; then
         CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
         if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, forcing redraw"
-            echo 0 > "$FB_BLANK" 2>/dev/null
-            fbset -a -depth 32 2>/dev/null
-            DISPLAY=:0 xset dpms force on 2>/dev/null
+            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
+            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
         fi
         LAST_STATE="$CURRENT"
     fi
@@ -537,22 +458,6 @@ while true; do
 done
 HDMI_EOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
-
-# === DS4 keepalive systemd service ===
-cat > "$ROOTFS/etc/systemd/system/ds4-keepalive.service" << 'SVC1EOF'
-[Unit]
-Description=DS4 USB Keepalive
-After=multi-user.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/ds4-keepalive
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-SVC1EOF
 
 # === HDMI watcher systemd service ===
 cat > "$ROOTFS/etc/systemd/system/hdmi-watcher.service" << 'SVC2EOF'
@@ -570,10 +475,8 @@ RestartSec=5
 WantedBy=multi-user.target
 SVC2EOF
 
-# Enable services
-ln -sf /etc/systemd/system/ds4-keepalive.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/ds4-keepalive.service"
 ln -sf /etc/systemd/system/hdmi-watcher.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/hdmi-watcher.service"
-echo "Services: ds4-keepalive, hdmi-watcher enabled"
+echo "Services: hdmi-watcher enabled"
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'

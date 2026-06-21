@@ -16,7 +16,7 @@
 - [x] Network — Ethernet + DHCP, NFS client, Samba share, SSH (port 22)
 - [x] All 4 payloads functional (1GB/2GB/3GB/4GB VRAM)
 - [x] Install flow: 3GB base + optional expansion (16/32/50GB) during install
-- [x] GitHub release v1.1 with all assets
+- [x] GitHub release v1.2 with all assets
 - [x] DS4 wired USB working via hid-generic driver (`usbhid.quirks` prevents `hid_playstation` from claiming DS4)
 - [x] Keyboard input working (ES detects Microsoft keyboard, buttons navigable)
 - [x] EmulationStation frontend — 15 systems, carbon theme, ES 2.0.1a
@@ -37,10 +37,7 @@
 
 ### Known Bugs
 
-- [ ] **DS4 disconnects after 5-56 seconds** — hid-generic sends no USB keepalive reports. DS4 firmware drops connection after inactivity timeout. Active button use extends connection. Fix: keepalive daemon needed.
-- [ ] **DS4 not functional after disconnect/replug** — DS4 must be replugged and reconfigured after disconnect.
-- [ ] **ES loses HDMI signal after TV shutdown** — If TV is powered off, EmulationStation loses the HDMI output and doesn't recover when TV comes back. Likely missing screensaver/DPMS handling. Fix: configure xset DPMS/screensaver or add HDMI hotplug recovery.
-- [ ] **`/dev/loop` unmount error on boot** — cosmetic, not yet fixed.
+- [ ] **ES loses HDMI signal after TV shutdown** — If TV is powered off, EmulationStation loses the HDMI output and doesn't recover when TV comes back. Fix: hdmi-watcher.sh uses `modetest` to force modeset on reconnection.
 - [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 
 ### Not Yet Tested
@@ -65,8 +62,8 @@
 5. ~~Fix DS4 wired USB~~ — Done (`usbhid.quirks` prevents `hid_playstation` crash, hid-generic driver)
 6. ~~Fix ES vsync / keyboard dead~~ — Done (es-session.service launches Xorg directly)
 7. ~~Network services~~ — Done (NFS client, Samba, SSH, NetworkManager)
-8. **Fix DS4 disconnect** — Build keepalive daemon (HID output report every 2s to prevent firmware timeout)
-9. **Fix DS4 reconnect** — DS4 not functional after disconnect/replug, needs investigation
+8. **Fix DS4 disconnect** — ~~Keepalive daemon~~ — Resolved: was caused by faulty USB cable, not firmware timeout
+9. **Fix DS4 reconnect** — ~~USB port reset~~ — Resolved: same cable issue
 10. **Fix ES HDMI signal loss** — ES loses HDMI output when TV is powered off, no recovery on TV power-on. Likely missing screensaver/DPMS handling or HDMI hotplug re-detection
 11. **Controller driver support** — Load in-tree modules (xpad, hid-nintendo, hid-logitech-dj) at boot for Xbox/Switch/Logitech USB controllers. No pre-mapping — non-DS4 controllers use ES Configure Input. Skip GPIO drivers (RPi-only). **DO NOT load hid-sony** (crashes xhci_aeolia).
 12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
@@ -439,7 +436,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 ## Quick Start
 
 ### First Time Install (one-time setup)
-1. **Download** — grab `ps4-retrobox-v1.1.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.1)
+1. **Download** — grab `ps4-retrobox-v1.2.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.2)
 2. **Extract** the zip on your PC
 3. **Choose kernel** — rename the correct kernel to `bzImage`:
    - **Aeolia/Belize** (Fat CUH-1000/1100/1200, Slim CUH-2000): rename `bzImage_no-built-in-fw_Clang_fullLTO` → `bzImage`
