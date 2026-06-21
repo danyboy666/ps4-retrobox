@@ -244,6 +244,9 @@ if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 			wait $_DD_PID
 			printf "\r  Extending file: %dMB / %dMB (100%%) ✓\n" "$_TARGET_MB" "$_TARGET_MB"
 
+			echo "  Attaching .img to loop5..."
+			losetup -o 0 /dev/loop5 "$_IMG_FILE"
+
 			echo "  Resizing ext4 filesystem..."
 			resize2fs /dev/loop5 2>&1 &
 			_RS_PID=$!
