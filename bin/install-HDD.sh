@@ -173,6 +173,32 @@ else
 fi
 echo ""
 
+# === Storage choice: .img or UFS ===
+echo ""
+echo "Where do you want to store ROMs?"
+echo "  [1] Internal .img (default) — self-contained, easier backup"
+echo "  [2] UFS (PS4HDD) — larger capacity, persists across reinstalls"
+echo ""
+echo "Default: 1 in 15 seconds..."
+_STORAGE_COUNTDOWN=15
+_STORAGE_CHOICE=""
+while [ "$_STORAGE_COUNTDOWN" -gt 0 ] && [ -z "$_STORAGE_CHOICE" ]; do
+    printf "\r  Choice [1-2]: %2ds " "$_STORAGE_COUNTDOWN"
+    _SC=""
+    read -t 1 _SC 2>/dev/null
+    case "$_SC" in
+        1) _STORAGE_CHOICE="img" ;;
+        2) _STORAGE_CHOICE="ufs" ;;
+    esac
+    _STORAGE_COUNTDOWN=$((_STORAGE_COUNTDOWN - 1))
+done
+if [ -z "$_STORAGE_CHOICE" ]; then
+    _STORAGE_CHOICE="img"
+    echo ""
+    echo "  Auto-selected: Internal .img"
+fi
+echo ""
+
 # Show PS4 RetroBox art + ROM transfer instructions (visible during dd/extraction)
 clear
 cat << 'PS4ART'
@@ -220,11 +246,7 @@ echo "=========================================="
 echo "  Installation in progress!"
 echo "=========================================="
 echo ""
-echo "  How to transfer ROMs and BIOS files:"
-echo ""
-echo "  USB: Plug USB drive, copy files to:"
-echo "    /home/PS4/ROMS/<system>/"
-echo "    /home/PS4/BIOS/"
+echo "  After install, transfer ROMs via:"
 echo ""
 echo "  SCP/SSH:"
 echo "    scp *.sfc PS4@<PS4_IP>:/home/PS4/ROMS/snes/"
@@ -232,6 +254,10 @@ echo ""
 echo "  FTP:"
 echo "    Connect with any FTP client to PS4@<PS4_IP>"
 echo "    Navigate to /home/PS4/ROMS/"
+echo ""
+echo "  USB: Plug USB drive, copy files to:"
+echo "    /home/PS4/ROMS/<system>/"
+echo "    /home/PS4/BIOS/"
 echo ""
 echo "  Samba (network share):"
 echo "    Run 'sudo setup-samba.sh' on PS4 first,"
@@ -334,12 +360,24 @@ _PROG_PID=$!
 
 # Extract at full speed (--no-same-owner: all files become root, chown fixes home later)
 tar xf "/ps4hdd/system/boot/$_install_OS" --no-same-owner
+_TAR_EXIT=$?
 
 # Kill progress tracker
 kill $_PROG_PID 2>/dev/null
 wait $_PROG_PID 2>/dev/null
 echo ""
-echo "Extraction complete!"
+
+# Verify extraction succeeded before continuing
+if [ "$_TAR_EXIT" -ne 0 ] || [ ! -e /newroot/sbin/init ]; then
+    echo "ERROR: Rootfs extraction failed or incomplete."
+    echo "  tar exit code: $_TAR_EXIT"
+    [ -e /newroot/sbin/init ] && echo "  /sbin/init: found" || echo "  /sbin/init: MISSING"
+    echo "  The .img may be too small or the tarball may be corrupt."
+    rm -f /ps4hdd/home/$_install_OS_img
+    losetup -d /dev/loop5 2>/dev/null
+    rescueshell
+fi
+echo "Extraction verified: /sbin/init found."
 
 # Fix ownership — busybox tar may not resolve uid/gid correctly
 echo "Fixing file ownership..."
@@ -352,25 +390,47 @@ chmod u+s /newroot/usr/bin/su
 chmod u+s /newroot/usr/bin/passwd
 chmod u+s /newroot/usr/bin/pkexec
 
-echo "Syncing..."
-sync
-
-umount /newroot 2>/dev/null
-losetup -d /dev/loop5 2>/dev/null
-
-# Check if UFS storage was chosen during build
+# Copy ROMs to UFS if user chose that option (BEFORE umount — /newroot must be mounted)
 echo ""
-if [ -f /newroot/home/PS4/.rom_storage ] && grep -q "ufs" /newroot/home/PS4/.rom_storage; then
-    echo "UFS storage selected. Creating ROM directories on UFS..."
-    mkdir -p /ps4hdd/ROMS/snes /ps4hdd/ROMS/nes /ps4hdd/ROMS/n64 /ps4hdd/ROMS/gba /ps4hdd/ROMS/gb /ps4hdd/ROMS/gbc /ps4hdd/ROMS/megadrive /ps4hdd/ROMS/psx /ps4hdd/ROMS/tg16 /ps4hdd/ROMS/tgcd /ps4hdd/ROMS/arcade /ps4hdd/ROMS/neogeo /ps4hdd/ROMS/atari2600 /ps4hdd/ROMS/atari7800 /ps4hdd/ROMS/mastersystem /ps4hdd/ROMS/gamegear
-    echo "Copying ROMs from .img to UFS..."
+if [ "$_STORAGE_CHOICE" = "ufs" ]; then
+    echo "UFS storage selected. Copying ROMs to UFS..."
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+        mkdir -p "/ps4hdd/ROMS/$sys"
+    done
     cp -r /newroot/home/PS4/ROMS/* /ps4hdd/ROMS/
-    rm -f /newroot/home/PS4/.rom_storage
-    echo "Done! ROMs will load from UFS on next boot."
+    echo "Fixing UFS ROM ownership..."
+    chown -R 1000:1000 /ps4hdd/ROMS
+    # Clean up empty ROM dirs inside .img (they're on UFS now)
+    rm -rf /newroot/home/PS4/ROMS
+    mkdir -p /newroot/home/PS4/ROMS
+    echo "Done! ROMs copied to UFS with correct ownership."
     echo "  UFS: /ps4hdd/ROMS/"
 else
     echo "ROMs stored in .img (default)."
     echo "  .img: /home/PS4/ROMS/"
+fi
+
+# Sync and unmount cleanly (no 2>/dev/null — we need to know if this fails)
+echo ""
+echo "Syncing..."
+sync
+sleep 2
+echo "Unmounting /newroot..."
+if ! umount /newroot; then
+    echo "WARNING: umount /newroot failed. Retrying with lazy unmount..."
+    umount -l /newroot
+    sleep 2
+fi
+if ! losetup -d /dev/loop5; then
+    echo "WARNING: losetup -d /dev/loop5 failed."
+fi
+
+if [ "$_STORAGE_CHOICE" = "ufs" ]; then
+    echo ""
+    echo "To switch between UFS and Samba later:"
+    echo "  Use 'Network' system in EmulationStation, or"
+    echo "  Run: sudo setup-samba.sh --toggle"
+else
     echo ""
     echo "To switch to UFS storage later:"
     echo "  1. Run: sudo setup-ufs-storage"

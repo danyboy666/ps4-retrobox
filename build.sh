@@ -397,10 +397,12 @@ for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari26
 done
 
 # Copy homebrew ROMs into .img (source: es_configs import/ROMs (homebrews)/)
+# NOTE: neogeo (383MB) and tgcd (288MB) are excluded — too large for 3GB .img
+# Users can add them via FTP/Samba after install
 HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMs (homebrews)"
 if [ -d "$HOMEBREW_DIR" ]; then
-    echo "Copying homebrew ROMs to .img..."
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+    echo "Copying homebrew ROMs to .img (excluding neogeo, tgcd)..."
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 arcade atari2600 atari7800 mastersystem gamegear; do
         if [ -d "$HOMEBREW_DIR/$sys" ]; then
             cp -r "$HOMEBREW_DIR/$sys"/* "$ROMS_DIR/$sys/" 2>/dev/null || true
         fi
@@ -633,6 +635,7 @@ restore_ufs() {
     sudo rm -rf "$ROMS_DIR"
     sudo mv "$BK_DIR" "$ROMS_DIR" 2>/dev/null || true
     sudo mount --bind /ps4hdd/ROMS "$ROMS_DIR"
+    sudo chown -R 1000:1000 /ps4hdd/ROMS
     sudo systemctl restart es-session
     echo "UFS ROMs restored."
 }
@@ -886,6 +889,24 @@ chmod +x "$ROOTFS/home/PS4/ROMS-network/README.sh"
 # Allow PS4 user to run setup-samba.sh without password
 echo "PS4 ALL=(ALL) NOPASSWD: /usr/local/bin/setup-samba.sh" > "$ROOTFS/etc/sudoers.d/ps4-samba"
 chmod 440 "$ROOTFS/etc/sudoers.d/ps4-samba"
+
+# === systemd service: fix UFS permissions at boot ===
+cat > "$ROOTFS/etc/systemd/system/fix-ufs-permissions.service" << 'UFSPERM'
+[Unit]
+Description=Fix UFS ROM directory ownership for PS4 user
+After=local-fs.target
+Before=es-session.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'if mountpoint -q /ps4hdd/ROMS 2>/dev/null || [ -d /ps4hdd/ROMS ]; then chown -R 1000:1000 /ps4hdd/ROMS; fi'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UFSPERM
+ln -sf /etc/systemd/system/fix-ufs-permissions.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-ufs-permissions.service" 2>/dev/null || true
+echo "Systemd service: fix-ufs-permissions"
 
 # === Remove unneeded cores and info files ===
 echo "=== Cleaning up unneeded cores ==="
