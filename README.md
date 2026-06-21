@@ -921,6 +921,7 @@ The init and functions.sh are derived from better-initramfs, modified in stages:
 
 - [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation frontend
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
+- [raelgc](https://github.com/raelgc/es-logo) — EmulationStation Plymouth boot splash theme (GPL-2.0)
 
 ## License
 
