@@ -37,7 +37,6 @@
 
 ### Known Bugs
 
-- [ ] **ES loses HDMI signal after TV shutdown** — If TV is powered off, EmulationStation loses the HDMI output and doesn't recover when TV comes back. Fix: hdmi-watcher.sh uses `modetest` to force modeset on reconnection.
 - [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 
 ### Not Yet Tested
@@ -64,7 +63,7 @@
 7. ~~Network services~~ — Done (NFS client, Samba, SSH, NetworkManager)
 8. **Fix DS4 disconnect** — ~~Keepalive daemon~~ — Resolved: was caused by faulty USB cable, not firmware timeout
 9. **Fix DS4 reconnect** — ~~USB port reset~~ — Resolved: same cable issue
-10. **Fix ES HDMI signal loss** — ES loses HDMI output when TV is powered off, no recovery on TV power-on. Likely missing screensaver/DPMS handling or HDMI hotplug re-detection
+10. ~~**Fix ES HDMI signal loss**~~ — Done: hdmi-watcher.sh uses `modetest -s HDMI-A-1:1920x1080@60` to force modeset on TV reconnect. Tested and working.
 11. **Controller driver support** — Load in-tree modules (xpad, hid-nintendo, hid-logitech-dj) at boot for Xbox/Switch/Logitech USB controllers. No pre-mapping — non-DS4 controllers use ES Configure Input. Skip GPIO drivers (RPi-only). **DO NOT load hid-sony** (crashes xhci_aeolia).
 12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
 13. **Service selection during install** — Modify `install-HDD.sh` to let user choose which services to enable (SMB, NFS, FTP) BEFORE `.img` creation. All services disabled by default in the image
