@@ -364,20 +364,60 @@ INPUTEOF
 echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
 echo "ES config: es_input.cfg (keyboard + DS4 joystick)"
 
+# === Storage choice ===
+echo ""
+echo "Where should ROMs be stored?"
+echo "  [1] In .img (default) — self-contained, easier backup"
+echo "  [2] On UFS — larger capacity, persists across reinstalls"
+echo ""
+echo "Default: 1"
+STORAGE_CHOICE=""
+read -t 10 -n 1 STORAGE_CHOICE 2>/dev/null
+STORAGE_CHOICE=${STORAGE_CHOICE:-1}
+echo ""
+
+if [ "$STORAGE_CHOICE" = "2" ]; then
+    ROM_STORAGE="ufs"
+    echo "Storage: UFS (ROMs on /ps4hdd/ROMS/)"
+else
+    ROM_STORAGE="img"
+    echo "Storage: .img (ROMs in /home/PS4/ROMS/)"
+fi
+
 # === Create directories ===
 echo "=== Creating directories ==="
 mkdir -p "$ROOTFS/home/PS4/BIOS"
-mkdir -p "$ROOTFS/home/PS4/ROMs/saves"
-mkdir -p "$ROOTFS/home/PS4/ROMs/screenshots"
-mkdir -p "$ROOTFS/mnt/roms"
-for sys in snes nes n64 gba gameboy genesis psx tg16 arcade neogeo atari2600 atari7800 sms gg pcecd; do
-    mkdir -p "$ROOTFS/home/PS4/ROMs/$sys"
+mkdir -p "$ROOTFS/home/PS4/saves"
+mkdir -p "$ROOTFS/home/PS4/screenshots"
+
+# Create ROM directories in .img (empty fallback for UFS mode, populated for .img mode)
+ROMS_DIR="$ROOTFS/home/PS4/ROMS"
+for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+    mkdir -p "$ROMS_DIR/$sys"
 done
+
+# Copy homebrew ROMs into .img (source: es_configs import/ROMs (homebrews)/)
+HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMs (homebrews)"
+if [ -d "$HOMEBREW_DIR" ]; then
+    echo "Copying homebrew ROMs to .img..."
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+        if [ -d "$HOMEBREW_DIR/$sys" ]; then
+            cp -r "$HOMEBREW_DIR/$sys"/* "$ROMS_DIR/$sys/" 2>/dev/null || true
+        fi
+    done
+    echo "Homebrew ROMs copied."
+fi
+
+# If UFS mode, write flag for install-HDD.sh
+if [ "$ROM_STORAGE" = "ufs" ]; then
+    echo "ufs" > "$ROOTFS/home/PS4/.rom_storage"
+    echo "Flag file written: .rom_storage=ufs"
+fi
 
 # Create empty gamelists so ES can parse systems on first boot
 echo "=== Creating empty gamelists ==="
 GAMEDIR="$ROOTFS/home/PS4/.emulationstation/gamelists"
-for sys in snes nes n64 gba gb genesis psx pce arcade neogeo atari2600 atari7800 sms gg pcecd; do
+for sys in snes nes n64 gba gb gbc megadrive psx pce tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
     mkdir -p "$GAMEDIR/$sys"
     echo '<?xml version="1.0"?>' > "$GAMEDIR/$sys/gamelist.xml"
     echo '<gameList />' >> "$GAMEDIR/$sys/gamelist.xml"
@@ -501,7 +541,7 @@ cat >> "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
 
 [PS4_ROMs]
    comment = PS4 RetroBox ROMs
-   path = /ps4hdd/ROMs
+   path = /ps4hdd/ROMS
    browseable = yes
    read only = no
    guest ok = yes
@@ -516,7 +556,7 @@ echo "=== Configuring NFS client ==="
 run_chroot "systemctl disable nfs-server.service 2>/dev/null || true"
 run_chroot "systemctl mask nfs-server.service 2>/dev/null || true"
 cat > "$ROOTFS/etc/exports" << 'NFSEOF'
-# NFS client only — mount ROMs from PC via: sudo mount -t nfs <IP>:<share> /mnt/roms
+# NFS client only — mount ROMs from PC via: sudo mount -t nfs <IP>:<share> /home/PS4/ROMS
 NFSEOF
 
 # === Create Samba setup helper ===
@@ -529,17 +569,93 @@ USER="PS4"                   # Samba username
 PASS="PS4"                   # Samba password
 # =========================
 
-echo "Mounting //$PC_IP/$SHARE to /mnt/roms ..."
-sudo mkdir -p /mnt/roms
+ROMS_DIR="/home/PS4/ROMS"
+BK_DIR="/home/PS4/ROM_BK"
+MOUNT_LINE="//PC_IP/SHARE $ROMS_DIR cifs user=USER,password=PASS,uid=1000,gid=1000,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0"
 
-if ! grep -q "$SHARE" /etc/fstab; then
-    echo "//$PC_IP/$SHARE /mnt/roms cifs user=$USER,password=$PASS,uid=1000,gid=1000,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0" | sudo tee -a /etc/fstab
-    echo "Added to /etc/fstab"
-fi
+usage() {
+    echo "Usage: setup-samba.sh [--toggle|--restore|--setup]"
+    echo ""
+    echo "  --toggle   Switch between UFS and Samba ROMs (default)"
+    echo "  --restore  Restore UFS ROMs after Samba"
+    echo "  --setup    One-time setup: add fstab entry and mount"
+    echo ""
+    echo "Before first use, edit this script and set PC_IP and SHARE."
+}
 
-sudo mount -a
-echo "Done! ROMs available at /mnt/roms/"
-ls /mnt/roms/
+setup_fstab() {
+    if ! grep -q "$SHARE" /etc/fstab; then
+        echo "Adding Samba share to /etc/fstab..."
+        echo "//$PC_IP/$SHARE $ROMS_DIR cifs user=$USER,password=$PASS,uid=1000,gid=1000,iocharset=utf8,x-systemd.automount,_netdev,nofail 0 0" | sudo tee -a /etc/fstab
+        echo "Added to /etc/fstab"
+    else
+        echo "Samba share already in /etc/fstab"
+    fi
+}
+
+toggle_roms() {
+    # Detect current mode
+    if mount | grep -q "cifs.*$ROMS_DIR"; then
+        # Currently Samba → restore UFS or .img
+        echo "Currently Samba. Restoring..."
+        sudo umount "$ROMS_DIR" 2>/dev/null
+        if [ -d "$BK_DIR" ]; then
+            sudo mv "$BK_DIR" "$ROMS_DIR"
+            sudo mount --bind /ps4hdd/ROMS "$ROMS_DIR"
+            echo "Restored UFS ROMs."
+        else
+            sudo rmdir "$ROMS_DIR" 2>/dev/null || true
+            echo "Restored .img ROMs."
+        fi
+    elif mountpoint -q "$ROMS_DIR" 2>/dev/null; then
+        # Currently UFS bind mount → switch to Samba
+        echo "Currently UFS. Switching to Samba..."
+        sudo umount "$ROMS_DIR" 2>/dev/null
+        [ -d "$BK_DIR" ] && sudo rm -rf "$BK_DIR"
+        sudo mv "$ROMS_DIR" "$BK_DIR"
+        sudo mkdir -p "$ROMS_DIR"
+        sudo mount -a
+        echo "Samba ROMs active."
+    else
+        # Currently .img (regular directory) → switch to Samba
+        echo "Currently .img. Switching to Samba..."
+        sudo mv "$ROMS_DIR" "$BK_DIR" 2>/dev/null || true
+        sudo mkdir -p "$ROMS_DIR"
+        sudo mount -a
+        echo "Samba ROMs active."
+    fi
+    sudo systemctl restart es-session
+}
+
+restore_ufs() {
+    echo "Restoring UFS ROMs..."
+    sudo umount "$ROMS_DIR" 2>/dev/null
+    sudo rm -rf "$ROMS_DIR"
+    sudo mv "$BK_DIR" "$ROMS_DIR" 2>/dev/null || true
+    sudo mount --bind /ps4hdd/ROMS "$ROMS_DIR"
+    sudo systemctl restart es-session
+    echo "UFS ROMs restored."
+}
+
+case "${1:-}" in
+    --toggle)
+        setup_fstab
+        toggle_roms
+        ;;
+    --restore)
+        restore_ufs
+        ;;
+    --setup)
+        setup_fstab
+        sudo mkdir -p "$ROMS_DIR"
+        sudo mount -a
+        echo "Done! Samba ROMs mounted."
+        ls "$ROMS_DIR/"
+        ;;
+    *)
+        usage
+        ;;
+esac
 SAMBA
 chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 
@@ -554,9 +670,9 @@ libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 libretro_info_path = "/usr/share/libretro/info"
 content_database_path = "/usr/share/retroarch/assets/retroarch/database/rdb"
 cheat_database_path = "/usr/share/retroarch/assets/retroarch/cht"
-screenshot_directory = "/home/PS4/ROMs/screenshots"
-savefile_directory = "/home/PS4/ROMs/saves"
-savestate_directory = "/home/PS4/ROMs/saves"
+screenshot_directory = "/home/PS4/screenshots"
+savefile_directory = "/home/PS4/saves"
+savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 joypad_autoconfig_dir = "/usr/share/retroarch/assets/autoconfig"
 menu_driver = "ozone"
@@ -569,8 +685,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>snes</name>
     <fullname>Super Nintendo</fullname>
-    <path>/home/PS4/ROMs/snes</path>
-    <extension>.sfc .smc</extension>
+    <path>/home/PS4/ROMS/snes</path>
+    <extension>.sfc .smc .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
     <platform>snes</platform>
     <theme>snes</theme>
@@ -578,7 +694,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>nes</name>
     <fullname>Nintendo Entertainment System</fullname>
-    <path>/home/PS4/ROMs/nes</path>
+    <path>/home/PS4/ROMS/nes</path>
     <extension>.nes .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
     <platform>nes</platform>
@@ -587,8 +703,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>n64</name>
     <fullname>Nintendo 64</fullname>
-    <path>/home/PS4/ROMs/n64</path>
-    <extension>.n64 .z64 .v64</extension>
+    <path>/home/PS4/ROMS/n64</path>
+    <extension>.n64 .z64 .v64 .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
     <platform>n64</platform>
     <theme>n64</theme>
@@ -596,35 +712,44 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>gba</name>
     <fullname>Game Boy Advance</fullname>
-    <path>/home/PS4/ROMs/gba</path>
-    <extension>.gba</extension>
+    <path>/home/PS4/ROMS/gba</path>
+    <extension>.gba .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
     <platform>gba</platform>
     <theme>gba</theme>
   </system>
   <system>
     <name>gb</name>
-    <fullname>Game Boy / Color</fullname>
-    <path>/home/PS4/ROMs/gameboy</path>
-    <extension>.gb .gbc</extension>
+    <fullname>Game Boy</fullname>
+    <path>/home/PS4/ROMS/gb</path>
+    <extension>.gb .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gb</platform>
     <theme>gb</theme>
   </system>
   <system>
-    <name>genesis</name>
-    <fullname>Sega Genesis / Mega Drive</fullname>
-    <path>/home/PS4/ROMs/genesis</path>
-    <extension>.md .bin .gen .smd</extension>
+    <name>gbc</name>
+    <fullname>Game Boy Color</fullname>
+    <path>/home/PS4/ROMS/gbc</path>
+    <extension>.gbc .zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
+    <platform>gb</platform>
+    <theme>gb</theme>
+  </system>
+  <system>
+    <name>megadrive</name>
+    <fullname>Sega Mega Drive</fullname>
+    <path>/home/PS4/ROMS/megadrive</path>
+    <extension>.md .bin .gen .smd .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
-    <platform>genesis</platform>
-    <theme>genesis</theme>
+    <platform>megadrive</platform>
+    <theme>megadrive</theme>
   </system>
   <system>
     <name>psx</name>
     <fullname>Sony PlayStation</fullname>
-    <path>/home/PS4/ROMs/psx</path>
-    <extension>.bin .cue .iso .pbp .chd</extension>
+    <path>/home/PS4/ROMS/psx</path>
+    <extension>.bin .cue .iso .pbp .chd .m3u .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
     <platform>psx</platform>
     <theme>psx</theme>
@@ -632,16 +757,25 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>pce</name>
     <fullname>TurboGrafx-16</fullname>
-    <path>/home/PS4/ROMs/tg16</path>
-    <extension>.pce .cue</extension>
+    <path>/home/PS4/ROMS/tg16</path>
+    <extension>.pce .cue .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>pcengine</platform>
     <theme>pce</theme>
   </system>
   <system>
+    <name>tgcd</name>
+    <fullname>TurboGrafx-CD</fullname>
+    <path>/home/PS4/ROMS/tgcd</path>
+    <extension>.chd .cue .iso .zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <platform>pcengine</platform>
+    <theme>tgcd</theme>
+  </system>
+  <system>
     <name>arcade</name>
     <fullname>Arcade</fullname>
-    <path>/home/PS4/ROMs/arcade</path>
+    <path>/home/PS4/ROMS/arcade</path>
     <extension>.zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>arcade</platform>
@@ -650,7 +784,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>neogeo</name>
     <fullname>Neo Geo</fullname>
-    <path>/home/PS4/ROMs/neogeo</path>
+    <path>/home/PS4/ROMS/neogeo</path>
     <extension>.zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>neogeo</platform>
@@ -659,8 +793,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>atari2600</name>
     <fullname>Atari 2600</fullname>
-    <path>/home/PS4/ROMs/atari2600</path>
-    <extension>.a26 .bin .rom</extension>
+    <path>/home/PS4/ROMS/atari2600</path>
+    <extension>.a26 .bin .rom .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
     <platform>atari2600</platform>
     <theme>atari2600</theme>
@@ -668,38 +802,38 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
   <system>
     <name>atari7800</name>
     <fullname>Atari 7800</fullname>
-    <path>/home/PS4/ROMs/atari7800</path>
-    <extension>.a78 .bin</extension>
+    <path>/home/PS4/ROMS/atari7800</path>
+    <extension>.a78 .bin .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
     <platform>atari7800</platform>
     <theme>atari7800</theme>
   </system>
   <system>
-    <name>sms</name>
+    <name>mastersystem</name>
     <fullname>Sega Master System</fullname>
-    <path>/home/PS4/ROMs/sms</path>
-    <extension>.sms .bin .gen</extension>
+    <path>/home/PS4/ROMS/mastersystem</path>
+    <extension>.sms .bin .gen .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>mastersystem</platform>
-    <theme>sms</theme>
+    <theme>mastersystem</theme>
   </system>
   <system>
-    <name>gg</name>
+    <name>gamegear</name>
     <fullname>Sega Game Gear</fullname>
-    <path>/home/PS4/ROMs/gg</path>
+    <path>/home/PS4/ROMS/gamegear</path>
     <extension>.gg .bin .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>gamegear</platform>
-    <theme>gg</theme>
+    <theme>gamegear</theme>
   </system>
   <system>
-    <name>pcecd</name>
-    <fullname>PC Engine CD</fullname>
-    <path>/home/PS4/ROMs/pcecd</path>
-    <extension>.cue .chd .iso</extension>
-    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
-    <platform>pcengine</platform>
-    <theme>pcecd</theme>
+    <name>network</name>
+    <fullname>Network ROMs</fullname>
+    <path>/home/PS4/ROMS-network</path>
+    <extension>.sh</extension>
+    <command>sudo /usr/local/bin/setup-samba.sh --toggle</command>
+    <platform>pc</platform>
+    <theme>network</theme>
   </system>
 </systemList>
 ESCFG
@@ -721,11 +855,10 @@ git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/nul
 
 if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
-    # Rename theme folders that don't match es_systems.cfg theme names
-    [ -d "$THEME_DIR/carbon/pce-cd" ] && mv "$THEME_DIR/carbon/pce-cd" "$THEME_DIR/carbon/pcecd"
+    # Rename theme folders to match es_systems.cfg theme names
+    [ -d "$THEME_DIR/carbon/genesis" ] && mv "$THEME_DIR/carbon/genesis" "$THEME_DIR/carbon/megadrive"
+    [ -d "$THEME_DIR/carbon/pce-cd" ] && mv "$THEME_DIR/carbon/pce-cd" "$THEME_DIR/carbon/tgcd"
     [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/pce"
-    [ -d "$THEME_DIR/carbon/mastersystem" ] && mv "$THEME_DIR/carbon/mastersystem" "$THEME_DIR/carbon/sms"
-    [ -d "$THEME_DIR/carbon/gamegear" ] && mv "$THEME_DIR/carbon/gamegear" "$THEME_DIR/carbon/gg"
     echo "Theme installed: $THEME_DIR/carbon"
     _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
     echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
@@ -741,6 +874,18 @@ ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
 echo "Theme: carbon (RetroPie, formatVersion=3)"
 
 chown -R 1000:1000 "$ROOTFS/home/PS4"
+
+# === Create Network ROMS directory and sudoers entry ===
+echo "=== Setting up Network toggle ==="
+mkdir -p "$ROOTFS/home/PS4/ROMS-network"
+echo "#!/bin/bash" > "$ROOTFS/home/PS4/ROMS-network/README.sh"
+echo "# This directory is used by the Network system in EmulationStation." >> "$ROOTFS/home/PS4/ROMS-network/README.sh"
+echo "# When you select 'Network ROMs' in ES, it toggles between UFS and Samba." >> "$ROOTFS/home/PS4/ROMS-network/README.sh"
+chmod +x "$ROOTFS/home/PS4/ROMS-network/README.sh"
+
+# Allow PS4 user to run setup-samba.sh without password
+echo "PS4 ALL=(ALL) NOPASSWD: /usr/local/bin/setup-samba.sh" > "$ROOTFS/etc/sudoers.d/ps4-samba"
+chmod 440 "$ROOTFS/etc/sudoers.d/ps4-samba"
 
 # === Remove unneeded cores and info files ===
 echo "=== Cleaning up unneeded cores ==="
@@ -765,6 +910,7 @@ echo "=== Installing Plymouth es-logo theme ==="
 run_chroot "cd /usr/share/plymouth/themes && git clone https://github.com/raelgc/es-logo.git"
 run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/es-logo/es-logo.plymouth 100"
 run_chroot "plymouth-set-default-theme es-logo"
+run_chroot "systemctl enable plymouth-start.service"
 echo "Plymouth theme: es-logo"
 
 # === Rebuild initramfs (includes Plymouth hook) ===

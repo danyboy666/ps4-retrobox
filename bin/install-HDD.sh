@@ -223,23 +223,23 @@ echo ""
 echo "  How to transfer ROMs and BIOS files:"
 echo ""
 echo "  USB: Plug USB drive, copy files to:"
-echo "    /home/PS4/ROMs/<system>/"
+echo "    /home/PS4/ROMS/<system>/"
 echo "    /home/PS4/BIOS/"
 echo ""
 echo "  SCP/SSH:"
-echo "    scp *.sfc PS4@<PS4_IP>:/home/PS4/ROMs/snes/"
+echo "    scp *.sfc PS4@<PS4_IP>:/home/PS4/ROMS/snes/"
 echo ""
 echo "  FTP:"
 echo "    Connect with any FTP client to PS4@<PS4_IP>"
-echo "    Navigate to /home/PS4/ROMs/"
+echo "    Navigate to /home/PS4/ROMS/"
 echo ""
 echo "  Samba (network share):"
 echo "    Run 'sudo setup-samba.sh' on PS4 first,"
 echo "    then mount \\\\PS4_RETROBOX\\PS4_ROMs from PC"
 echo ""
-echo "  ROM folders: snes, nes, n64, gba, gameboy,"
-echo "    genesis, psx, tg16, arcade, neogeo,"
-echo "    atari2600, atari7800, sms, gg, pcecd"
+echo "  ROM folders: snes, nes, n64, gba, gb, gbc,"
+echo "    megadrive, psx, tg16, tgcd, arcade, neogeo,"
+echo "    atari2600, atari7800, mastersystem, gamegear"
 echo "=========================================="
 echo ""
 
@@ -358,19 +358,27 @@ sync
 umount /newroot 2>/dev/null
 losetup -d /dev/loop5 2>/dev/null
 
-# Create ROM and BIOS directories on UFS (optional storage)
+# Check if UFS storage was chosen during build
 echo ""
-echo "Creating storage directories on UFS..."
-mkdir -p /ps4hdd/ROMs/snes /ps4hdd/ROMs/nes /ps4hdd/ROMs/n64 /ps4hdd/ROMs/gba /ps4hdd/ROMs/gameboy /ps4hdd/ROMs/genesis /ps4hdd/ROMs/psx /ps4hdd/ROMs/tg16 /ps4hdd/ROMs/arcade /ps4hdd/ROMs/neogeo /ps4hdd/ROMs/atari2600 /ps4hdd/ROMs/atari7800 /ps4hdd/ROMs/sms /ps4hdd/ROMs/gg /ps4hdd/ROMs/pcecd /ps4hdd/ROMs/bios /ps4hdd/ROMs/saves /ps4hdd/ROMs/screenshots
-mkdir -p /ps4hdd/BIOS
-echo "  ROMs: /ps4hdd/ROMs/"
-echo "  BIOS: /ps4hdd/BIOS/"
+if [ -f /newroot/home/PS4/.rom_storage ] && grep -q "ufs" /newroot/home/PS4/.rom_storage; then
+    echo "UFS storage selected. Creating ROM directories on UFS..."
+    mkdir -p /ps4hdd/ROMS/snes /ps4hdd/ROMS/nes /ps4hdd/ROMS/n64 /ps4hdd/ROMS/gba /ps4hdd/ROMS/gb /ps4hdd/ROMS/gbc /ps4hdd/ROMS/megadrive /ps4hdd/ROMS/psx /ps4hdd/ROMS/tg16 /ps4hdd/ROMS/tgcd /ps4hdd/ROMS/arcade /ps4hdd/ROMS/neogeo /ps4hdd/ROMS/atari2600 /ps4hdd/ROMS/atari7800 /ps4hdd/ROMS/mastersystem /ps4hdd/ROMS/gamegear
+    echo "Copying ROMs from .img to UFS..."
+    cp -r /newroot/home/PS4/ROMS/* /ps4hdd/ROMS/
+    rm -f /newroot/home/PS4/.rom_storage
+    echo "Done! ROMs will load from UFS on next boot."
+    echo "  UFS: /ps4hdd/ROMS/"
+else
+    echo "ROMs stored in .img (default)."
+    echo "  .img: /home/PS4/ROMS/"
+    echo ""
+    echo "To switch to UFS storage later:"
+    echo "  1. Run: sudo setup-ufs-storage"
+    echo "  2. Or manually copy ROMs to /ps4hdd/ROMS/"
+fi
 
 echo
 echo "=== Install complete! ==="
-echo ""
-echo "  ROMs: /ps4hdd/ROMs/"
-echo "  BIOS: /ps4hdd/BIOS/"
 echo ""
 echo "PS4 RetroBox by danyboy666 — https://github.com/danyboy666/ps4-retrobox"
 echo "Initramfs based on better-initramfs by Piotr Karbowski (BSD-3-Clause)"

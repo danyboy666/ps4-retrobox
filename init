@@ -313,16 +313,10 @@ if [ ! -d /newroot/ps4hdd ]; then
 fi
 mount /ps4hdd /newroot/ps4hdd
 
-# Bind mount ROMs from UFS into Ubuntu
-if [ -d /ps4hdd/ROMs ]; then
-	mkdir -p /newroot/home/PS4/ROMs
-	mount --bind /ps4hdd/ROMs /newroot/home/PS4/ROMs
-fi
-
-# Bind mount BIOS from UFS into Ubuntu
-if [ -d /ps4hdd/BIOS ]; then
-	mkdir -p /newroot/home/PS4/BIOS
-	mount --bind /ps4hdd/BIOS /newroot/home/PS4/BIOS
+# Bind mount ROMs from UFS into Ubuntu (only if UFS storage was chosen during install)
+if [ -d /ps4hdd/ROMS ]; then
+	mkdir -p /newroot/home/PS4/ROMS
+	mount --bind /ps4hdd/ROMS /newroot/home/PS4/ROMS
 fi
 # # End of PS4 specific section
 
