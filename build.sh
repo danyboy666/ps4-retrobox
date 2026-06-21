@@ -392,17 +392,16 @@ mkdir -p "$ROOTFS/home/PS4/screenshots"
 
 # Create ROM directories in .img (empty fallback for UFS mode, populated for .img mode)
 ROMS_DIR="$ROOTFS/home/PS4/ROMS"
-for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
     mkdir -p "$ROMS_DIR/$sys"
 done
 
-# Copy homebrew ROMs into .img (source: es_configs import/ROMs (homebrews)/)
-# NOTE: neogeo (383MB) and tgcd (288MB) are excluded — too large for 3GB .img
-# Users can add them via FTP/Samba after install
-HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMs (homebrews)"
+# Copy homebrew ROMs into .img (source: es_configs import/ROMS/)
+# NOTE: tgcd excluded — empty, users can add via FTP/Samba
+HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMS"
 if [ -d "$HOMEBREW_DIR" ]; then
-    echo "Copying homebrew ROMs to .img (excluding neogeo, tgcd)..."
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 arcade atari2600 atari7800 mastersystem gamegear; do
+    echo "Copying homebrew ROMs to .img..."
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
         if [ -d "$HOMEBREW_DIR/$sys" ]; then
             cp -r "$HOMEBREW_DIR/$sys"/* "$ROMS_DIR/$sys/" 2>/dev/null || true
         fi
@@ -419,7 +418,7 @@ fi
 # Create empty gamelists so ES can parse systems on first boot
 echo "=== Creating empty gamelists ==="
 GAMEDIR="$ROOTFS/home/PS4/.emulationstation/gamelists"
-for sys in snes nes n64 gba gb gbc megadrive psx pce tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
     mkdir -p "$GAMEDIR/$sys"
     echo '<?xml version="1.0"?>' > "$GAMEDIR/$sys/gamelist.xml"
     echo '<gameList />' >> "$GAMEDIR/$sys/gamelist.xml"
@@ -736,8 +735,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMS/gbc</path>
     <extension>.gbc .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
-    <platform>gb</platform>
-    <theme>gb</theme>
+    <platform>gbc</platform>
+    <theme>gbc</theme>
   </system>
   <system>
     <name>megadrive</name>
@@ -763,16 +762,16 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <path>/home/PS4/ROMS/tg16</path>
     <extension>.pce .cue .zip</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
-    <platform>pcengine</platform>
-    <theme>pce</theme>
+    <platform>tg16</platform>
+    <theme>tg16</theme>
   </system>
   <system>
     <name>tgcd</name>
     <fullname>TurboGrafx-CD</fullname>
     <path>/home/PS4/ROMS/tgcd</path>
-    <extension>.chd .cue .iso .zip</extension>
+    <extension>.chd .cue .iso .m3u</extension>
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
-    <platform>pcengine</platform>
+    <platform>tgcd</platform>
     <theme>tgcd</theme>
   </system>
   <system>
@@ -801,6 +800,15 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
     <platform>atari2600</platform>
     <theme>atari2600</theme>
+  </system>
+  <system>
+    <name>atari5200</name>
+    <fullname>Atari 5200</fullname>
+    <path>/home/PS4/ROMS/atari5200</path>
+    <extension>.a52 .bin .xfd .atari .zip</extension>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/atari800_libretro.so %ROM%</command>
+    <platform>atari5200</platform>
+    <theme>atari5200</theme>
   </system>
   <system>
     <name>atari7800</name>

@@ -467,6 +467,7 @@ C:\PS4_ROMs\
 ├── arcade\
 ├── neogeo\
 ├── atari2600\
+├── atari5200\
 ├── atari7800\
 ├── mastersystem\
 └── gamegear\
@@ -710,7 +711,8 @@ sudo setup-samba.sh --restore
 PS4_ROMs/
 ├── snes/  nes/  n64/  gba/  gb/  gbc/
 ├── megadrive/  psx/  tg16/  tgcd/
-├── arcade/  neogeo/  atari2600/  atari7800/
+├── arcade/  neogeo/
+├── atari2600/  atari5200/  atari7800/
 ├── mastersystem/  gamegear/
 ```
 
