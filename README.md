@@ -13,39 +13,46 @@
 - [x] Payload loads kernel + initramfs from internal HDD (`/data/linux/boot/`)
 - [x] Initramfs decrypts PS4 HDD partition (auto-detect partition 27/13)
 - [x] UFS2 mount + write verification (read-only mount issue resolved)
-- [x] WiFi fallback — sky2 driver working (eth0 up, DHCP assigned)
-- [x] SSH access — can log in as `PS4` user
+- [x] Network — Ethernet + DHCP, NFS client, Samba share, SSH (port 22)
 - [x] All 4 payloads functional (1GB/2GB/3GB/4GB VRAM)
 - [x] Install flow: 3GB base + optional expansion (16/32/50GB) during install
-- [x] GitHub release v1.0 with all assets (arch.tar.xz, initramfs, kernel, payloads)
-- [x] 57+ commits of iterative development, all pushed
+- [x] GitHub release v1.1 with all assets
+- [x] DS4 wired USB working via hid-generic driver (`usbhid.quirks` prevents `hid_playstation` from claiming DS4)
+- [x] Keyboard input working (ES detects Microsoft keyboard, buttons navigable)
+- [x] EmulationStation frontend — 15 systems, carbon theme, ES 2.0.1a
+- [x] FTP server on port 2121 (pure-ftpd) for quick ROM transfer
 
 ### Critical Issues (blocking actual use)
 
 - [x] ~~**Garbled screen in EmulationStation**~~ — Fixed: removed `drm.edid_firmware=edid/1920x1080.bin` from bootargs.txt. Fixed HDMI connector mismatch: `video=HDMI-A-1` changed to `video=HDMI-A-0` in bootargs.txt to match xorg.conf.
-- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: es_input.cfg rewritten with correct SDL2 keycodes (arrows=1073741903-1073741906), proper `<inputList>` XML format, DS4 button IDs corrected (Cross=0, Circle=1), duplicate pageup/pagedown/leftshoulder/rightshoulder mappings removed.
-- [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh. Fixed busybox ash brace expansion bug (`mkdir -p /ps4hdd/ROMs/{snes,...}` created one literal directory).
-- [x] ~~**Home directory permissions denied**~~ — Fixed: install-HDD.sh now runs `chown -R 1001:1001 /newroot/home/PS4` after tar extraction. Archive re-tarred with `--owner=1001 --group=1001`.
-- [x] ~~**xinitrc LED permission errors**~~ — Fixed: removed `/sys/class/leds/` writes that required root. LED control deferred to future implementation.
+- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: es_input.cfg rewritten for hid-generic DS4 mapping. `usbhid.quirks` prevents `hid_playstation` driver from claiming DS4 (which crashes xhci_aeolia). Keyboard works via `98-hide-microsoft-joystick.rules` hiding MS keyboard joystick from SDL2.
+- [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh.
+- [x] ~~**Home directory permissions denied**~~ — Fixed: install-HDD.sh now runs `chown -R 1000:1000 /newroot/home/PS4` after tar extraction.
+- [x] ~~**xinitrc LED permission errors**~~ — Fixed: removed `/sys/class/leds/` writes that required root.
 - [x] ~~**sudo broken (setuid bit stripped)**~~ — Fixed: install-HDD.sh and boot_newroot() both run `chmod u+s` on sudo/su/passwd/pkexec after extraction.
-- [x] ~~**ES crashes after welcome screen**~~ — Fixed: FreeImage can't render SVG/PNG backgrounds on PS4 amdgpu. build.sh now strips background/overlay `<image>` elements from carbon.xml and adds `<backgroundColor>000000</backgroundColor>` for a clean black background.
-- [x] ~~**DS4 D-pad inverted**~~ — Fixed: swapped hat values for down (value 8) and right (value 2) in es_input.cfg.
+- [x] ~~**ES crashes after welcome screen**~~ — Fixed: FreeImage can't render SVG/PNG backgrounds on PS4 amdgpu. build.sh now strips background/overlay `<image>` elements from carbon.xml.
+- [x] ~~**DS4 D-pad inverted**~~ — Fixed: swapped hat values for down and right in es_input.cfg.
 - [x] ~~**White background**~~ — Fixed: black background color added to all theme views in carbon.xml.
+- [x] ~~**ES vsync failure / keyboard dead**~~ — Fixed: `es-session.service` launches Xorg directly (bypasses `startx` which breaks DRI vblank). `.bash_profile` is now no-op to prevent dual-ES-process conflict.
 
 ### Known Bugs
 
-- [ ] **`os_filesystem_check` ignores errors** — `e2fsck` with uncorrectable errors still allows mount to proceed.
+- [ ] **DS4 disconnects after 5-56 seconds** — hid-generic sends no USB keepalive reports. DS4 firmware drops connection after inactivity timeout. Active button use extends connection. Fix: keepalive daemon needed.
+- [ ] **DS4 not functional after disconnect/replug** — DS4 must be replugged and reconfigured after disconnect.
+- [ ] **`/dev/loop` unmount error on boot** — cosmetic, not yet fixed.
 - [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 
 ### Not Yet Tested
 
 - [x] EmulationStation display — ES window created successfully, all 15 systems showing
-- [x] DS4 controller input — detected by ES as "Sony Interactive Entertainment Wireless Controller"
-- [x] Keyboard input — Microsoft wireless keyboard detected, SDL2 keycodes configured
+- [x] DS4 controller input — detected by ES as "PS4 Controller" via hid-generic driver, buttons mapped
+- [x] Keyboard input — Microsoft wireless keyboard detected, buttons navigable at 9-13% CPU
 - [ ] RetroArch gameplay
 - [ ] Samba ROM transfer from PC
+- [ ] NFS ROM transfer from PC
 - [ ] Multi-OS support (only one `.img` at a time)
 - [ ] PS4 Pro (Baikal) kernel
+- [ ] PS4 Slim/Fat CUH-1200 (Belize) kernel
 - [ ] Multiple TV/monitor compatibility
 
 ### Roadmap
@@ -104,7 +111,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 | **RetroArch** | Emulator backend — runs the actual games via libretro cores |
 | **15 systems** | SNES, NES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, PC Engine CD |
 | **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
-| **Network support** | Wired LAN for ROM transfer via Samba/SCP |
+| **Network support** | Wired LAN for ROM transfer via NFS, Samba, SCP, or FTP |
 
 ### Key Facts
 
@@ -126,19 +133,22 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 - **SSH server** enabled (user: `PS4`, password: `PS4`)
 - **Auto-boot** into EmulationStation on tty1
 - **Samba client** for loading ROMs from your PC over the network
+- **NFS client** for mounting ROMs from your PC's NFS share
+- **FTP server** on port 2121 (pure-ftpd) for quick file transfer
 - **Safe & reversible** — delete the `.img` file via FTP to uninstall
 
 ## Controller Setup
 
 ### DualShock 4 (DS4)
 
-The `es_input.cfg` is pre-configured for DualShock 4. The DS4 is identified by:
+The `es_input.cfg` is pre-configured for DualShock 4. The DS4 uses the **hid-generic** driver (not `hid_playstation`) via `usbhid.quirks` in bootargs.txt. This prevents the `hid_playstation` driver from crashing the xhci_aeolia USB controller.
 
 | Property | Value |
 |----------|-------|
-| **Device Name** | `Sony Interactive Entertainment Wireless Controller` |
-| **GUID** | `030000004c050000cc09000011810000` |
-| **Connection** | USB (Bluetooth stack installed but DS4 Bluetooth pairing on PS4 Linux is untested) |
+| **Device Name** | `PS4 Controller` |
+| **GUID** | `030000004c050000cc09000000016800` |
+| **Driver** | `hid-generic` (via `usbhid.quirks=0x054c:0x05c4:0x400000`) |
+| **Connection** | USB wired (Bluetooth not supported on CUH-1000/1100) |
 
 **DS4 Button Mapping:**
 
@@ -387,7 +397,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 ## Requirements
 
 - Firmware **9.60** (exploitable via PSFree-Enhanced or karo218.ir) — works on **any jailbreak-compatible FW** (5.05–13.02)
-- **Any PS4 model** — Aeolia (Fat CUH-1000/1100), Belize (Fat CUH-1200, Slim CUH-2000), or Baikal (Pro CUH-7000). Choose the correct kernel for your southbridge.
+- **PS4 Fat CUH-1000/1100** (Aeolia southbridge) — **only tested model**. Other models may work but are unverified.
 - Windows PC on the **same network** as PS4
 - **Ethernet cable required** — connect PS4 to your router/switch before booting
 - WiFi is **not supported** on CUH-1000/1100 (Aeolia v1 southbridge)
@@ -416,7 +426,7 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 ## Quick Start
 
 ### First Time Install (one-time setup)
-1. **Download** — grab `ps4-retrobox-v1.0.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.0)
+1. **Download** — grab `ps4-retrobox-v1.1.zip` from [Releases](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.1)
 2. **Extract** the zip on your PC
 3. **Choose kernel** — rename the correct kernel to `bzImage`:
    - **Aeolia/Belize** (Fat CUH-1000/1100/1200, Slim CUH-2000): rename `bzImage_no-built-in-fw_Clang_fullLTO` → `bzImage`
@@ -533,10 +543,10 @@ Use FileZilla or any FTP client:
 
 ### What is bootargs.txt?
 
-`bootargs.txt` contains kernel boot parameters that fix common issues like black screen and garbled display. It is loaded automatically by the payload.
+`bootargs.txt` contains kernel boot parameters that fix common issues like black screen, garbled display, and DS4 controller compatibility. It is loaded automatically by the payload.
 
 ```
-panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 video=HDMI-A-1:1920x1080@60
+panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 drm.debug=0 usbhid.quirks=0x054c:0x05c4:0x400000,0x054c:0x09cc:0x400000 usbcore.autosuspend=-1 console=uart8250,mmio32,0xd0340000 console=ttyS0,115200n8 console=tty0 video=HDMI-A-0:1920x1080@60
 ```
 
 | Parameter | Purpose |
@@ -547,8 +557,10 @@ panic=0 clocksource=tsc consoleblank=0 net.ifnames=0 radeon.dpm=0 amdgpu.dpm=0 d
 | `net.ifnames=0` | Use legacy interface names (`eth0` instead of `enp3s0`) |
 | `radeon.dpm=0` | Disable Radeon power management (prevents crashes) |
 | `amdgpu.dpm=0` | Disable AMDGPU power management (prevents crashes) |
-| `console=tty0` | Output to virtual console (TV screen) |
-| `video=HDMI-A-1:1920x1080@60` | Force 1080p60 output on HDMI connector |
+| `usbhid.quirks=0x054c:0x05c4:0x400000` | Prevents `hid_playstation` from claiming DS4 (DS4 vendor:product `054c:05c4`). Forces `hid-generic` driver instead. |
+| `usbhid.quirks=0x054c:0x09cc:0x400000` | Same quirk for DS4 v2 (`054c:09cc`) |
+| `usbcore.autosuspend=-1` | Disable USB autosuspend (keeps DS4 connection alive) |
+| `video=HDMI-A-0:1920x1080@60` | Force 1080p60 output on HDMI connector |
 
 > **Note:** Do NOT add `drm.edid_firmware=edid/1920x1080.bin` — the EDID firmware file does not exist in the rootfs and causes garbled display when referenced.
 
