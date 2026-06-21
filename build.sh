@@ -274,7 +274,14 @@ cat > "$ROOTFS/home/PS4/.bash_profile" << 'EOF'
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! pgrep -x Xorg > /dev/null 2>&1; then
     killall -9 emulationstation 2>/dev/null
     rm -f /tmp/.X0-lock /tmp/.X1-lock
-    startx -- :0
+    /usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp &
+    sleep 6
+    export DISPLAY=:0
+    export XAUTHORITY=/home/PS4/.Xauthority
+    export LIBGL_ALWAYS_SOFTWARE=1
+    export vblank_mode=2
+    export __GL_SYNC_TO_VBLANK=1
+    exec emulationstation
 fi
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
