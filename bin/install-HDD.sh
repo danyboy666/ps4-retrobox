@@ -374,8 +374,7 @@ if [ "$_TAR_EXIT" -ne 0 ] || [ ! -e /newroot/sbin/init ]; then
     echo "ERROR: Rootfs extraction failed or incomplete."
     echo "  tar exit code: $_TAR_EXIT"
     [ -e /newroot/sbin/init ] && echo "  /sbin/init: found" || echo "  /sbin/init: MISSING"
-    echo "  The .img may be too small or the tarball may be corrupt."
-    rm -f /ps4hdd/home/$_install_OS_img
+    echo "  The .img was kept. Reboot to retry or choose delete."
     losetup -d /dev/loop5 2>/dev/null
     rescueshell
 fi
