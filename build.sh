@@ -442,15 +442,17 @@ INPUTMOD
 
 # === DS4 udev rules ===
 mkdir -p "$ROOTFS/etc/udev/rules.d"
+
+# DS4 hidraw permissions
 cat > "$ROOTFS/etc/udev/rules.d/99-ds4-usbhid.rules" << 'UDEV'
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
 UDEV
 
-# DS4 hidraw permissions (original rule)
-cat > "$ROOTFS/etc/udev/rules.d/99-ds4-usbhid.rules" << 'UDEV'
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
+# Hide Microsoft keyboard joystick from SDL2 (prevents wizard blocking keyboard)
+# Based on batocera's 99-joysticks-exotics.rules
+cat > "$ROOTFS/etc/udev/rules.d/98-hide-microsoft-joystick.rules" << 'UDEV'
+SUBSYSTEM=="input", ATTRS{idVendor}=="045e", ATTRS{idProduct}=="0745", ENV{ID_INPUT_JOYSTICK}="0"
 UDEV
 
 # === DHCP fallback service ===
