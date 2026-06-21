@@ -265,7 +265,8 @@ xsetroot -cursor_name none 2>/dev/null || true
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
 # Start EmulationStation (software GL + vsync)
-exec env LIBGL_ALWAYS_SOFTWARE=1 vblank_mode=1 __GL_SYNC_TO_VBLANK=1 emulationstation
+sleep 5
+exec env LIBGL_ALWAYS_SOFTWARE=1 vblank_mode=2 __GL_SYNC_TO_VBLANK=1 emulationstation
 XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
@@ -297,6 +298,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <string name="UserTheme" value="" />
   <bool name="DrawFramerate" value="false" />
   <bool name="ShowHelpPrompts" value="true" />
+  <bool name="BackgroundJoystickInput" value="true" />
   <bool name="ShowHiddenFiles" value="false" />
   <bool name="ShowMissingGames" value="true" />
   <bool name="MultiThreadedMedi" value="true" />
