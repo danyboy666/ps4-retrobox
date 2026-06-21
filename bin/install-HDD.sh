@@ -260,12 +260,14 @@ echo "    /home/PS4/ROMS/<system>/"
 echo "    /home/PS4/BIOS/"
 echo ""
 echo "  Samba (network share):"
-echo "    Run 'sudo setup-samba.sh' on PS4 first,"
-echo "    then mount \\\\PS4_RETROBOX\\PS4_ROMs from PC"
+echo "    1. Edit: sudo nano /usr/local/bin/setup-samba.sh"
+echo "    2. Set your PC IP and share name, save"
+echo "    3. Run: sudo setup-samba.sh --setup"
+echo "    4. From PC browse: \\\\PS4_IP\\PS4_ROMs"
 echo ""
 echo "  ROM folders: snes, nes, n64, gba, gb, gbc,"
 echo "    megadrive, psx, tg16, tgcd, arcade, neogeo,"
-echo "    atari2600, atari7800, mastersystem, gamegear"
+echo "    atari2600, atari5200, atari7800, mastersystem, gamegear"
 echo "=========================================="
 echo ""
 
@@ -394,7 +396,7 @@ chmod u+s /newroot/usr/bin/pkexec
 echo ""
 if [ "$_STORAGE_CHOICE" = "ufs" ]; then
     echo "UFS storage selected. Copying ROMs to UFS..."
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari7800 mastersystem gamegear; do
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
         mkdir -p "/ps4hdd/ROMS/$sys"
     done
     cp -r /newroot/home/PS4/ROMS/* /ps4hdd/ROMS/
