@@ -426,96 +426,11 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="06
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
 UDEV
 
-# DS4 joystick hidden from SDL2 (prevent joystick wizard from blocking keyboard input)
-cat > "$ROOTFS/etc/udev/rules.d/99-no-ds4-joystick.rules" << 'UDEV'
-KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", ENV{ID_INPUT_JOYSTICK}="0"
-KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", ENV{ID_INPUT_JOYSTICK}="0"
+# DS4 hidraw permissions (original rule)
+cat > "$ROOTFS/etc/udev/rules.d/99-ds4-usbhid.rules" << 'UDEV'
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
 UDEV
-
-# DS4 force sony driver (playstation driver causes USB disconnect after 5-8s)
-cat > "$ROOTFS/etc/udev/rules.d/97-ds4-force-sony.rules" << 'UDEV'
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", RUN+="/usr/local/bin/ds4-force-sony.sh"
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", RUN+="/usr/local/bin/ds4-force-sony.sh"
-UDEV
-
-mkdir -p "$ROOTFS/usr/local/bin"
-cat > "$ROOTFS/usr/local/bin/ds4-force-sony.sh" << 'SCRIPT'
-#!/bin/bash
-# Force DS4 from playstation driver to sony driver
-# The playstation driver causes USB disconnect after 5-8s on xhci_aeolia
-logger -t ds4-force-sony "DS4 detected, waiting for HID device..."
-sleep 0.5
-for dev in /sys/bus/hid/devices/0003:054C:09CC.* /sys/bus/hid/devices/0003:054C:05C4.*; do
-    [ -d "$dev" ] || continue
-    DEVID=$(basename "$dev")
-    DRIVER=$(basename "$(readlink "$dev/driver" 2>/dev/null)" 2>/dev/null)
-    if [ "$DRIVER" = "playstation" ]; then
-        logger -t ds4-force-sony "Unbinding $DEVID from playstation"
-        echo "$DEVID" > /sys/bus/hid/drivers/playstation/unbind 2>/dev/null
-        sleep 0.1
-        logger -t ds4-force-sony "Binding $DEVID to sony"
-        echo "$DEVID" > /sys/bus/hid/drivers/sony/bind 2>/dev/null
-        if [ $? -eq 0 ]; then
-            logger -t ds4-force-sony "SUCCESS: $DEVID now on sony driver"
-        else
-            logger -t ds4-force-sony "sony bind failed, trying hid-generic"
-            echo "$DEVID" > /sys/bus/hid/drivers/hid-generic/bind 2>/dev/null
-        fi
-    fi
-done
-SCRIPT
-chmod +x "$ROOTFS/usr/local/bin/ds4-force-sony.sh"
-
-# DS4 monitor service - keeps trying if udev misses it
-cat > "$ROOTFS/usr/local/bin/ds4-monitor.sh" << 'SCRIPT'
-#!/bin/bash
-# Continuously monitor for DS4 on playstation driver and move to sony
-LOG=/var/log/ds4-monitor.log
-echo "$(date) ds4-monitor started" >> "$LOG"
-while true; do
-    for dev in $(find /sys/bus/hid/devices/ -maxdepth 1 \( -name "*054C*" -o -name "*054c*" \) 2>/dev/null); do
-        [ -d "$dev" ] || continue
-        DEVID=$(basename "$dev")
-        DRIVER=$(basename "$(readlink "$dev/driver" 2>/dev/null)" 2>/dev/null)
-        if [ "$DRIVER" = "playstation" ]; then
-            echo "$DEVID" > /sys/bus/hid/drivers/playstation/unbind 2>>"$LOG"
-            RETRY=0
-            while [ $RETRY -lt 10 ]; do
-                echo "$DEVID" > /sys/bus/hid/drivers/sony/bind 2>>"$LOG" && break
-                RETRY=$((RETRY+1))
-                sleep 0.01
-            done
-            if [ $RETRY -ge 10 ]; then
-                echo "$(date) sony bind failed, trying hid-generic for $DEVID" >> "$LOG"
-                echo "$DEVID" > /sys/bus/hid/drivers/hid-generic/bind 2>>"$LOG"
-            else
-                echo "$(date) SUCCESS: $DEVID on sony after $RETRY retries" >> "$LOG"
-            fi
-        fi
-    done
-    sleep 0.02
-done
-SCRIPT
-chmod +x "$ROOTFS/usr/local/bin/ds4-monitor.sh"
-
-# DS4 monitor systemd service
-mkdir -p "$ROOTFS/etc/systemd/system"
-cat > "$ROOTFS/etc/systemd/system/ds4-monitor.service" << 'SVCEOF'
-[Unit]
-Description=DS4 Controller: move from playstation to sony driver
-After=systemd-udevd.service
-Wants=systemd-udevd.service
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/ds4-monitor.sh
-Restart=always
-RestartSec=1
-
-[Install]
-WantedBy=multi-user.target
-SVCEOF
-ln -sf /etc/systemd/system/ds4-monitor.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/ds4-monitor.service"
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
