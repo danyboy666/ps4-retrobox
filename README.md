@@ -19,8 +19,10 @@
 - [x] GitHub release v1.2 with all assets
 - [x] DS4 wired USB working via hid-generic driver (`usbhid.quirks` prevents `hid_playstation` from claiming DS4)
 - [x] Keyboard input working (ES detects Microsoft keyboard, buttons navigable)
-- [x] EmulationStation frontend — 15 systems, carbon theme, ES 2.0.1a
+- [x] EmulationStation frontend — 16 systems, carbon theme, ES 2.0.1a
 - [x] FTP server on port 2121 (pure-ftpd) for quick ROM transfer
+- [x] ROM storage options — `.img` (default) or UFS, Samba toggle from ES carousel
+- [x] Plymouth boot splash — ES logo splash during boot (plymouth-start.service enabled)
 
 ### Critical Issues (blocking actual use)
 
@@ -41,7 +43,7 @@
 
 ### Not Yet Tested
 
-- [x] EmulationStation display — ES window created successfully, all 15 systems showing
+- [x] EmulationStation display — ES window created successfully, all 16 systems showing
 - [x] DS4 controller input — detected by ES as "PS4 Controller" via hid-generic driver, buttons mapped
 - [x] Keyboard input — Microsoft wireless keyboard detected, buttons navigable at 9-13% CPU
 - [ ] RetroArch gameplay
@@ -67,10 +69,10 @@
 11. **Controller driver support** — Load in-tree modules (xpad, hid-nintendo, hid-logitech-dj) at boot for Xbox/Switch/Logitech USB controllers. No pre-mapping — non-DS4 controllers use ES Configure Input. Skip GPIO drivers (RPi-only). **DO NOT load hid-sony** (crashes xhci_aeolia).
 12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
 13. **Service selection during install** — Modify `install-HDD.sh` to let user choose which services to enable (SMB, NFS, FTP) BEFORE `.img` creation. All services disabled by default in the image
-14. **UFS as ROM storage** — UFS (`/ps4hdd/ROMs/`) is the primary ROM location, bind-mounted into Ubuntu at boot. Network mounts (SMB/NFS/CIFS) only available on the ext4 `.img` partition
+14. **ROM storage options** — ROMs can be stored in `.img` (default, self-contained) or on UFS (`/ps4hdd/ROMS/`). Network mounts (SMB/NFS/CIFS) available via "Network" system in ES. Build script prompts user for storage choice.
 15. **Keyboard remapping** — User may need to remap keyboard via ES Configure Input. Pre-mapped defaults should work for standard USB keyboards
 16. **Bluetooth testing** — BT stack installed but untested on PS4 Linux. Needs real-hardware validation
-17. **RetroArch gameplay validation** — Test actual gameplay across all 15 systems
+17. **RetroArch gameplay validation** — Test actual gameplay across all 16 systems
 18. **Performance testing** — Different PS4 models (Fat/Slim/Pro)
 19. **Clean up README** — Remove unverified claims, add accurate troubleshooting
 
@@ -95,8 +97,8 @@ Payload (kexec) → Kernel + Initramfs → Decrypt PS4 HDD
   → Find .img on existing partition → Loop-mount .img
   → switch_root → Ubuntu boots → EmulationStation launches
 
-ROMs + BIOS are stored on UFS (/ps4hdd/ROMs/, /ps4hdd/BIOS/)
-and bind-mounted into Ubuntu at boot.
+ROMs can be stored in .img (default) or on UFS (/ps4hdd/ROMS/).
+BIOS is stored in .img at /home/PS4/BIOS/.
 ```
 
 ### Why This Is Safe
@@ -118,7 +120,7 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 | **Ubuntu 22.04** | Minimal server rootfs (no desktop environment) |
 | **EmulationStation** | Retro gaming frontend — shows your ROMs in a TV-friendly interface |
 | **RetroArch** | Emulator backend — runs the actual games via libretro cores |
-| **15 systems** | SNES, NES, N64, GBA, Game Boy, Genesis, PlayStation, TurboGrafx-16, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Game Gear, PC Engine CD |
+| **16 systems** | SNES, NES, N64, GBA, Game Boy, Game Boy Color, Sega Mega Drive, PlayStation, TurboGrafx-16, TurboGrafx-CD, Arcade, Neo Geo, Atari 2600, Atari 7800, Sega Master System, Sega Game Gear |
 | **SSH server** | Remote access from your PC (user: `PS4`, password: `PS4`) |
 | **Network support** | Wired LAN for ROM transfer via NFS, Samba, SCP, or FTP |
 
@@ -128,21 +130,23 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 - **No USB drive needed** after initial setup — everything is self-contained
 - **Reversible** — delete the `.img` file via FTP to fully restore OrbisOS
 - **Ethernet required** — WiFi is not supported on CUH-1000/1100 models
-- **ROMs + BIOS on UFS** — stored on the PS4's internal UFS partition, separate from the `.img`, persist across reinstalls
+- **ROM storage** — ROMs stored in `.img` (default) or on UFS. BIOS, saves, screenshots always in `.img`
 
 ## Features
 
 - **EmulationStation** frontend (compiled from source)
-- **RetroArch** with 15 libretro cores pre-installed
+- **RetroArch** with 16 libretro cores pre-installed
 - **Internal HDD install** — runs from `.img` file on PS4's encrypted HDD (3GB minimal, or 16-50GB with expansion)
+- **ROM storage options** — ROMs in `.img` (default) or on UFS. Samba toggle from ES carousel
 - **No USB drive needed** after initial setup — all boot files on internal HDD
 - **Auto-detect partition** — works with CUH-1000/1100 (partition 13) and CUH-1200+ (partition 27)
 - **Multi-southbridge** — supports Aeolia, Belize, and Baikal with appropriate kernel selection
 - **Firmware-agnostic** — works on FW 5.05 through 13.02 (payload auto-detects FW at runtime)
 - **SSH server** enabled (user: `PS4`, password: `PS4`)
 - **Auto-boot** into EmulationStation on tty1
-- **Samba client** for loading ROMs from your PC over the network
+- **Samba client** for loading ROMs from your PC over the network (toggle from ES carousel)
 - **NFS client** for mounting ROMs from your PC's NFS share
+- **Plymouth boot splash** — ES logo splash screen during boot
 - **FTP server** on port 2121 (pure-ftpd) for quick file transfer
 - **Safe & reversible** — delete the `.img` file via FTP to uninstall
 
@@ -292,7 +296,7 @@ cat /var/log/syslog | tail  # System log
 | Path | Purpose |
 |------|---------|
 | `/usr/local/bin/ds4-led.sh` | DS4 lightbar LED controller |
-| `/usr/local/bin/setup-samba.sh` | Samba share setup (edit PC_IP/SHARE first) |
+| `/usr/local/bin/setup-samba.sh` | Samba share setup & toggle (edit PC_IP/SHARE first, then `--setup`/`--toggle`/`--restore`) |
 | `ps4-dhcp-fallback.service` | Systemd service — auto-DHCP on any non-loopback interface |
 | `ps4-usb-reprobe.service` | Systemd service — re-enumerates USB devices at boot |
 
@@ -312,58 +316,34 @@ cat /var/log/syslog | tail  # System log
 ### ROM Directories
 
 ROMs can be stored in two locations:
-- **On UFS** (`/ps4hdd/ROMs/`) — recommended, persists across reinstalls, larger capacity
-- **Inside .img** (`~/ROMs/`) — space limited by .img size
+- **In .img** (`/home/PS4/ROMS/`) — default, self-contained, easier backup
+- **On UFS** (`/ps4hdd/ROMS/`) — larger capacity, persists across reinstalls
 
-**UFS ROM directories** (created automatically during install):
+**ROM directory structure** (same for both storage modes):
 
 ```
-/ps4hdd/ROMs/
+ROMS/
 ├── snes/
 ├── nes/
 ├── n64/
 ├── gba/
-├── gameboy/
-├── genesis/
+├── gb/
+├── gbc/
+├── megadrive/
 ├── psx/
 ├── tg16/
+├── tgcd/
 ├── arcade/
 ├── neogeo/
 ├── atari2600/
 ├── atari7800/
-├── sms/
-├── gg/
-├── pcecd/
-├── bios/
-├── saves/
-└── screenshots/
-
-/ps4hdd/BIOS/     ← BIOS files go here
+├── mastersystem/
+└── gamegear/
 ```
 
-**Inside .img ROM directories:**
+**BIOS files** are stored in `.img` at `/home/PS4/BIOS/`.
 
-```
-~/ROMs/
-├── SNES/
-├── NES/
-├── N64/
-├── GBA/
-├── GameBoy/
-├── Genesis/
-├── PlayStation/
-├── TurboGrafx16/
-├── Arcade/
-├── NeoGeo/
-├── Atari2600/
-├── Atari7800/
-├── MasterSystem/
-├── GameGear/
-├── PCEngineCD/
-├── BIOS/         ← Put BIOS files here
-├── saves/
-└── screenshots/
-```
+**Saves and screenshots** are stored in `.img` at `/home/PS4/saves/` and `/home/PS4/screenshots/`.
 
 ### Libretro Cores
 
@@ -375,10 +355,10 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | `nestopia_libretro.so` | NES |
 | `mupen64plus_libretro.so` | N64 |
 | `mgba_libretro.so` | GBA |
-| `gambatte_libretro.so` | Game Boy |
-| `genesis_plus_gx_libretro.so` | Genesis, SMS, Game Gear |
+| `gambatte_libretro.so` | Game Boy, Game Boy Color |
+| `genesis_plus_gx_libretro.so` | Mega Drive, Master System, Game Gear |
 | `mednafen_psx_libretro.so` | PlayStation |
-| `mednafen_pce_fast_libretro.so` | TurboGrafx-16, PC Engine CD |
+| `mednafen_pce_fast_libretro.so` | TurboGrafx-16, TurboGrafx-CD |
 | `fbneo_libretro.so` | Arcade, Neo Geo |
 | `stella_libretro.so` | Atari 2600 |
 | `prosystem_libretro.so` | Atari 7800 |
@@ -391,17 +371,18 @@ Installed at `/usr/lib/x86_64-linux-gnu/libretro/`:
 | Nintendo Entertainment System | Nestopia | No |
 | Nintendo 64 | mupen64plus | No |
 | Game Boy Advance | mGBA | Optional (gba_bios.bin) |
-| Game Boy / Color | Gambatte | No |
-| Sega Genesis | Genesis Plus GX | No |
+| Game Boy | Gambatte | No |
+| Game Boy Color | Gambatte | No |
+| Sega Mega Drive | Genesis Plus GX | No |
 | Sony PlayStation | Mednafen PSX | Yes (SCPH1001.bin) |
-| TurboGrafx-16 | Mednafen PCE Fast | Yes (syscard3.pce) |
+| TurboGrafx-16 | Mednafen PCE Fast | No |
+| TurboGrafx-CD | Mednafen PCE Fast | Yes (syscard3.pce) |
 | Arcade | FinalBurn Neo | No |
 | Neo Geo | FinalBurn Neo | No |
 | Atari 2600 | Stella | No |
 | Atari 7800 | ProSystem | No |
 | Sega Master System | Genesis Plus GX | No |
 | Sega Game Gear | Genesis Plus GX | No |
-| PC Engine CD | Mednafen PCE Fast | Yes (syscard3.pce) |
 
 ## Requirements
 
@@ -473,22 +454,22 @@ Create a shared folder on your Windows PC:
 
 ```
 C:\PS4_ROMs\
-├── SNES\
-├── NES\
-├── N64\
-├── GBA\
-├── GameBoy\
-├── Genesis\
-├── PlayStation\
-├── TurboGrafx16\
-├── Arcade\
-├── NeoGeo\
-├── Atari2600\
-├── Atari7800\
-├── MasterSystem\
-├── GameGear\
-├── PCEngineCD\
-└── BIOS\
+├── snes\
+├── nes\
+├── n64\
+├── gba\
+├── gb\
+├── gbc\
+├── megadrive\
+├── psx\
+├── tg16\
+├── tgcd\
+├── arcade\
+├── neogeo\
+├── atari2600\
+├── atari7800\
+├── mastersystem\
+└── gamegear\
 ```
 
 Share the folder:
@@ -661,7 +642,7 @@ The script will:
 3. Create a 3GB `.img` file on the internal HDD
 4. Format it as ext4
 5. Extract the rootfs into it
-6. Create ROM and BIOS directories on UFS (`/ps4hdd/ROMs/`, `/ps4hdd/BIOS/`)
+6. Create ROM directories on UFS (`/ps4hdd/ROMS/`) if UFS storage was chosen
 7. Ask: **"Keep 3GB or expand?"**
    - **[1] Keep 3GB** — boot now (fastest)
    - **[2] Expand** — choose size (16/32/50GB or custom), expansion happens immediately
@@ -685,18 +666,14 @@ After extraction completes, init automatically boots into Linux:
 
 **If you get a black screen:** Try connecting a different monitor/TV, or check `bootargs.txt` is at `/data/linux/boot/bootargs.txt`.
 
-### Phase 5: Configure Samba
+### Phase 5: Configure Samba (Optional)
 
-SSH into PS4 from your PC:
+If you want to load ROMs from a Windows PC instead of the PS4's internal storage:
 
-```bash
-ssh PS4@<PS4-IP>
-# Password: PS4
-```
-
-Edit the Samba helper script with your PC's IP and share name:
+**1. Edit the Samba helper script:**
 
 ```bash
+ssh PS4@<PS4-IP>   # Password: PS4
 sudo nano /usr/local/bin/setup-samba.sh
 ```
 
@@ -707,20 +684,40 @@ PC_IP="192.168.1.100"        # <-- Your Windows PC IP
 SHARE="PS4_ROMs"             # <-- Your share name
 ```
 
-Then run it:
+**2. Run setup once:**
 
 ```bash
-sudo setup-samba.sh
+sudo setup-samba.sh --setup
 ```
 
-Copy BIOS files to UFS (recommended) or local storage:
+This adds the Samba share to `/etc/fstab` and mounts it.
+
+**3. Toggle between UFS and Samba from EmulationStation:**
+
+- In ES, navigate to **"Network ROMs"** system
+- Select it to toggle between UFS and Samba ROMs
+- ES restarts automatically with the selected ROM source
+
+**4. Restore UFS ROMs (if needed):**
 
 ```bash
-# To UFS (persists across reinstalls)
-cp /mnt/roms/BIOS/* /ps4hdd/BIOS/
+sudo setup-samba.sh --restore
+```
 
-# Or to .img (limited space)
-cp /mnt/roms/BIOS/* /home/PS4/BIOS/
+**Samba share structure** — your Windows share must have these exact folder names:
+
+```
+PS4_ROMs/
+├── snes/  nes/  n64/  gba/  gb/  gbc/
+├── megadrive/  psx/  tg16/  tgcd/
+├── arcade/  neogeo/  atari2600/  atari7800/
+├── mastersystem/  gamegear/
+```
+
+Copy BIOS files to `.img`:
+
+```bash
+scp BIOS/*.bin PS4@<PS4-IP>:/home/PS4/BIOS/
 ```
 
 ### Phase 6: Daily Use — How to Play
@@ -785,42 +782,35 @@ When done gaming:
 
 #### Adding ROMs
 
-ROMs can be stored in two locations:
-- **On UFS** (`/ps4hdd/ROMs/`) — recommended, persists across reinstalls, larger capacity
-- **Inside .img** (`~/ROMs/`) — space limited by .img size
-
-**Method 1: SCP/SFTP (recommended)**
+**Method 1: SCP/SFTP**
 Copy ROMs from your PC over SSH:
 ```bash
-# To UFS (recommended — persists across reinstalls)
-scp -r /path/to/roms/* PS4@<PS4-IP>:/ps4hdd/ROMs/SNES/
+# To .img (default)
+scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMS/snes/
 # Password: PS4
 
-# Or to .img (limited space)
-scp -r /path/to/roms/* PS4@<PS4-IP>:/home/PS4/ROMs/SNES/
+# Or to UFS (if using UFS storage)
+scp -r /path/to/roms/* PS4@<PS4-IP>:/ps4hdd/ROMS/snes/
 ```
 
 **Method 2: Samba share**
-Edit the Samba helper script with your PC's IP:
+See "Phase 5: Configure Samba" above. Use the "Network ROMs" system in ES to toggle between UFS and Samba.
+
+**Method 3: USB drive**
+Copy ROMs to a USB drive, then mount and copy:
 ```bash
-ssh PS4@<PS4-IP>   # Password: PS4
-sudo nano /usr/local/bin/setup-samba.sh
+sudo mount /dev/sdb1 /mnt
+cp -r /mnt/ROMs/* /home/PS4/ROMS/
+sudo umount /mnt
 ```
-Change `PC_IP` and `SHARE`, then run `sudo setup-samba.sh`.
 
 **Method 3: UFS Direct**
-Copy ROMs directly to the UFS partition via SCP:
+Copy BIOS files to `.img`:
 ```bash
-# Large ROM collections — copy directly to UFS
-scp -r /path/to/roms/* PS4@<PS4-IP>:/ps4hdd/ROMs/Genesis/
-
-# BIOS files go to /ps4hdd/BIOS/
-scp BIOS/SCPH1001.bin PS4@<PS4-IP>:/ps4hdd/BIOS/
+scp BIOS/SCPH1001.bin PS4@<PS4-IP>:/home/PS4/BIOS/
 ```
 
-> **Note:** ROMs on UFS are automatically available in EmulationStation via bind mount.
-
-ROMs appear in EmulationStation after restarting it (press Start → Quit → run `startx`).
+ROMs appear in EmulationStation automatically. If not, press Start → Quit → restart ES.
 
 #### Payload Summary
 
@@ -843,7 +833,7 @@ Because Linux lives as a single `.img` file, removing it fully restores your PS4
 
 Your PS4 is now completely back to stock OrbisOS. No partition changes, no firmware modifications, no traces of Linux.
 
-> **Note:** ROMs and BIOS files on UFS (`/ps4hdd/ROMs/` and `/ps4hdd/BIOS/`) persist after `.img` deletion. They are separate from the Linux installation. Delete them manually if you want a complete cleanup.
+> **Note:** ROMs on UFS (`/ps4hdd/ROMS/`) persist after `.img` deletion. They are separate from the Linux installation. Delete them manually if you want a complete cleanup.
 
 **If Linux won't boot:** The PS4 simply boots into OrbisOS normally. There is no way for this project to brick your console.
 
@@ -870,7 +860,7 @@ Required BIOS files (place in `C:\PS4_ROMs\BIOS\` or copy to `/home/PS4/BIOS/`):
 | No IP address | Ensure Ethernet cable is connected to router. Run `ip a` on PS4 to check. |
 | Samba mount fails | Check PC IP, firewall, share name, credentials |
 | BIOS not found | Verify files in `/home/PS4/BIOS/` |
-| ROMs not showing | Check `ls /home/PS4/ROMs/`, restart EmulationStation |
+| ROMs not showing | Check `ls /home/PS4/ROMS/`, restart EmulationStation |
 | HDD install fails | Verify all 4 files at correct FTP paths. Check `/ps4hdd/system/boot/install.log` via SSH. Try 1GB payload for initial install. |
 | `mount -o ro /newroot failed` | Ensure `arch.tar.xz` is at `/user/system/boot/` via FTP |
 
