@@ -87,7 +87,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     mesa-vulkan-drivers libdrm-amdgpu1 libgl1-mesa-dri libgl1-mesa-glx \
     libglu1-mesa libegl1-mesa xserver-xorg-video-amdgpu \
     xinit xterm x11-xserver-utils xserver-xorg-input-libinput \
-    libdrm-tests"
+    libdrm-tests plymouth plymouth-themes"
 
 # === Install EmulationStation build deps ===
 echo "=== Installing EmulationStation build deps ==="
@@ -282,7 +282,7 @@ mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
 Description=EmulationStation with X11
-After=multi-user.target network-online.target
+After=multi-user.target network-online.target plymouth-quit.service
 Wants=network-online.target
 
 [Service]
@@ -293,7 +293,7 @@ Environment=XAUTHORITY=/home/PS4/.Xauthority
 Environment=LIBGL_ALWAYS_SOFTWARE=1
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
-ExecStartPre=/bin/bash -c "rm -f /tmp/.X0-lock /tmp/.X1-lock"
+ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null; rm -f /tmp/.X0-lock /tmp/.X1-lock"
 ExecStart=/bin/bash -c "/usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp & sleep 7 && exec emulationstation"
 Restart=always
 RestartSec=3
@@ -759,6 +759,17 @@ for f in *.info; do
     fi
 done
 echo "Remaining info files: $(ls "$INFO_DIR"/*.info 2>/dev/null | wc -l)"
+
+# === Install Plymouth es-logo splash theme ===
+echo "=== Installing Plymouth es-logo theme ==="
+run_chroot "cd /usr/share/plymouth/themes && git clone https://github.com/raelgc/es-logo.git"
+run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/es-logo/es-logo.plymouth 100"
+run_chroot "plymouth-set-default-theme es-logo"
+echo "Plymouth theme: es-logo"
+
+# === Rebuild initramfs (includes Plymouth hook) ===
+echo "=== Rebuilding initramfs ==="
+run_chroot "update-initramfs -u"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
