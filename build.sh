@@ -271,24 +271,36 @@ XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
 cat > "$ROOTFS/home/PS4/.bash_profile" << 'EOF'
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! pgrep -x Xorg > /dev/null 2>&1; then
-    killall -9 emulationstation 2>/dev/null
-    rm -f /tmp/.X0-lock /tmp/.X1-lock
-    /usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp &
-    sleep 6
-    export DISPLAY=:0
-    export XAUTHORITY=/home/PS4/.Xauthority
-    export LIBGL_ALWAYS_SOFTWARE=1
-    export vblank_mode=2
-    export __GL_SYNC_TO_VBLANK=1
-    exec emulationstation
-fi
+# ES launched by es-session.service — .bash_profile does nothing
+true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# NOTE: No systemd service for ES — it must start from .bash_profile -> startx -> .xinitrc
-# so it gets keyboard input from the console X session. systemd-started ES cannot
-# receive keyboard events from the console.
+# === ES systemd service (launches X+ES directly, bypasses startx) ===
+mkdir -p "$ROOTFS/etc/systemd/system"
+cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
+[Unit]
+Description=EmulationStation with X11
+After=multi-user.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=PS4
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/PS4/.Xauthority
+Environment=LIBGL_ALWAYS_SOFTWARE=1
+Environment=vblank_mode=2
+Environment=__GL_SYNC_TO_VBLANK=1
+ExecStartPre=/bin/bash -c "rm -f /tmp/.X0-lock /tmp/.X1-lock"
+ExecStart=/bin/bash -c "/usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp & sleep 7 && exec emulationstation"
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+ln -sf /etc/systemd/system/es-session.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/es-session.service"
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -338,8 +350,8 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="down" type="hat" id="0" value="4" />
     <input name="left" type="hat" id="0" value="8" />
     <input name="right" type="hat" id="0" value="2" />
-    <input name="a" type="button" id="1" value="1" />
-    <input name="b" type="button" id="0" value="1" />
+    <input name="a" type="button" id="0" value="1" />
+    <input name="b" type="button" id="1" value="1" />
     <input name="x" type="button" id="3" value="1" />
     <input name="y" type="button" id="2" value="1" />
     <input name="start" type="button" id="9" value="1" />
