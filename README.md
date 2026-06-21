@@ -39,6 +39,7 @@
 
 - [ ] **DS4 disconnects after 5-56 seconds** — hid-generic sends no USB keepalive reports. DS4 firmware drops connection after inactivity timeout. Active button use extends connection. Fix: keepalive daemon needed.
 - [ ] **DS4 not functional after disconnect/replug** — DS4 must be replugged and reconfigured after disconnect.
+- [ ] **ES loses HDMI signal after TV shutdown** — If TV is powered off, EmulationStation loses the HDMI output and doesn't recover when TV comes back. Likely missing screensaver/DPMS handling. Fix: configure xset DPMS/screensaver or add HDMI hotplug recovery.
 - [ ] **`/dev/loop` unmount error on boot** — cosmetic, not yet fixed.
 - [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
 
