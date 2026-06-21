@@ -62,9 +62,21 @@
 2. ~~Fix input~~ — Done (SDL2 keycodes, `<inputList>` format, DS4 button IDs, ROM paths, ownership)
 3. ~~Fix garbled background~~ — Done (bootargs.txt `video=HDMI-A-0` matches xorg.conf)
 4. ~~Fix home directory permissions~~ — Done (chown in install-HDD.sh, numeric uid in archive)
-5. Real-hardware validation of all 15 emulated systems
-6. Performance testing on different PS4 models (Fat/Slim/Pro)
-7. Clean up README — remove unverified claims, add accurate troubleshooting
+5. ~~Fix DS4 wired USB~~ — Done (`usbhid.quirks` prevents `hid_playstation` crash, hid-generic driver)
+6. ~~Fix ES vsync / keyboard dead~~ — Done (es-session.service launches Xorg directly)
+7. ~~Network services~~ — Done (NFS client, Samba, SSH, NetworkManager)
+8. **Fix DS4 disconnect** — Build keepalive daemon (HID output report every 2s to prevent firmware timeout)
+9. **Fix DS4 reconnect** — DS4 not functional after disconnect/replug, needs investigation
+10. **Fix ES HDMI signal loss** — ES loses HDMI output when TV is powered off, no recovery on TV power-on. Likely missing screensaver/DPMS handling or HDMI hotplug re-detection
+11. **Controller support expansion** — Test PS5 DualSense, Xbox Series, generic USB controllers. Pre-map known controllers in es_input.cfg, leave unknown for user Configure Input
+12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
+13. **Service selection during install** — Modify `install-HDD.sh` to let user choose which services to enable (SMB, NFS, FTP) BEFORE `.img` creation. All services disabled by default in the image
+14. **UFS as ROM storage** — UFS (`/ps4hdd/ROMs/`) is the primary ROM location, bind-mounted into Ubuntu at boot. Network mounts (SMB/NFS/CIFS) only available on the ext4 `.img` partition
+15. **Keyboard remapping** — User may need to remap keyboard via ES Configure Input. Pre-mapped defaults should work for standard USB keyboards
+16. **Bluetooth testing** — BT stack installed but untested on PS4 Linux. Needs real-hardware validation
+17. **RetroArch gameplay validation** — Test actual gameplay across all 15 systems
+18. **Performance testing** — Different PS4 models (Fat/Slim/Pro)
+19. **Clean up README** — Remove unverified claims, add accurate troubleshooting
 
 ---
 
