@@ -68,7 +68,7 @@
 8. **Fix DS4 disconnect** — Build keepalive daemon (HID output report every 2s to prevent firmware timeout)
 9. **Fix DS4 reconnect** — DS4 not functional after disconnect/replug, needs investigation
 10. **Fix ES HDMI signal loss** — ES loses HDMI output when TV is powered off, no recovery on TV power-on. Likely missing screensaver/DPMS handling or HDMI hotplug re-detection
-11. **Controller support expansion** — Test PS5 DualSense, Xbox Series, generic USB controllers. Pre-map known controllers in es_input.cfg, leave unknown for user Configure Input
+11. **Controller driver support** — Load in-tree modules (xpad, hid-nintendo, hid-logitech-dj) at boot for Xbox/Switch/Logitech USB controllers. No pre-mapping — non-DS4 controllers use ES Configure Input. Skip GPIO drivers (RPi-only). **DO NOT load hid-sony** (crashes xhci_aeolia).
 12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
 13. **Service selection during install** — Modify `install-HDD.sh` to let user choose which services to enable (SMB, NFS, FTP) BEFORE `.img` creation. All services disabled by default in the image
 14. **UFS as ROM storage** — UFS (`/ps4hdd/ROMs/`) is the primary ROM location, bind-mounted into Ubuntu at boot. Network mounts (SMB/NFS/CIFS) only available on the ext4 `.img` partition
