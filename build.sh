@@ -733,9 +733,9 @@ DSCFG
 
 # === Create append config for DS4 controller bindings ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-joypad.cfg" << 'APPENDCFG'
-input_driver = "udev"
 input_autodetect_enable = "true"
 input_device_p1 = "Wireless Controller"
+
 input_player1_a_btn = "0"
 input_player1_b_btn = "1"
 input_player1_x_btn = "2"
@@ -762,6 +762,17 @@ input_player1_r_y_minus_axis = "-4"
 input_player1_l3_btn = "13"
 input_player1_r3_btn = "14"
 input_player1_analog_dpad_mode = "0"
+
+input_menu_toggle = "f1"
+input_exit_emulator = "escape"
+input_state_slot_increase = "f7"
+input_state_slot_decrease = "f6"
+input_save_state = "f2"
+input_load_state = "f4"
+input_screenshot = "f8"
+input_hold_fast_forward = "space"
+input_rewind = "r"
+input_pause_toggle = "p"
 APPENDCFG
 
 # === Create RetroArch wrapper (stops ES for exclusive DRM/KMS access) ===
