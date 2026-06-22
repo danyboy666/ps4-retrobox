@@ -769,6 +769,8 @@ input_player1_up = "leftanalogup"
 input_player1_down = "leftanalogdown"
 input_player1_left = "leftanalogleft"
 input_player1_right = "leftanalogright"
+input_hotkey_enable = "8"
+input_menu_toggle_gamepad_combo = "2"
 APPENDCFG
 input_pause_toggle = "p"
 APPENDCFG
