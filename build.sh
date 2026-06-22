@@ -162,6 +162,11 @@ KbdInteractiveAuthentication yes
 UsePAM yes
 SSHEOF
 
+# Fix main sshd_config — include is at top, so these lines AFTER the include
+# override the include file. Must fix them directly.
+sed -i 's/^KbdInteractiveAuthentication no$/KbdInteractiveAuthentication yes/' "$ROOTFS/etc/ssh/sshd_config"
+sed -i 's/^#PermitRootLogin prohibit-password$/PermitRootLogin yes/' "$ROOTFS/etc/ssh/sshd_config"
+
 cat > "$ROOTFS/etc/systemd/system/regenerate-ssh-keys.service" << 'EOF'
 [Unit]
 Description=Regenerate SSH host keys on first boot
