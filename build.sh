@@ -733,7 +733,36 @@ DSCFG
 
 # === Create append config for DS4 controller bindings ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-joypad.cfg" << 'APPENDCFG'
-input_autodetect_enable = "true"
+input_autodetect_enable = "false"
+input_device_p1 = "Wireless Controller"
+
+input_player1_a_btn = "1"
+input_player1_b_btn = "2"
+input_player1_x_btn = "0"
+input_player1_y_btn = "3"
+input_player1_l_btn = "4"
+input_player1_r_btn = "5"
+input_player1_l2_axis = "+5"
+input_player1_r2_axis = "-5"
+input_player1_select_btn = "8"
+input_player1_start_btn = "9"
+input_player1_l3_btn = "10"
+input_player1_r3_btn = "11"
+input_player1_guide_btn = "12"
+input_player1_up = "h0up"
+input_player1_down = "h0down"
+input_player1_left = "h0left"
+input_player1_right = "h0right"
+input_player1_l_x_plus_axis = "+0"
+input_player1_l_x_minus_axis = "-0"
+input_player1_l_y_plus_axis = "+1"
+input_player1_l_y_minus_axis = "-1"
+input_player1_r_x_plus_axis = "+3"
+input_player1_r_x_minus_axis = "-3"
+input_player1_r_y_plus_axis = "+4"
+input_player1_r_y_minus_axis = "-4"
+input_player1_analog_dpad_mode = "0"
+
 input_menu_toggle = "f1"
 input_exit_emulator = "escape"
 input_state_slot_increase = "f7"
@@ -743,6 +772,8 @@ input_load_state = "f4"
 input_screenshot = "f8"
 input_hold_fast_forward = "space"
 input_rewind = "r"
+input_pause_toggle = "p"
+APPENDCFG
 input_pause_toggle = "p"
 APPENDCFG
 
