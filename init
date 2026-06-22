@@ -150,6 +150,10 @@ fi
 rm -f /ps4hdd/.write_test
 echo "UFS mounted and writable."
 
+# Quit Plymouth before interactive sections — it grabs keyboard input
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth quit 2>/dev/null
+_PLYMOUTH_ACTIVE=0
+
 clear
 
 # Find existing .img (>1GB, ignore failed partials)
@@ -200,7 +204,7 @@ fi
 if [ -z "$_EXISTING_IMG" ]; then
 	echo "Launching installer..."
 	echo ""
-	install-HDD.sh 2>&1 | tee /ps4hdd/system/boot/install.log
+	install-HDD.sh </dev/tty0 2>&1 | tee /ps4hdd/system/boot/install.log
 fi
 
 # Inline expansion: expand .img to target size BEFORE booting
