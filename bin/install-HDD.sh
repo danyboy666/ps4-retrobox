@@ -349,10 +349,24 @@ echo ""
 echo "Extracting rootfs..."
 cd /newroot
 
-# Extract (pipe through busybox xz for reliable decompression, no --no-same-owner)
-echo "  Decompressing and extracting..."
-xz -dc "/ps4hdd/system/boot/$_install_OS" | tar xf -
+# Background progress tracker (polls every 10 seconds)
+(
+    while true; do
+        _DONE=$(du -sb /newroot 2>/dev/null | awk '{print $1}')
+        _DONE_MB=$((_DONE / 1048576))
+        echo -ne "\r  Extracting: ~${_DONE_MB}MB extracted  "
+        sleep 10
+    done
+) &
+_PROG_PID=$!
+
+# Extract — busybox tar handles xz natively (DO NOT pipe through xz)
+tar xf "/ps4hdd/system/boot/$_install_OS"
 _TAR_EXIT=$?
+
+# Kill progress tracker
+kill $_PROG_PID 2>/dev/null
+wait $_PROG_PID 2>/dev/null
 echo ""
 
 # Verify extraction succeeded before continuing
