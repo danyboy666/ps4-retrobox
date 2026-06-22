@@ -680,6 +680,8 @@ video_driver = "gl"
 video_context_driver = "kms"
 audio_driver = "sdl2"
 input_driver = "udev"
+input_autodetect_enable = "true"
+input_device_p1 = "Sony Interactive Entertainment Wireless Controller"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 libretro_info_path = "/usr/share/libretro/info"
 content_database_path = "/usr/share/retroarch/assets/retroarch/database/rdb"
@@ -688,9 +690,46 @@ screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
-joypad_autoconfig_dir = "/usr/share/retroarch/assets/autoconfig"
+joypad_autoconfig_dir = "/home/PS4/.config/retroarch/autoconfig"
 menu_driver = "xmb"
 RETROCFG
+
+# === Create DS4 autoconfig for RetroArch ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/autoconfig/udev"
+cat > "$ROOTFS/home/PS4/.config/retroarch/autoconfig/udev/Sony_DualShock_4.cfg" << 'DSCFG'
+input_driver = "udev"
+input_device = "Sony Interactive Entertainment Wireless Controller"
+input_device_display_name = "PS4 Controller (USB)"
+
+input_a_btn = "0"
+input_b_btn = "1"
+input_x_btn = "3"
+input_y_btn = "4"
+input_start_btn = "9"
+input_select_btn = "8"
+input_guide_btn = "10"
+input_l3_btn = "11"
+input_r3_btn = "12"
+
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
+
+input_l_x_plus_axis = "+0"
+input_l_x_minus_axis = "-0"
+input_l_y_plus_axis = "+1"
+input_l_y_minus_axis = "-1"
+input_r_x_plus_axis = "+2"
+input_r_x_minus_axis = "-2"
+input_r_y_plus_axis = "+3"
+input_r_y_minus_axis = "-3"
+
+input_l_btn = "4"
+input_r_btn = "5"
+input_l2_axis = "+5"
+input_r2_axis = "-5"
+DSCFG
 
 # === Create RetroArch wrapper (stops ES for exclusive DRM/KMS access) ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
