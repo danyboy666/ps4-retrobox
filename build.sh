@@ -162,9 +162,9 @@ else
     echo "WARNING: autoconfig download failed"
 fi
 
-# === Compile EmulationStation ===
+# === Compile EmulationStation (PS4 fork with 25-button input + configscripts) ===
 echo "=== Compiling EmulationStation ==="
-run_chroot "cd /tmp && rm -rf ES-build && git clone https://github.com/Aloshi/EmulationStation.git ES-build"
+run_chroot "cd /tmp && rm -rf ES-build && git clone https://github.com/danyboy666/EmulationStation.git ES-build"
 
 # Patch round() conflict
 run_chroot "cd /tmp/ES-build && \
@@ -176,6 +176,11 @@ run_chroot "cd /tmp/ES-build && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-w -DCMAKE_CXX_FLAGS='-w' && \
     make -j\$(nproc) && make install"
+
+# Install RetroArch configscript
+mkdir -p "$ROOTFS/usr/local/bin"
+cp "$PWD/configscripts/retroarch.sh" "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 
 # === Create user ===
 echo "=== Creating user PS4 ==="
