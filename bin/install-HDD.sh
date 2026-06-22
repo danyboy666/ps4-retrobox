@@ -370,10 +370,10 @@ wait $_PROG_PID 2>/dev/null
 echo ""
 
 # Verify extraction succeeded before continuing
-if [ "$_TAR_EXIT" -ne 0 ] || [ ! -e /newroot/sbin/init ]; then
+if [ "$_TAR_EXIT" -ne 0 ] || [ ! -f /newroot/usr/lib/systemd/systemd ]; then
     echo "ERROR: Rootfs extraction failed or incomplete."
     echo "  tar exit code: $_TAR_EXIT"
-    [ -e /newroot/sbin/init ] && echo "  /sbin/init: found" || echo "  /sbin/init: MISSING"
+    [ -f /newroot/usr/lib/systemd/systemd ] && echo "  systemd: found" || echo "  systemd: MISSING"
     echo "  The .img was kept. Reboot to retry or choose delete."
     losetup -d /dev/loop5 2>/dev/null
     rescueshell
