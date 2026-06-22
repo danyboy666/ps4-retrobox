@@ -3,7 +3,6 @@
 
 ROOTFS="/mnt/ps4root"
 REPO="danyboy666/ps4-retrobox"
-FEEINT_INITRAMFS_TAG="v1.0"
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (sudo $0)"
@@ -466,13 +465,6 @@ cat > "$ROOTFS/usr/lib/NetworkManager/conf.d/10-globally-managed-devices.conf" <
 unmanaged-devices=
 NMLIB
 
-# === Input kernel modules ===
-echo "=== Loading input modules ==="
-mkdir -p "$ROOTFS/etc/modules-load.d"
-cat > "$ROOTFS/etc/modules-load.d/input.conf" << 'INPUTMOD'
-usbhid
-INPUTMOD
-
 # === DS4 udev rules ===
 mkdir -p "$ROOTFS/etc/udev/rules.d"
 
@@ -928,10 +920,6 @@ run_chroot "plymouth-set-default-theme es-logo"
 run_chroot "systemctl enable plymouth-start.service"
 echo "Plymouth theme: es-logo"
 
-# === Rebuild initramfs (includes Plymouth hook) ===
-echo "=== Rebuilding initramfs ==="
-run_chroot "update-initramfs -u"
-
 # === Cleanup ===
 echo "=== Cleaning up ==="
 run_chroot "apt-get autoremove -y && apt-get clean"
@@ -948,23 +936,30 @@ tar -cJf community-files/arch.tar.xz -C "$ROOTFS" \
     --exclude='./proc' --exclude='./sys' --exclude='./run' \
     --exclude='./dev' --exclude='./tmp' .
 
-# === Download feeRnt initramfs ===
-echo "=== Downloading feeRnt initramfs ==="
-if command -v gh &>/dev/null; then
-    gh release download "$FEEINT_INITRAMFS_TAG" -R feeRnt/ps4-linux-initramfs \
-        -p "initramfs.cpio.gz" -D community-files --clobber 2>/dev/null || \
-    echo "Warning: Could not download initramfs via gh. Download manually from:"
-    echo "  https://github.com/feeRnt/ps4-linux-initramfs/releases/tag/$FEEINT_INITRAMFS_TAG"
-else
-    echo "Warning: gh CLI not found. Download initramfs manually from:"
-    echo "  https://github.com/feeRnt/ps4-linux-initramfs/releases/tag/$FEEINT_INITRAMFS_TAG"
-fi
+# === Rebuild initramfs from source tree ===
+echo "=== Rebuilding initramfs ==="
+cd "$SCRIPT_DIR"
+find . \
+    -not -path './.git/*' \
+    -not -path './.github/*' \
+    -not -path './community-files/*' \
+    -not -path './es_configs import/*' \
+    -not -name 'build.sh' \
+    -not -name 'README.md' \
+    -not -name 'LICENSE' \
+    -not -name 'AUTHORS' \
+    -not -name 'LICENCE.Marvell' \
+    -not -name 'VERSION' \
+    -not -name '.gitignore' \
+    -not -name '.gitattributes' \
+    -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
+echo "  initramfs rebuilt from source tree (with Plymouth)"
 
 echo ""
 echo "=== Build complete! ==="
 echo "Files in community-files/:"
 echo "  arch.tar.xz          $(du -h community-files/arch.tar.xz | cut -f1)  (Ubuntu rootfs)"
-echo "  initramfs.cpio.gz    $(du -h community-files/initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (feeRnt initramfs)"
+echo "  initramfs.cpio.gz    $(du -h community-files/initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (with Plymouth splash)"
 echo "  bzImage*             (kernel - already in community-files)"
 echo "  payload-960-*.elf    (payloads - already in community-files)"
 echo ""

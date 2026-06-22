@@ -73,6 +73,14 @@ InitializeBusybox
 ln -s /bin/sh /bin/bash # not exactly accurate, but aids with many scripts requiring a #!/bin/bash 
 emount /dev
 
+# Start Plymouth splash (if 'splash' on cmdline)
+if grep -q "splash" /proc/cmdline 2>/dev/null; then
+	mkdir -p /run/plymouth
+	plymouthd --mode=boot --pid-file=/run/plymouth/pid 2>/dev/null
+	plymouth show-splash 2>/dev/null
+	_PLYMOUTH_ACTIVE=1
+fi
+
 # Clean up any stale loop devices from previous boot
 for _lp in /dev/loop[0-9]*; do
 	[ -b "$_lp" ] || continue
@@ -103,6 +111,7 @@ run_hooks pre_newroot_mount
 
 
 # # PS4 specific section:
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Setting up encrypted HDD" 2>/dev/null
 echo "Setting up (en)crypt(ted) mount setup for PlayStation 4 HDD." 
 echo "Waiting for HDD to appear..."
 
@@ -127,6 +136,7 @@ else
 fi
 
 echo "Finished cryptsetup. Mounting the encrypted drive. . ."
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Mounting UFS partition" 2>/dev/null
 
 mkdir /ps4hdd
 mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
@@ -143,6 +153,7 @@ echo "UFS mounted and writable."
 clear
 
 # Find existing .img (>1GB, ignore failed partials)
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Looking for boot image" 2>/dev/null
 _EXISTING_IMG="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
 
 # Fallback: find any .img regardless of size
@@ -287,6 +298,7 @@ echo "Auto-detected OS: $_OS"
 ###
 
 choose_os_offset
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Mounting root filesystem" 2>/dev/null
 setup_img_loop_device
 os_filesystem_check
 
@@ -327,6 +339,10 @@ if [ -d /ps4hdd/ROMS ]; then
 	mount --bind /ps4hdd/ROMS /newroot/home/PS4/ROMS
 fi
 # # End of PS4 specific section
+
+# Quit Plymouth before switching root
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Booting..." 2>/dev/null
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth quit 2>/dev/null
 
 boot_newroot
 
