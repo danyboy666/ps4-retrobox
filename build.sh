@@ -662,8 +662,8 @@ chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
-video_driver = "gl"
-audio_driver = "alsa"
+video_driver = "sdl2"
+audio_driver = "sdl2"
 input_driver = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 libretro_info_path = "/usr/share/libretro/info"
@@ -754,7 +754,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <theme>psx</theme>
   </system>
   <system>
-    <name>pce</name>
+    <name>tg16</name>
     <fullname>TurboGrafx-16</fullname>
     <path>/home/PS4/ROMS/tg16</path>
     <extension>.pce .cue .zip</extension>
@@ -857,7 +857,7 @@ if [ -d "es-theme-carbon" ]; then
     # Rename theme folders to match es_systems.cfg theme names
     [ -d "$THEME_DIR/carbon/genesis" ] && mv "$THEME_DIR/carbon/genesis" "$THEME_DIR/carbon/megadrive"
     [ -d "$THEME_DIR/carbon/tg-cd" ] && mv "$THEME_DIR/carbon/tg-cd" "$THEME_DIR/carbon/tgcd"
-    [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/pce"
+    [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/tg16"
     [ -d "$THEME_DIR/carbon/gg" ] && mv "$THEME_DIR/carbon/gg" "$THEME_DIR/carbon/gamegear"
     [ -d "$THEME_DIR/carbon/sms" ] && mv "$THEME_DIR/carbon/sms" "$THEME_DIR/carbon/mastersystem"
     echo "Theme installed: $THEME_DIR/carbon"
