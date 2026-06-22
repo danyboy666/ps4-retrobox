@@ -140,7 +140,6 @@ fi
 rm -f /ps4hdd/.write_test
 echo "UFS mounted and writable."
 
-sleep 2
 clear
 
 # Find existing .img (>1GB, ignore failed partials)
@@ -270,7 +269,13 @@ if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 fi
 
 # dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
-choose_boot_os
+# Set _OS from already-known .img path (no need for ls /ps4hdd/home)
+_OS="$(basename "$_IMG_FILE" .img)"
+if [ -z "$_OS" ]; then
+	echo "ERROR: No .img found in /ps4hdd/home/"
+	rescueshell
+fi
+echo "Auto-detected OS: $_OS"
 
 ###
 #if [ -f /ps4hdd/home/Arch.img ]; then
