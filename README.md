@@ -947,6 +947,8 @@ The init and functions.sh are derived from better-initramfs, modified in stages:
 ### Software
 
 - [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation frontend
+- [RetroPie](https://github.com/RetroPie/EmulationStation) — EmulationStation fork with 25-button input config, controller configscripts, and hotkey support. PS4 RetroBox ES fork is based on this.
+- [RetroPie](https://github.com/RetroPie/RetroPie-Setup) — RetroArch controller configuration scripts (configscripts/retroarch.sh) adapted for PS4 RetroBox
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
 - [raelgc](https://github.com/raelgc/es-logo) — EmulationStation Plymouth boot splash theme (GPL-2.0)
 
