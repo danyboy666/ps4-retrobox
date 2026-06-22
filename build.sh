@@ -156,6 +156,8 @@ print(f'Extracted {len([n for n in z.namelist() if n.startswith(\"udev/\") and n
 "
     cd -
     rm -f /tmp/ra_autoconfig.zip
+    # Remove menu_toggle_btn from DS4 profile so our hotkey settings take effect
+    sed -i '/input_menu_toggle_btn/d' "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev/Sony DualShock 4 Controller.cfg" 2>/dev/null
 else
     echo "WARNING: autoconfig download failed"
 fi
@@ -701,7 +703,7 @@ video_driver = "gl"
 video_context_driver = "kms"
 audio_driver = "sdl2"
 input_driver = "udev"
-input_autodetect_enable = "false"
+input_autodetect_enable = "true"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
