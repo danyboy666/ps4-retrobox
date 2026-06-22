@@ -19,10 +19,14 @@
 - [x] GitHub release v1.2 with all assets
 - [x] DS4 wired USB working via hid-generic driver (`usbhid.quirks` prevents `hid_playstation` from claiming DS4)
 - [x] Keyboard input working (ES detects Microsoft keyboard, buttons navigable)
-- [x] EmulationStation frontend — 16 systems, carbon theme, ES 2.0.1a
+- [x] EmulationStation frontend — 17 systems, carbon theme, PS4 fork with 25-button input config
 - [x] FTP server on port 2121 (pure-ftpd) for quick ROM transfer
 - [x] ROM storage options — `.img` (default) or UFS, Samba toggle from ES carousel
 - [x] Plymouth boot splash — ES logo splash during boot (plymouth-start.service enabled)
+- [x] RetroArch 1.22.2 with GL+KMS video driver (software Mesa rendering on PS4)
+- [x] DS4 hotkey combo — Select+Cross=menu, Select+Start=exit (RetroPie-style)
+- [x] 437 official RetroArch autoconfig profiles for multi-controller support
+- [x] RetroArch configscript — translates ES input → RetroArch config automatically
 
 ### Critical Issues (blocking actual use)
 
@@ -46,7 +50,8 @@
 - [x] EmulationStation display — ES window created successfully, all 16 systems showing
 - [x] DS4 controller input — detected by ES as "PS4 Controller" via hid-generic driver, buttons mapped
 - [x] Keyboard input — Microsoft wireless keyboard detected, buttons navigable at 9-13% CPU
-- [ ] RetroArch gameplay
+- [x] RetroArch gameplay — games load and run via GL+KMS with software Mesa rendering
+- [x] DS4 hotkey combo — Select+Cross=menu, Select+Start=exit
 - [ ] Samba ROM transfer from PC
 - [ ] NFS ROM transfer from PC
 - [ ] Multi-OS support (only one `.img` at a time)
@@ -154,42 +159,73 @@ The only risky part is the jailbreak itself (exploiting the PS4 browser), which 
 
 ### DualShock 4 (DS4)
 
-The `es_input.cfg` is pre-configured for DualShock 4. The DS4 uses the **hid-generic** driver (not `hid_playstation`) via `usbhid.quirks` in bootargs.txt. This prevents the `hid_playstation` driver from crashing the xhci_aeolia USB controller.
+The DS4 uses the **hid-generic** driver (not `hid_playstation`) via `usbhid.quirks` in bootargs.txt. This prevents the `hid_playstation` driver from crashing the xhci_aeolia USB controller.
 
 | Property | Value |
 |----------|-------|
-| **Device Name** | `PS4 Controller` |
-| **GUID** | `030000004c050000cc09000000016800` |
 | **Driver** | `hid-generic` (via `usbhid.quirks=0x054c:0x05c4:0x400000`) |
-| **Connection** | USB wired (Bluetooth not supported on CUH-1000/1100) |
+| **Connection** | USB wired (use a good cable — bad cables cause disconnects) |
+| **Auto-detection** | 437 official RetroArch autoconfig profiles included |
 
-**DS4 Button Mapping:**
+**DS4 Button Mapping (verified on PS4 hardware):**
 
-| DS4 Button | ES Action | RetroArch |
-|------------|-----------|-----------|
-| D-Pad | Navigate | D-Pad |
-| Cross (X) | Confirm (A) | A |
-| Circle | Back (B) | B |
-| Triangle | Info | Y |
-| Square | Details | X |
-| L1 | Page Up | L1 |
-| R1 | Page Down | R1 |
-| L2 | Left Trigger | L2 |
-| R2 | Right Trigger | R2 |
-| Start | Menu | Start |
-| Select | Select | Select |
-| L3 Click | — | L3 |
-| R3 Click | — | R3 |
+| DS4 Button | js0 Button | ES Action | RetroArch |
+|------------|-----------|-----------|-----------|
+| D-Pad | Hat switch | Navigate | D-Pad |
+| Left Stick | Axes 0,1 | Navigate | Left Analog (also maps as D-Pad) |
+| Cross (X) | btn 1 | Confirm (A) | A |
+| Circle | btn 0 | Back (B) | B |
+| Triangle | btn 2 | Info | X |
+| Square | btn 3 | Details | Y |
+| L1 | btn 4 | Page Up | L1 |
+| R1 | btn 5 | Page Down | R1 |
+| L2 | axis 2 | Left Trigger | L2 |
+| R2 | axis 5 | Right Trigger | R2 |
+| Start | btn 9 | Menu | Start |
+| Select | btn 8 | Select | Select |
+| L3 Click | btn 10 | — | L3 |
+| R3 Click | btn 11 | — | R3 |
+| PS Button | btn 12 | — | Guide/Hotkey |
 
-**Keyboard Controls (USB keyboard):**
+### RetroArch Hotkey Combo
 
-| Key | Action |
-|-----|--------|
-| Arrow keys | Navigate |
-| Enter | Confirm |
-| Escape | Back |
-| F1 | Menu |
-| F2 | Select |
+RetroArch uses a **hotkey modifier** system (like RetroPie):
+
+| Combo | Action |
+|-------|--------|
+| **Hold Select + Cross** | Open RetroArch Menu |
+| **Hold Select + Start** | Exit Game |
+| **Hold Select + L1** | Load State |
+| **Hold Select + R1** | Save State |
+| **Hold Select + Left** | Decrease State Slot |
+| **Hold Select + Right** | Increase State Slot |
+| **Hold Select + Triangle** | Screenshot |
+| **Hold Select + Square** | Fast Forward |
+| **Hold Select + R3** | Pause |
+
+**How it works:** Hold the **Select** button, then press the second button. Select must be held down for the entire combo.
+
+### RetroArch Configuration
+
+RetroArch uses a **configscript** (`/usr/local/bin/retroarch-configscript.sh`) that reads the ES input configuration and generates the RetroArch config with correct button mappings and hotkey settings.
+
+After configuring input in ES (or reconfiguring), run the configscript to update RetroArch:
+
+```bash
+ssh PS4@<PS4-IP>   # Password: PS4
+/usr/local/bin/retroarch-configscript.sh
+```
+
+The configscript:
+1. Reads `~/.emulationstation/es_input.cfg`
+2. Maps ES button names → RetroArch config
+3. Sets up hotkey: Select as modifier, X for menu, Start for exit
+4. Maps left stick as D-pad fallback
+5. Writes `~/.config/retroarch/retroarch.cfg`
+
+### Multi-Controller Support
+
+437 official RetroArch autoconfig profiles are installed at `/usr/share/retroarch/assets/autoconfig/udev/`. Any controller supported by RetroArch will auto-detect. For controllers not in the autoconfig database, use "Configure Input" in ES to map buttons, then run the configscript.
 
 ## DS4 Lightbar LED Controller
 
