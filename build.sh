@@ -837,15 +837,6 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <platform>gamegear</platform>
     <theme>gamegear</theme>
   </system>
-  <system>
-    <name>network</name>
-    <fullname>Network ROMs</fullname>
-    <path>/home/PS4/ROMS-network</path>
-    <extension>.sh</extension>
-    <command>sudo /usr/local/bin/setup-samba.sh --toggle</command>
-    <platform>pc</platform>
-    <theme>network</theme>
-  </system>
 </systemList>
 ESCFG
 
@@ -868,8 +859,10 @@ if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     # Rename theme folders to match es_systems.cfg theme names
     [ -d "$THEME_DIR/carbon/genesis" ] && mv "$THEME_DIR/carbon/genesis" "$THEME_DIR/carbon/megadrive"
-    [ -d "$THEME_DIR/carbon/pce-cd" ] && mv "$THEME_DIR/carbon/pce-cd" "$THEME_DIR/carbon/tgcd"
+    [ -d "$THEME_DIR/carbon/tg-cd" ] && mv "$THEME_DIR/carbon/tg-cd" "$THEME_DIR/carbon/tgcd"
     [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/pce"
+    [ -d "$THEME_DIR/carbon/gg" ] && mv "$THEME_DIR/carbon/gg" "$THEME_DIR/carbon/gamegear"
+    [ -d "$THEME_DIR/carbon/sms" ] && mv "$THEME_DIR/carbon/sms" "$THEME_DIR/carbon/mastersystem"
     echo "Theme installed: $THEME_DIR/carbon"
     _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
     echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
@@ -885,18 +878,6 @@ ln -sf /etc/emulationstation/themes "$ROOTFS/home/PS4/.emulationstation/themes"
 echo "Theme: carbon (RetroPie, formatVersion=3)"
 
 chown -R 1000:1000 "$ROOTFS/home/PS4"
-
-# === Create Network ROMS directory and sudoers entry ===
-echo "=== Setting up Network toggle ==="
-mkdir -p "$ROOTFS/home/PS4/ROMS-network"
-echo "#!/bin/bash" > "$ROOTFS/home/PS4/ROMS-network/README.sh"
-echo "# This directory is used by the Network system in EmulationStation." >> "$ROOTFS/home/PS4/ROMS-network/README.sh"
-echo "# When you select 'Network ROMs' in ES, it toggles between UFS and Samba." >> "$ROOTFS/home/PS4/ROMS-network/README.sh"
-chmod +x "$ROOTFS/home/PS4/ROMS-network/README.sh"
-
-# Allow PS4 user to run setup-samba.sh without password
-echo "PS4 ALL=(ALL) NOPASSWD: /usr/local/bin/setup-samba.sh" > "$ROOTFS/etc/sudoers.d/ps4-samba"
-chmod 440 "$ROOTFS/etc/sudoers.d/ps4-samba"
 
 # === systemd service: fix UFS permissions at boot ===
 cat > "$ROOTFS/etc/systemd/system/fix-ufs-permissions.service" << 'UFSPERM'
