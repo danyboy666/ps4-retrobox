@@ -18,9 +18,9 @@ run_chroot() {
 # === Create rootfs directory ===
 mkdir -p "$ROOTFS"
 
-# === Bootstrap Ubuntu 22.04 ===
-echo "=== Bootstrapping Ubuntu 22.04 ==="
-debootstrap --arch=amd64 jammy "$ROOTFS" http://archive.ubuntu.com/ubuntu
+# === Bootstrap Ubuntu 24.04 ===
+echo "=== Bootstrapping Ubuntu 24.04 ==="
+debootstrap --arch=amd64 noble "$ROOTFS" http://archive.ubuntu.com/ubuntu
 
 # === Mount pseudo-filesystems ===
 echo "=== Mounting pseudo-filesystems ==="
@@ -31,9 +31,9 @@ done
 # === Configure apt sources ===
 echo "=== Configuring apt sources ==="
 cat > "$ROOTFS/etc/apt/sources.list" << 'SOURCES'
-deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
-deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
-deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-security main restricted universe multiverse
 SOURCES
 
 cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
@@ -96,15 +96,28 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libfreetype6-dev libeigen3-dev libcurl4-openssl-dev \
     libasound2-dev libgl1-mesa-dev build-essential cmake"
 
-# === Install RetroArch + cores ===
-echo "=== Installing RetroArch + cores ==="
-run_chroot "apt-get update"
+# === Install RetroArch build deps ===
+echo "=== Installing RetroArch build deps ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    retroarch retroarch-assets libretro-core-info \
-    libretro-beetle-pce-fast libretro-beetle-psx \
-    libretro-bsnes-mercury-balanced \
-    libretro-gambatte libretro-genesisplusgx \
-    libretro-mgba libretro-mupen64plus libretro-nestopia libretro-snes9x" || true
+    libdrm-dev libgbm-dev libegl-dev libgles-dev libudev-dev \
+    libasound2-dev libpulse-dev libfreetype-dev libfontconfig-dev \
+    libxkbcommon-dev libwayland-dev libx11-xcb-dev libxcb1-dev \
+    libxcb-xkb-dev libxkbcommon-x11-dev libxrandr-dev libxinerama-dev \
+    libxi-dev libxcursor-dev libxss-dev libssl-dev libsdl2-dev \
+    nasm git liblzma-dev"
+
+# === Build RetroArch from source (with DRM video driver) ===
+echo "=== Building RetroArch 1.22.2 from source ==="
+run_chroot "cd /tmp && rm -rf RetroArch && git clone --depth=1 --branch v1.22.2 https://github.com/libretro/RetroArch.git RetroArch"
+run_chroot "cd /tmp/RetroArch && ./configure --enable-plain_drm --enable-kms --enable-egl --enable-sdl2 --enable-alsa --enable-udev --enable-freetype --enable-ssl --enable-opengl --disable-qt --disable-ffmpeg --disable-opengl_core"
+run_chroot "cd /tmp/RetroArch && make -j\$(nproc)"
+run_chroot "cp /tmp/RetroArch/retroarch /usr/bin/retroarch && chmod +x /usr/bin/retroarch"
+run_chroot "rm -rf /tmp/RetroArch"
+
+# === Install libretro core build deps ===
+echo "=== Installing libretro core build deps ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    retroarch-assets libretro-core-info" || true
 
 # === Download missing libretro cores from buildbot ===
 echo "=== Downloading missing libretro cores ==="
@@ -143,7 +156,7 @@ run_chroot "cd /tmp/ES-build && \
 
 # === Create user ===
 echo "=== Creating user PS4 ==="
-run_chroot "useradd -m -s /bin/bash -G sudo,video,input,plugdev PS4"
+run_chroot "useradd -m -s /bin/bash -G sudo,video,input,plugdev,render PS4"
 run_chroot "echo 'PS4:PS4' | chpasswd"
 run_chroot "echo 'root:root' | chpasswd"
 run_chroot "echo 'PS4 ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/PS4"
@@ -281,24 +294,25 @@ true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === ES systemd service (launches X+ES directly, bypasses startx) ===
+# === ES systemd service (no X11 — PS4 can't switch VTs, ES uses SDL2 framebuffer directly) ===
 mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
-Description=EmulationStation with X11
+Description=EmulationStation (SDL2 framebuffer)
 After=multi-user.target network-online.target plymouth-quit.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=PS4
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/PS4/.Xauthority
 Environment=LIBGL_ALWAYS_SOFTWARE=1
+Environment=MESA_LOADER_DRIVER_OVERRIDE=swrast
+Environment=GBM_ALWAYS_SOFTWARE=1
+Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
-ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null; rm -f /tmp/.X0-lock /tmp/.X1-lock"
-ExecStart=/bin/bash -c "/usr/lib/xorg/Xorg :0 vt1 -keeptty -auth /home/PS4/.Xauthority -nolisten tcp & sleep 7 && exec emulationstation"
+ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
+ExecStart=emulationstation
 Restart=always
 RestartSec=3
 
@@ -662,7 +676,8 @@ chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
-video_driver = "sdl2"
+video_driver = "gl"
+video_context_driver = "kms"
 audio_driver = "sdl2"
 input_driver = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
@@ -674,8 +689,26 @@ savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 joypad_autoconfig_dir = "/usr/share/retroarch/assets/autoconfig"
-menu_driver = "ozone"
+menu_driver = "xmb"
 RETROCFG
+
+# === Create RetroArch wrapper (stops ES for exclusive DRM/KMS access) ===
+cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
+#!/bin/bash
+systemctl stop es-session.service 2>/dev/null
+sleep 2
+mkdir -p /tmp/runtime-PS4
+chmod 700 /tmp/runtime-PS4
+export MESA_LOADER_DRIVER_OVERRIDE=swrast
+export GBM_ALWAYS_SOFTWARE=1
+export LIBGL_ALWAYS_SOFTWARE=1
+export XDG_RUNTIME_DIR=/tmp/runtime-PS4
+/usr/bin/retroarch --config /home/PS4/.config/retroarch/retroarch.cfg "$@" 2>&1 | tee /tmp/retroarch.log
+RESULT=$?
+systemctl start es-session.service 2>/dev/null
+exit $RESULT
+WRAPPER
+chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
 # === Configure EmulationStation ===
 cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
