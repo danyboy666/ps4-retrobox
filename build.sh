@@ -701,60 +701,26 @@ video_driver = "gl"
 video_context_driver = "kms"
 audio_driver = "sdl2"
 input_driver = "udev"
-input_autodetect_enable = "true"
-input_device_p1 = "Sony Interactive Entertainment Wireless Controller"
+input_autodetect_enable = "false"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
-libretro_info_path = "/usr/share/libretro/info"
-content_database_path = "/usr/share/retroarch/assets/retroarch/database/rdb"
-cheat_database_path = "/usr/share/retroarch/assets/retroarch/cht"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
-joypad_autoconfig_dir = "/home/PS4/.config/retroarch/autoconfig"
 menu_driver = "xmb"
-RETROCFG
 
-# === Create DS4 autoconfig for RetroArch ===
-mkdir -p "$ROOTFS/home/PS4/.config/retroarch/autoconfig/udev"
-cat > "$ROOTFS/home/PS4/.config/retroarch/autoconfig/udev/Sony_DualShock_4.cfg" << 'DSCFG'
-input_driver = "udev"
-input_device = "Sony Interactive Entertainment Wireless Controller"
-input_device_display_name = "PS4 Controller (USB)"
-
-input_a_btn = "0"
-input_b_btn = "1"
-input_x_btn = "3"
-input_y_btn = "4"
-input_start_btn = "9"
-input_select_btn = "8"
-input_guide_btn = "10"
-input_l3_btn = "11"
-input_r3_btn = "12"
-
-input_up_btn = "h0up"
-input_down_btn = "h0down"
-input_left_btn = "h0left"
-input_right_btn = "h0right"
-
-input_l_x_plus_axis = "+0"
-input_l_x_minus_axis = "-0"
-input_l_y_plus_axis = "+1"
-input_l_y_minus_axis = "-1"
-input_r_x_plus_axis = "+2"
-input_r_x_minus_axis = "-2"
-input_r_y_plus_axis = "+3"
-input_r_y_minus_axis = "-3"
-
-input_l_btn = "4"
-input_r_btn = "5"
-input_l2_axis = "+5"
-input_r2_axis = "-5"
-DSCFG
-
-# === Create append config for DS4 controller bindings ===
-cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-joypad.cfg" << 'APPENDCFG'
-input_autodetect_enable = "false"
+input_hotkey_enable_btn = "8"
+input_menu_toggle_btn = "0"
+input_exit_emulator_btn = "9"
+input_menu_toggle_gamepad_combo = "0"
+input_state_slot_increase_btn = "7"
+input_state_slot_decrease_btn = "6"
+input_save_state_btn = "2"
+input_load_state_btn = "4"
+input_screenshot_btn = "3"
+input_hold_fast_forward_btn = "5"
+input_rewind_btn = "13"
+input_pause_toggle_btn = "11"
 
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
@@ -767,10 +733,10 @@ input_player1_start_btn = "9"
 input_player1_l3_btn = "10"
 input_player1_r3_btn = "11"
 input_player1_guide_btn = "12"
-input_player1_up = "h0up"
-input_player1_down = "h0down"
-input_player1_left = "h0left"
-input_player1_right = "h0right"
+input_player1_up_btn = "h0up"
+input_player1_down_btn = "h0down"
+input_player1_left_btn = "h0left"
+input_player1_right_btn = "h0right"
 input_player1_l_x_plus_axis = "+0"
 input_player1_l_x_minus_axis = "-0"
 input_player1_l_y_plus_axis = "+1"
@@ -786,22 +752,7 @@ input_player1_up = "leftanalogup"
 input_player1_down = "leftanalogdown"
 input_player1_left = "leftanalogleft"
 input_player1_right = "leftanalogright"
-
-input_hotkey_enable = "8"
-input_menu_toggle = "0"
-input_exit_emulator = "9"
-input_menu_toggle_gamepad_combo = "0"
-input_state_slot_increase = "7"
-input_state_slot_decrease = "6"
-input_save_state = "2"
-input_load_state = "4"
-input_screenshot = "3"
-input_hold_fast_forward = "5"
-input_rewind = "13"
-input_pause_toggle = "11"
-APPENDCFG
-input_pause_toggle = "p"
-APPENDCFG
+RETROCFG
 
 # === Create RetroArch wrapper (stops ES for exclusive DRM/KMS access) ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
@@ -830,7 +781,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Super Nintendo</fullname>
     <path>/home/PS4/ROMS/snes</path>
     <extension>.sfc .smc .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
     <platform>snes</platform>
     <theme>snes</theme>
   </system>
@@ -839,7 +790,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo Entertainment System</fullname>
     <path>/home/PS4/ROMS/nes</path>
     <extension>.nes .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
     <platform>nes</platform>
     <theme>nes</theme>
   </system>
@@ -848,7 +799,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo 64</fullname>
     <path>/home/PS4/ROMS/n64</path>
     <extension>.n64 .z64 .v64 .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
     <platform>n64</platform>
     <theme>n64</theme>
   </system>
@@ -857,7 +808,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy Advance</fullname>
     <path>/home/PS4/ROMS/gba</path>
     <extension>.gba .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
     <platform>gba</platform>
     <theme>gba</theme>
   </system>
@@ -866,7 +817,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy</fullname>
     <path>/home/PS4/ROMS/gb</path>
     <extension>.gb .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gb</platform>
     <theme>gb</theme>
   </system>
@@ -875,7 +826,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy Color</fullname>
     <path>/home/PS4/ROMS/gbc</path>
     <extension>.gbc .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gbc</platform>
     <theme>gbc</theme>
   </system>
@@ -884,7 +835,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Mega Drive</fullname>
     <path>/home/PS4/ROMS/megadrive</path>
     <extension>.md .bin .gen .smd .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>megadrive</platform>
     <theme>megadrive</theme>
   </system>
@@ -893,7 +844,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sony PlayStation</fullname>
     <path>/home/PS4/ROMS/psx</path>
     <extension>.bin .cue .iso .pbp .chd .m3u .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
     <platform>psx</platform>
     <theme>psx</theme>
   </system>
@@ -902,7 +853,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>TurboGrafx-16</fullname>
     <path>/home/PS4/ROMS/tg16</path>
     <extension>.pce .cue .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>tg16</platform>
     <theme>tg16</theme>
   </system>
@@ -911,7 +862,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>TurboGrafx-CD</fullname>
     <path>/home/PS4/ROMS/tgcd</path>
     <extension>.chd .cue .iso .m3u</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>tgcd</platform>
     <theme>tgcd</theme>
   </system>
@@ -920,7 +871,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Arcade</fullname>
     <path>/home/PS4/ROMS/arcade</path>
     <extension>.zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>arcade</platform>
     <theme>arcade</theme>
   </system>
@@ -929,7 +880,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Neo Geo</fullname>
     <path>/home/PS4/ROMS/neogeo</path>
     <extension>.zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>neogeo</platform>
     <theme>neogeo</theme>
   </system>
@@ -938,7 +889,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 2600</fullname>
     <path>/home/PS4/ROMS/atari2600</path>
     <extension>.a26 .bin .rom .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
     <platform>atari2600</platform>
     <theme>atari2600</theme>
   </system>
@@ -947,7 +898,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 5200</fullname>
     <path>/home/PS4/ROMS/atari5200</path>
     <extension>.a52 .bin .xfd .atari .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/atari800_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/atari800_libretro.so %ROM%</command>
     <platform>atari5200</platform>
     <theme>atari5200</theme>
   </system>
@@ -956,7 +907,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 7800</fullname>
     <path>/home/PS4/ROMS/atari7800</path>
     <extension>.a78 .bin .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
     <platform>atari7800</platform>
     <theme>atari7800</theme>
   </system>
@@ -965,7 +916,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Master System</fullname>
     <path>/home/PS4/ROMS/mastersystem</path>
     <extension>.sms .bin .gen .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>mastersystem</platform>
     <theme>mastersystem</theme>
   </system>
@@ -974,7 +925,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Game Gear</fullname>
     <path>/home/PS4/ROMS/gamegear</path>
     <extension>.gg .bin .zip</extension>
-    <command>retroarch --appendconfig /home/PS4/.config/retroarch/retroarch-joypad.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>retroarch -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>gamegear</platform>
     <theme>gamegear</theme>
   </system>
