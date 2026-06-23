@@ -1031,8 +1031,118 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <platform>gamegear</platform>
     <theme>gamegear</theme>
   </system>
+  <system>
+    <name>ps4_retrobox</name>
+    <fullname>PS4 RetroBox</fullname>
+    <path>/usr/local/bin/scripts</path>
+    <extension>.sh</extension>
+    <command>bash %ROM%</command>
+    <platform>settings</platform>
+    <theme>ps4_retrobox</theme>
+  </system>
 </systemList>
 ESCFG
+
+# === Create helper scripts for PS4 RetroBox settings system ===
+mkdir -p "$ROOTFS/usr/local/bin/scripts"
+
+cat > "$ROOTFS/usr/local/bin/scripts/setup-samba.sh" << 'SAMBA'
+#!/bin/bash
+echo "=== PS4 RetroBox - Samba Setup ==="
+echo "Edit /usr/local/bin/setup-samba.sh to set your PC IP and share name"
+echo "Then run: sudo setup-samba.sh --setup"
+echo ""
+read -p "Press Enter to continue..."
+SAMBA
+
+cat > "$ROOTFS/usr/local/bin/scripts/toggle-storage.sh" << 'TOGGLE'
+#!/bin/bash
+echo "=== PS4 RetroBox - Storage Toggle ==="
+echo "Options:"
+echo "  1. Switch to UFS (Internal HDD)"
+echo "  2. Switch to Samba/Network"
+echo "  3. Cancel"
+read -p "Choice [1-3]: " CHOICE
+case $CHOICE in
+    1) echo "Switching to UFS..." && sudo setup-samba.sh --restore 2>/dev/null && echo "Done! Restarting ES..." && sudo systemctl restart es-session.service ;;
+    2) echo "Switching to Samba..." && sudo setup-samba.sh --setup 2>/dev/null && echo "Done! Restarting ES..." && sudo systemctl restart es-session.service ;;
+    *) echo "Cancelled." ;;
+esac
+TOGGLE
+
+cat > "$ROOTFS/usr/local/bin/scripts/system-info.sh" << 'SYSINFO'
+#!/bin/bash
+echo "=== PS4 RetroBox System Info ==="
+echo ""
+echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2)"
+echo "Kernel: $(uname -r)"
+echo "RAM: $(free -h | awk '/^Mem:/{print $2 " total, " $3 " used"}')"
+echo "Disk: $(df -h / | awk 'NR==2{print $2 " total, " $3 " used"}')"
+echo "IP: $(hostname -I | awk '{print $1}')"
+echo ""
+echo "RetroArch: $(retroarch --version 2>&1 | head -1)"
+echo "ES: EmulationStation v2.0.1a"
+echo ""
+echo "Systems: $(grep '<name>' /home/PS4/.emulationstation/es_systems.cfg | wc -l)"
+echo "Cores: $(ls /usr/lib/x86_64-linux-gnu/libretro/*.so 2>/dev/null | wc -l)"
+echo "ROMS: $(find /home/PS4/ROMS -type f 2>/dev/null | wc -l) files"
+echo ""
+read -p "Press Enter to continue..."
+SYSINFO
+
+cat > "$ROOTFS/usr/local/bin/scripts/reboot.sh" << 'REBOOT'
+#!/bin/bash
+echo "Rebooting PS4 in 3 seconds..."
+sleep 3
+sudo reboot
+REBOOT
+
+cat > "$ROOTFS/usr/local/bin/scripts/shutdown.sh" << 'SHUTDOWN'
+#!/bin/bash
+echo "Shutting down PS4 in 3 seconds..."
+sleep 3
+sudo shutdown -h now
+SHUTDOWN
+
+cat > "$ROOTFS/usr/local/bin/scripts/test-network.sh" << 'NETTEST'
+#!/bin/bash
+echo "=== Network Test ==="
+echo "IP: $(hostname -I | awk '{print $1}')"
+echo "Gateway: $(ip route | awk '/default/ {print $3}')"
+echo ""
+echo "Testing internet..."
+ping -c 3 8.8.8.8 2>&1 | tail -3
+echo ""
+read -p "Press Enter to continue..."
+NETTEST
+
+chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
+
+# === Create ps4_retrobox theme for ES carousel ===
+mkdir -p "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art"
+cp "$PWD/community-files/ps4-retrobox-logo.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg"
+cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'THEME'
+<?xml version="1.0"?>
+<theme>
+    <formatVersion>3</formatVersion>
+    <include>./../carbon.xml</include>
+
+    <view name="system">
+        <image name="logo">
+            <path>./art/system.svg</path>
+        </image>
+    </view>
+
+    <view name="basic, detailed, video">
+        <image name="logo">
+            <path>./art/system.svg</path>
+            <pos>0.266 0.074</pos>
+            <maxSize>0.460 0.126</maxSize>
+            <origin>0.5 0.5</origin>
+        </image>
+    </view>
+</theme>
+THEME
 
 # === Install RetroPie carbon theme ===
 echo "=== Installing RetroPie carbon theme ==="
