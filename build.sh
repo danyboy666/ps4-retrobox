@@ -1218,7 +1218,7 @@ chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
 
 # === Create ps4_retrobox theme for ES carousel ===
 mkdir -p "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art"
-cp "$PWD/community-files/ps4-retrobox-logo.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg"
+cp "$PWD/community-files/ps4-retrobox-logo.png" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.png"
 cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'THEME'
 <?xml version="1.0"?>
 <theme>
@@ -1227,13 +1227,13 @@ cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'TH
 
     <view name="system">
         <image name="logo">
-            <path>./art/system.svg</path>
+            <path>./art/system.png</path>
         </image>
     </view>
 
     <view name="basic, detailed, video">
         <image name="logo">
-            <path>./art/system.svg</path>
+            <path>./art/system.png</path>
             <pos>0.266 0.074</pos>
             <maxSize>0.460 0.126</maxSize>
             <origin>0.5 0.5</origin>
