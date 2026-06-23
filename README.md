@@ -50,6 +50,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 ## Requirements
 
 - PS4 Fat CUH-1000/1100 (Aeolia) — only tested model
+> **⚠ Firmware: Only tested on 9.60.** Other FW versions may work but are unverified.
 - Firmware 5.05–13.02 (any jailbreak-compatible)
 - Ethernet cable required (WiFi not supported on CUH-1000/1100)
 - Windows PC on same network (for initial FTP)
