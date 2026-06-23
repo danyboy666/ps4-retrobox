@@ -2,82 +2,50 @@
 
 > **DISCLAIMER**: This project was assembled by an AI assistant (OpenCode). The author is testing this method on real hardware to verify it is valid and safe. Use at your own risk. Always ensure you have a way to recover your PS4 if something goes wrong. The author assumes no responsibility for any damage to your console.
 
-> **⚠ PROJECT STATUS — ACTIVE TESTING**  
-> Core boot flow works end-to-end. Display, input, and theme rendering are being validated on real hardware. See the status checklist below.
+> **⚠ PROJECT STATUS — v1.3 WORK IN PROGRESS**  
+> Core boot flow works. ES runs with hardware GL (radeonsi). RetroArch launches games. Controller, sound, Plymouth, and many features need further testing and fixes. This is NOT a stable release.
 
-## Project Status
-
-### What Works (tested on real hardware)
+## What Works (v1.3, tested on CUH-1000/1100 Aeolia)
 
 - [x] Jailbreak + payload delivery (PSFree-Enhanced, GoldHEN BinLoader)
-- [x] Payload loads kernel + initramfs from internal HDD (`/data/linux/boot/`)
-- [x] Initramfs decrypts PS4 HDD partition (auto-detect partition 27/13)
-- [x] UFS2 mount + write verification (read-only mount issue resolved)
-- [x] Network — Ethernet + DHCP, NFS client, Samba share, SSH (port 22)
-- [x] All 4 payloads functional (1GB/2GB/3GB/4GB VRAM)
-- [x] Install flow: 3GB base + optional expansion (16/32/50GB) during install
-- [x] GitHub release v1.2 with all assets
-- [x] DS4 wired USB working via hid-generic driver (`usbhid.quirks` prevents `hid_playstation` from claiming DS4)
-- [x] Keyboard input working (ES detects Microsoft keyboard, buttons navigable)
-- [x] EmulationStation frontend — 17 systems, carbon theme, PS4 fork with 25-button input config
-- [x] FTP server on port 2121 (pure-ftpd) for quick ROM transfer
-- [x] ROM storage options — `.img` (default) or UFS, Samba toggle from ES carousel
-- [x] Plymouth boot splash — ES logo splash during boot (plymouth-start.service enabled)
-- [x] RetroArch 1.22.2 with GL+KMS video driver (software Mesa rendering on PS4)
-- [x] DS4 hotkey combo — Select+Cross=menu, Select+Start=exit (RetroPie-style)
-- [x] 437 official RetroArch autoconfig profiles for multi-controller support
-- [x] RetroArch configscript — translates ES input → RetroArch config automatically
+- [x] Payload loads kernel + initramfs from internal HDD
+- [x] Initramfs decrypts PS4 HDD partition (auto-detect)
+- [x] UFS2 mount + write verification
+- [x] Network — Ethernet + DHCP, SSH (port 22)
+- [x] Install flow: 3GB base + optional expansion
+- [x] Ubuntu 24.04 LTS (upgraded from 22.04 in v1.3)
+- [x] ES runs at 1080p with hardware GL via radeonsi + amdgpu_shim.so
+- [x] 17 retro systems (snes, nes, n64, gba, gb, gbc, megadrive, psx, tg16, arcade, neogeo, atari2600, atari5200, atari7800, mastersystem, gamegear)
+- [x] RetroArch 1.22.2 with GL+KMS video driver
+- [x] DS4 wired USB detected and buttons work in ES
+- [x] ROMs launch in RetroArch (NES, SNES confirmed)
+- [x] 12 libretro cores installed
 
-### Critical Issues (blocking actual use)
+## Known Bugs / Not Working (v1.3)
 
-- [x] ~~**Garbled screen in EmulationStation**~~ — Fixed: removed `drm.edid_firmware=edid/1920x1080.bin` from bootargs.txt. Fixed HDMI connector mismatch: `video=HDMI-A-1` changed to `video=HDMI-A-0` in bootargs.txt to match xorg.conf.
-- [x] ~~**Keyboard + controller not working in Ubuntu**~~ — Fixed: es_input.cfg rewritten for hid-generic DS4 mapping. `usbhid.quirks` prevents `hid_playstation` driver from claiming DS4 (which crashes xhci_aeolia). Keyboard works via `98-hide-microsoft-joystick.rules` hiding MS keyboard joystick from SDL2.
-- [x] ~~**ROM paths mismatch**~~ — Fixed: es_systems.cfg paths changed from uppercase (`SNES`, `PlayStation`) to lowercase (`snes`, `psx`) matching install-HDD.sh.
-- [x] ~~**Home directory permissions denied**~~ — Fixed: install-HDD.sh now runs `chown -R 1000:1000 /newroot/home/PS4` after tar extraction.
-- [x] ~~**xinitrc LED permission errors**~~ — Fixed: removed `/sys/class/leds/` writes that required root.
-- [x] ~~**sudo broken (setuid bit stripped)**~~ — Fixed: install-HDD.sh and boot_newroot() both run `chmod u+s` on sudo/su/passwd/pkexec after extraction.
-- [x] ~~**ES crashes after welcome screen**~~ — Fixed: FreeImage can't render SVG/PNG backgrounds on PS4 amdgpu. build.sh now strips background/overlay `<image>` elements from carbon.xml.
-- [x] ~~**DS4 D-pad inverted**~~ — Fixed: swapped hat values for down and right in es_input.cfg.
-- [x] ~~**White background**~~ — Fixed: black background color added to all theme views in carbon.xml.
-- [x] ~~**ES vsync failure / keyboard dead**~~ — Fixed: `es-session.service` launches Xorg directly (bypasses `startx` which breaks DRI vblank). `.bash_profile` is now no-op to prevent dual-ES-process conflict.
+- [ ] **Sound not working** — PulseAudio configured but ALSA errors persist. Audio driver needs investigation
+- [ ] **DS4 button mapping wrong in RetroArch** — Controller works in ES but RetroArch autoconfig doesn't map buttons correctly. L2/R2 axis mapping needs fixing
+- [ ] **No controller input in RetroArch settings menu** — Controller not recognized inside RA settings
+- [ ] **No keyboard input in RetroArch settings menu** — Keyboard not detected by RA's udev driver
+- [ ] **RetroArch interface shows old rgui** — Menu driver not switching to xmb consistently
+- [ ] **Plymouth boot splash not working** — Service runs but no visual splash during boot
+- [ ] **UFS ROMs folder permissions untested** — Create/add/delete ROMs on /ps4hdd/ROMS/ not validated
+- [ ] **Other controllers untested** — Only DS4 tested. Xbox/Switch/other USB controllers need validation
+- [ ] **ES Configure Input not tested** — 25-button input config needs real-hardware validation
+- [ ] **FTP disabled by default** — Only SSH enabled. FTP settings/script need validation
+- [ ] **Samba/NFS helper scripts untested** — setup-samba.sh, network mounts need testing
+- [ ] **DS4 LED reset not called on ES exit**
+- [ ] **No signal can occur** — Display sometimes drops when making runtime changes via SSH
+- [ ] **ES sluggishness** — Software GL rendering at 1080p on PS4 CPU. Hardware GL via radeonsi attempted but DRM modesetting broken on PS4 kernel
 
-### Known Bugs
+## Roadmap
 
-- [ ] **DS4 LED reset not called on ES exit** — lightbar stays in custom color after quitting EmulationStation.
-
-### Not Yet Tested
-
-- [x] EmulationStation display — ES window created successfully, all 16 systems showing
-- [x] DS4 controller input — detected by ES as "PS4 Controller" via hid-generic driver, buttons mapped
-- [x] Keyboard input — Microsoft wireless keyboard detected, buttons navigable at 9-13% CPU
-- [x] RetroArch gameplay — games load and run via GL+KMS with software Mesa rendering
-- [x] DS4 hotkey combo — Select+Cross=menu, Select+Start=exit
-- [ ] Samba ROM transfer from PC
-- [ ] NFS ROM transfer from PC
-- [ ] Multi-OS support (only one `.img` at a time)
-- [ ] PS4 Pro (Baikal) kernel
-- [ ] PS4 Slim/Fat CUH-1200 (Belize) kernel
-- [ ] Multiple TV/monitor compatibility
-
-### Roadmap
-
-1. ~~Fix display output~~ — Done (removed missing EDID firmware, fixed HDMI-A-0 connector)
-2. ~~Fix input~~ — Done (SDL2 keycodes, `<inputList>` format, DS4 button IDs, ROM paths, ownership)
-3. ~~Fix garbled background~~ — Done (bootargs.txt `video=HDMI-A-0` matches xorg.conf)
-4. ~~Fix home directory permissions~~ — Done (chown in install-HDD.sh, numeric uid in archive)
-5. ~~Fix DS4 wired USB~~ — Done (`usbhid.quirks` prevents `hid_playstation` crash, hid-generic driver)
-6. ~~Fix ES vsync / keyboard dead~~ — Done (es-session.service launches Xorg directly)
-7. ~~Network services~~ — Done (NFS client, Samba, SSH, NetworkManager)
-8. **Fix DS4 disconnect** — ~~Keepalive daemon~~ — Resolved: was caused by faulty USB cable, not firmware timeout
-9. **Fix DS4 reconnect** — ~~USB port reset~~ — Resolved: same cable issue
-10. ~~**Fix ES HDMI signal loss**~~ — Done: hdmi-watcher.sh uses `modetest -s HDMI-A-1:1920x1080@60` to force modeset on TV reconnect. Tested and working.
-11. **Controller driver support** — Load in-tree modules (xpad, hid-nintendo, hid-logitech-dj) at boot for Xbox/Switch/Logitech USB controllers. No pre-mapping — non-DS4 controllers use ES Configure Input. Skip GPIO drivers (RPi-only). **DO NOT load hid-sony** (crashes xhci_aeolia).
-12. **Settings menu in ES carousel** — Add "Settings" system to es_systems.cfg that launches helper scripts (enable/disable services, setup network mount, etc.) from the GUI
-13. **Service selection during install** — Modify `install-HDD.sh` to let user choose which services to enable (SMB, NFS, FTP) BEFORE `.img` creation. All services disabled by default in the image
-14. **ROM storage options** — ROMs can be stored in `.img` (default, self-contained) or on UFS (`/ps4hdd/ROMS/`). Network mounts (SMB/NFS/CIFS) available via "Network" system in ES. Build script prompts user for storage choice.
-15. **Keyboard remapping** — User may need to remap keyboard via ES Configure Input. Pre-mapped defaults should work for standard USB keyboards
-16. **Bluetooth testing** — BT stack installed but untested on PS4 Linux. Needs real-hardware validation
-17. **RetroArch gameplay validation** — Test actual gameplay across all 16 systems
+1. **v1.3 (current)** — Ubuntu 24.04, RetroArch 1.22.2, radeonsi+shim for hardware GL, 25-button ES input, configscript for RetroArch
+2. **v1.4** — Fix sound, fix DS4 RetroArch mapping, fix RetroArch menu, fix Plymouth
+3. **v1.5** — Fix UFS ROM permissions, test all controllers, validate ES input config
+4. **v1.6** — Fix network helpers, enable FTP, validate full install flow
+5. **v1.7** — Performance optimization, fix ES sluggishness (needs kernel amdgpu firmware)
+6. **v2.0** — Stable release candidate
 18. **Performance testing** — Different PS4 models (Fat/Slim/Pro)
 19. **Clean up README** — Remove unverified claims, add accurate troubleshooting
 
