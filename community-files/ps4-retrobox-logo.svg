@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="350" height="80" viewBox="0 0 350 80">
-  <rect width="350" height="80" fill="none"/>
-  <style>
-    @import url("https://fonts.googleapis.com/css2?family=Michroma&amp;display=swap");
-  </style>
-  <text x="10" y="50" font-family="Michroma, sans-serif" font-size="36" fill="#00E5FF" font-weight="bold" letter-spacing="1">PS4</text>
-  <text x="110" y="50" font-family="Michroma, sans-serif" font-size="36" fill="#FF6F00" letter-spacing="1">-RetroBox</text>
-</svg>
