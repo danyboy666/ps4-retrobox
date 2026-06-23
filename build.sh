@@ -389,12 +389,16 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <bool name="BackgroundJoystickInput" value="true" />
   <bool name="ShowHiddenFiles" value="false" />
   <bool name="ShowMissingGames" value="true" />
-  <bool name="MultiThreadedMedi" value="true" />
+  <bool name="MultiThreadedMedia" value="true" />
   <string name="MediaSystemInfo" value="true" />
   <string name="StartupSystem" value="" />
   <string name="ScreenSaverBehavior" value="dim" />
   <bool name="ScreenSaverEnabled" value="false" />
   <string name="VideoDriver" value="default" />
+  <string name="Scraper" value="TheGamesDB" />
+  <bool name="ScrapeRatings" value="true" />
+  <int name="ScraperResizeWidth" value="400" />
+  <int name="ScraperResizeHeight" value="0" />
 </config>
 ESCFG
 
@@ -498,6 +502,21 @@ for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari26
     echo '<gameList />' >> "$GAMEDIR/$sys/gamelist.xml"
 done
 echo "Gamelists: $(find $GAMEDIR -name gamelist.xml | wc -l) empty systems"
+
+# Create .emulationstation folder structure
+echo "=== Creating ES folder structure ==="
+ES_DIR="$ROOTFS/home/PS4/.emulationstation"
+mkdir -p "$ES_DIR/collections"
+mkdir -p "$ES_DIR/downloaded_images"
+mkdir -p "$ES_DIR/PS4-RetroBox-Save"
+mkdir -p "$ES_DIR/system_art"
+mkdir -p "$ES_DIR/systems"
+mkdir -p "$ES_DIR/configs/all/launching"
+for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+    mkdir -p "$ES_DIR/downloaded_images/$sys"
+    mkdir -p "$ES_DIR/configs/$sys/launching"
+done
+echo "ES folders created"
 
 chown -R 1000:1000 "$ROOTFS/home/PS4"
 
