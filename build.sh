@@ -162,6 +162,28 @@ else
     echo "WARNING: autoconfig download failed"
 fi
 
+# === Compile amdgpu shim (intercepts ACCEL_WORKING check for PS4) ===
+echo "=== Compiling amdgpu shim ==="
+cat > /tmp/amdgpu_shim.c << 'SHIMEOF'
+#include <stddef.h>
+#include <stdint.h>
+#include <dlfcn.h>
+#define AMDGPU_INFO_ACCEL_WORKING 0x18
+typedef int (*orig_t)(void *, uint32_t, uint32_t, void *);
+int amdgpu_query_info(void *dev, uint32_t info, uint32_t size, void *value) {
+    static orig_t orig = NULL;
+    if (!orig) orig = (orig_t)dlsym(RTLD_NEXT, "amdgpu_query_info");
+    if (info == AMDGPU_INFO_ACCEL_WORKING) {
+        if (value) *(uint32_t *)value = 1;
+        return 0;
+    }
+    if (orig) return orig(dev, info, size, value);
+    return -1;
+}
+SHIMEOF
+run_chroot "gcc -shared -fPIC -o /usr/lib/x86_64-linux-gnu/amdgpu_shim.so /tmp/amdgpu_shim.c -ldl"
+rm -f /tmp/amdgpu_shim.c
+
 # === Compile EmulationStation (PS4 fork with 25-button input + configscripts) ===
 echo "=== Compiling EmulationStation ==="
 run_chroot "cd /tmp && rm -rf ES-build && git clone https://github.com/danyboy666/EmulationStation.git ES-build"
@@ -333,14 +355,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=PS4
-Environment=LIBGL_ALWAYS_SOFTWARE=1
-Environment=MESA_LOADER_DRIVER_OVERRIDE=swrast
-Environment=GBM_ALWAYS_SOFTWARE=1
+Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
+Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
+Environment=SDL_AUDIODRIVER=alsa
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStart=emulationstation --resolution 1280 720
+ExecStart=emulationstation
 Restart=always
 RestartSec=3
 
@@ -708,7 +730,8 @@ video_driver = "gl"
 video_context_driver = "kms"
 audio_driver = "sdl2"
 input_driver = "udev"
-input_autodetect_enable = "true"
+input_autodetect_enable = "false"
+input_keyboard_provider = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
@@ -717,7 +740,6 @@ system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
 
 input_hotkey_enable_btn = "8"
-input_menu_toggle_btn = "0"
 input_exit_emulator_btn = "9"
 input_menu_toggle_gamepad_combo = "0"
 input_state_slot_increase_btn = "7"
