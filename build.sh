@@ -137,7 +137,7 @@ echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
 # === Install extras ===
 echo "=== Installing extras ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    joystick jstest-gtk evtest ffmpeg netpbm"
+    joystick jstest-gtk evtest ffmpeg netpbm fbi"
 
 # === Install RetroArch autoconfig profiles ===
 echo "=== Installing autoconfig profiles ==="
@@ -464,6 +464,12 @@ for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari26
     mkdir -p "$ROMS_DIR/$sys"
 done
 
+# Create launching image directories
+mkdir -p "$ROOTFS/home/PS4/launching"
+for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+    mkdir -p "$ROMS_DIR/$sys/launching"
+done
+
 # Copy homebrew ROMs into .img (source: es_configs import/ROMS/)
 # NOTE: tgcd excluded — empty, users can add via FTP/Samba
 HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMS"
@@ -781,13 +787,63 @@ input_player1_left = "leftanalogleft"
 input_player1_right = "leftanalogright"
 RETROCFG
 
-# === Create RetroArch wrapper (stops ES for exclusive DRM/KMS access) ===
+# === Create RetroArch wrapper (stops ES, shows launching image, then launches game) ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
+
+# Find launching image: per-ROM > per-system > global
+find_launch_image() {
+    local system="$1" rom="$2"
+    local rom_bn="${rom##*/}"
+    rom_bn="${rom_bn%.*}"
+    for img in \
+        "/home/PS4/ROMS/$system/images/${rom_bn}-launching.png" \
+        "/home/PS4/ROMS/$system/images/${rom_bn}-launching.jpg" \
+        "/home/PS4/ROMS/$system/launching.png" \
+        "/home/PS4/ROMS/$system/launching.jpg" \
+        "/home/PS4/launching.png" \
+        "/home/PS4/launching.jpg"; do
+        [ -f "$img" ] && echo "$img" && return
+    done
+}
+
+# Extract system from command args
+SYSTEM=""
+ROM_PATH=""
+for arg in "$@"; do
+    case "$arg" in
+        *snes*) SYSTEM="snes" ;;
+        *nes*) SYSTEM="nes" ;;
+        *n64*) SYSTEM="n64" ;;
+        *gba*) SYSTEM="gba" ;;
+        *gb/*|*gbc*) SYSTEM="gb" ;;
+        *megadrive*) SYSTEM="megadrive" ;;
+        *psx*) SYSTEM="psx" ;;
+        *tg16*) SYSTEM="tg16" ;;
+        *tgcd*) SYSTEM="tgcd" ;;
+        *arcade*) SYSTEM="arcade" ;;
+        *neogeo*) SYSTEM="neogeo" ;;
+        *atari2600*) SYSTEM="atari2600" ;;
+        *atari5200*) SYSTEM="atari5200" ;;
+        *atari7800*) SYSTEM="atari7800" ;;
+        *mastersystem*) SYSTEM="mastersystem" ;;
+        *gamegear*) SYSTEM="gamegear" ;;
+    esac
+    [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
+done
+
+# Show launching image
+if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
+    IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
+    if [ -n "$IMAGE" ]; then
+        fbi -1 -t 2 -noverbose -a "$IMAGE" </dev/tty &>/dev/null &
+        sleep 2
+    fi
+fi
+
 systemctl stop es-session.service 2>/dev/null
 sleep 2
-mkdir -p /tmp/runtime-PS4
-chmod 700 /tmp/runtime-PS4
+mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 export XDG_RUNTIME_DIR=/tmp/runtime-PS4
@@ -1115,6 +1171,29 @@ ping -c 3 8.8.8.8 2>&1 | tail -3
 echo ""
 read -p "Press Enter to continue..."
 NETTEST
+
+cat > "$ROOTFS/usr/local/bin/scripts/setup-launching-images.sh" << 'IMAGES'
+#!/bin/bash
+echo "=== Launching Images Setup ==="
+echo ""
+echo "Place images to show before games launch:"
+echo ""
+echo "  Global:      /home/PS4/launching/launching.png"
+echo "  Per-system:  /home/PS4/ROMS/<system>/launching.png"
+echo "  Per-ROM:     /home/PS4/ROMS/<system>/images/<rom>-launching.png"
+echo ""
+echo "Supported formats: PNG, JPG"
+echo "Recommended size: 1920x1080"
+echo ""
+echo "Example for NES:"
+echo "  /home/PS4/ROMS/nes/launching.png          (all NES games)"
+echo "  /home/PS4/ROMS/nes/images/Mega Man-launching.png  (specific game)"
+echo ""
+echo "Use SCP/SFTP from your PC to upload images:"
+echo "  scp my-image.png PS4@<IP>:/home/PS4/launching/launching.png"
+echo ""
+read -p "Press Enter to continue..."
+IMAGES
 
 chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
 
