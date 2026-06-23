@@ -340,7 +340,7 @@ Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStart=emulationstation
+ExecStart=emulationstation --resolution 1280 720
 Restart=always
 RestartSec=3
 
