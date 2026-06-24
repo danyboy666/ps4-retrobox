@@ -222,6 +222,13 @@ run_chroot "chmod 440 /etc/sudoers.d/PS4"
 echo "=== Configuring SSH ==="
 run_chroot "systemctl enable ssh.service"
 
+# === Configure PulseAudio: default to HDMI output ===
+mkdir -p "$ROOTFS/home/PS4/.config/pulse"
+cat > "$ROOTFS/home/PS4/.config/pulse/client.conf" << 'PULSECONF'
+default-sink = alsa_output.pci-0000_00_01.1.hdmi-stereo
+PULSECONF
+chown 1000:1000 "$ROOTFS/home/PS4/.config/pulse/client.conf"
+
 # Force password authentication on
 mkdir -p "$ROOTFS/etc/ssh/sshd_config.d"
 cat > "$ROOTFS/etc/ssh/sshd_config.d/00-ps4retrobox.conf" << 'SSHEOF'
