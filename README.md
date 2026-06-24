@@ -137,17 +137,18 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 
 ## Build From Source
 
-### Quick Build (pre-built rootfs)
+### Pre-built (recommended)
 
-Download the [v1.3 ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.3) — no build needed. Just FTP the files to your PS4 and boot.
+Download the [latest release](https://github.com/danyboy666/ps4-retrobox/releases) — no build needed. FTP to PS4 and boot.
 
-### Full Build (from scratch)
+### Full Build (Linux PC)
 
 Requirements:
-- Ubuntu/Debian host with `sudo` access
+- x86_64 Linux PC (Ubuntu/Debian)
+- `sudo` access
 - Internet connection
 - ~5GB free disk space
-- ~30-60 minutes
+- ~15-30 minutes
 
 ```bash
 git clone https://github.com/danyboy666/ps4-retrobox.git
@@ -155,49 +156,14 @@ cd ps4-retrobox
 sudo ./build.sh
 ```
 
-This will:
-1. Bootstrap Ubuntu 24.04 rootfs (~1.8GB)
-2. Build RetroArch 1.22.2 from source with DRM/KMS support
-3. Build EmulationStation from the PS4 fork
-4. Compile the amdgpu_shim.so (intercepts ACCEL_WORKING for radeonsi)
-5. Download 27 libretro cores from the buildbot
-6. Install 39 system configs, launching images, carbon theme
-7. Package as `community-files/arch.tar.xz`
-8. Rebuild initramfs from source tree
-
 Output files in `community-files/`:
-| File | Size | Description |
-|------|------|-------------|
-| `arch.tar.xz` | ~250MB | Ubuntu rootfs with RetroArch, ES, cores, configs |
-| `initramfs.cpio.gz` | ~8MB | Boot initramfs with Plymouth splash |
-| `bzImage_*` | ~9-18MB | Linux kernel (provided, not built by build.sh) |
-| `payload-960-*.elf` | ~300KB each | PS4 payloads for 1GB-4GB RAM models |
 
-### Build vs Pre-built — Pros & Cons
-
-| | Pre-built (ZIP) | Full Build |
-|---|---|---|
-| **Time** | ~10 min setup | ~1-2 hours |
-| **Disk space** | Just download | ~5GB free |
-| **Customization** | Fixed config | Change anything |
-| **Latest code** | Last release | Always up to date |
-| **Difficulty** | Easy | Moderate (needs Linux) |
-| **Root access** | Not needed | Required |
-| **Internet** | Only for download | Required (large downloads) |
-
-### Updating a Running PS4
-
-If you already have PS4 RetroBox installed and want to update without reflashing:
-
-1. SSH into PS4: `ssh PS4@<IP>` (password: `PS4`)
-2. Copy updated files via SCP/SFTP
-3. Key files to update:
-   - `/usr/local/bin/retroarch-wrapper.sh` — game launcher
-   - `/home/PS4/.config/retroarch/retroarch.cfg` — main RetroArch config
-   - `/home/PS4/.config/retroarch/retroarch-ps4.cfg` — DS4 bindings + hotkeys
-   - `/home/PS4/.emulationstation/es_systems.cfg` — system definitions
-   - `/usr/lib/x86_64-linux-gnu/libretro/*.so` — cores
-4. Restart ES: `sudo systemctl restart es-session.service`
+| File | Description |
+|------|-------------|
+| `arch.tar.xz` | Ubuntu rootfs with RetroArch, ES, cores |
+| `initramfs.cpio.gz` | Boot initramfs |
+| `bzImage_*` | Linux kernel |
+| `payload-960-*.elf` | PS4 payloads |
 
 ### Architecture
 
