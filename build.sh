@@ -97,7 +97,8 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libsdl2-dev libboost-system-dev libboost-filesystem-dev \
     libboost-date-time-dev libboost-locale-dev libfreeimage-dev \
     libfreetype6-dev libeigen3-dev libcurl4-openssl-dev \
-    libasound2-dev libgl1-mesa-dev build-essential cmake"
+    libasound2-dev libgl1-mesa-dev build-essential cmake \
+    libpng-dev libjpeg-dev"
 
 # === Install RetroArch build deps ===
 echo "=== Installing RetroArch build deps ==="
@@ -189,6 +190,12 @@ int amdgpu_query_info(void *dev, uint32_t info, uint32_t size, void *value) {
 SHIMEOF
 run_chroot "gcc -shared -fPIC -o /usr/lib/x86_64-linux-gnu/amdgpu_shim.so /tmp/amdgpu_shim.c -ldl"
 rm -f /tmp/amdgpu_shim.c
+
+# === Compile fb_display (framebuffer image viewer with stride handling) ===
+echo "=== Compiling fb_display ==="
+cp "$PWD/fb_display.c" /tmp/fb_display.c
+run_chroot "gcc -O2 -o /usr/local/bin/fb_display /tmp/fb_display.c -lpng -ljpeg"
+rm -f /tmp/fb_display.c
 
 # === Compile EmulationStation (PS4 fork with 25-button input + configscripts) ===
 echo "=== Compiling EmulationStation ==="
@@ -860,14 +867,16 @@ find_launch_image() {
 
 show_image() {
     local img="$1"
-    if command -v fbv >/dev/null 2>&1; then
-        fbv -fid -e 1 "$img" 2>/dev/null
-    else
+    if [ -x /usr/local/bin/fb_display ]; then
+        fb_display "$img" 2>/dev/null
+    elif command -v fbv >/dev/null 2>&1; then
+        fbv -fid "$img" 2>/dev/null
+    elif command -v ffmpeg >/dev/null 2>&1; then
         timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
         if [ -f /tmp/launch_fb.raw ]; then
             dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null
             dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
-            sleep 1
+            sleep 0.2
             rm -f /tmp/launch_fb.raw
         fi
     fi
@@ -1613,6 +1622,32 @@ run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.ply
 run_chroot "plymouth-set-default-theme es-logo"
 run_chroot "systemctl enable plymouth-start.service"
 echo "Plymouth theme: es-logo"
+
+# === Remove unnecessary files from rootfs ===
+echo "=== Cleaning rootfs bloat ==="
+run_chroot "rm -rf /usr/share/libretro/assets/wallpapers" 2>/dev/null
+run_chroot "rm -f /usr/lib/x86_64-linux-gnu/libvulkan_*.so" 2>/dev/null
+run_chroot "find /usr/lib/x86_64-linux-gnu -name '*.a' -delete" 2>/dev/null
+run_chroot "find /usr/lib/gcc -name '*.a' -delete" 2>/dev/null
+run_chroot "rm -rf /usr/share/X11" 2>/dev/null
+run_chroot "rm -rf /usr/share/ghostscript" 2>/dev/null
+run_chroot "rm -rf /usr/share/mime" 2>/dev/null
+run_chroot "rm -rf /usr/share/bash-completion" 2>/dev/null
+run_chroot "rm -rf /usr/share/iso-codes" 2>/dev/null
+run_chroot "rm -rf /usr/share/bug" 2>/dev/null
+run_chroot "rm -rf /usr/share/info" 2>/dev/null
+run_chroot "rm -rf /usr/share/directfb-1.7*" 2>/dev/null
+run_chroot "rm -rf /usr/share/tcltk" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/branding" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/xmb" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/ozone" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/rgui" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/glui" 2>/dev/null
+run_chroot "rm -f /var/log/dpkg.log /var/log/apt/term.log /var/log/bootstrap.log /var/log/apt/history.log" 2>/dev/null
+run_chroot "rm -rf /var/cache/apt/archives/*.deb" 2>/dev/null
+run_chroot "rm -rf /usr/share/doc /usr/share/man /usr/share/info" 2>/dev/null
+run_chroot "rm -rf /usr/share/locale /usr/share/i18n" 2>/dev/null
+echo "Rootfs bloat cleaned"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="

@@ -385,10 +385,9 @@ chown -R 1000:1000 /newroot/home/PS4
 
 # Fix setuid bits — busybox tar/cpio strips them
 echo "Restoring setuid bits..."
-chmod u+s /newroot/usr/bin/sudo
-chmod u+s /newroot/usr/bin/su
-chmod u+s /newroot/usr/bin/passwd
-chmod u+s /newroot/usr/bin/pkexec
+for _suid in /newroot/usr/bin/sudo /newroot/usr/bin/su /newroot/usr/bin/passwd /newroot/usr/bin/pkexec; do
+    [ -f "$_suid" ] && chmod u+s "$_suid"
+done
 
 # Copy ROMs to UFS if user chose that option (BEFORE umount — /newroot must be mounted)
 echo ""
