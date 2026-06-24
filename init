@@ -141,6 +141,10 @@ echo "Finished cryptsetup. Mounting the encrypted drive. . ."
 mkdir /ps4hdd
 mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
 
+# Fix /ps4hdd/home/ permissions so PS4 user (FTP) can manage .img and ROMS
+chmod 775 /ps4hdd/home/ 2>/dev/null
+chown 1000:1000 /ps4hdd/home/ 2>/dev/null
+
 # Verify UFS is writable
 if ! touch /ps4hdd/.write_test 2>/dev/null; then
 	echo "ERROR: UFS mounted read-only. Cannot proceed."
@@ -245,7 +249,7 @@ if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 			[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
 
 			echo "  Writing ${_DIFF_MB}MB zeros to extend file..."
-			dd if=/dev/zero of="$_IMG_FILE" bs=1M count=$_DIFF_MB seek=$_SEEK_MB 2>/dev/null &
+			dd if=/dev/zero of="$_IMG_FILE" bs=1M count=$_DIFF_MB seek=$_SEEK_MB 2>/tmp/dd_expand.log &
 			_DD_PID=$!
 			sleep 2
 			while kill -0 $_DD_PID 2>/dev/null; do
@@ -256,6 +260,12 @@ if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 				sleep 5
 			done
 			wait $_DD_PID
+			_DD_EXIT=$?
+			if [ "$_DD_EXIT" -ne 0 ]; then
+				echo "  WARNING: dd expansion failed (exit code $_DD_EXIT). Check /tmp/dd_expand.log"
+				cat /tmp/dd_expand.log 2>/dev/null
+				echo "  The .img may not have expanded. Proceeding anyway..."
+			fi
 			printf "\r  Extending file: %dMB / %dMB (100%%) ✓\n" "$_TARGET_MB" "$_TARGET_MB"
 
 			echo "  Attaching .img to loop5..."
