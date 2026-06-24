@@ -468,12 +468,6 @@ for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari26
     mkdir -p "$ROMS_DIR/$sys"
 done
 
-# Create launching image directories
-mkdir -p "$ROOTFS/home/PS4/launching"
-for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
-    mkdir -p "$ROMS_DIR/$sys/launching"
-done
-
 # Copy homebrew ROMs into .img (source: es_configs import/ROMS/)
 # NOTE: tgcd excluded — empty, users can add via FTP/Samba
 HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMS"
@@ -517,6 +511,30 @@ for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari26
     mkdir -p "$ES_DIR/configs/$sys/launching"
 done
 echo "ES folders created"
+
+# Download launching images from ehettervik/es-runcommand-splash
+echo "=== Downloading launching images ==="
+SPLEASH_DIR="/tmp/es-runcommand-splash"
+rm -rf "$SPLASH_DIR"
+git clone --depth 1 https://github.com/ehettervik/es-runcommand-splash.git "$SPLASH_DIR" 2>/dev/null || true
+if [ -d "$SPLASH_DIR" ]; then
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+        # ehettervik uses different folder names — try common variants
+        for src_name in "$sys" "$sys"_* "${sys}_*" "neogeo"; do
+            for f in "$SPLASH_DIR/$src_name/launching.png" "$SPLASH_DIR/$src_name"/launching*.png; do
+                if [ -f "$f" ]; then
+                    cp "$f" "$ES_DIR/downloaded_images/$sys/launching.png" 2>/dev/null
+                    break
+                fi
+            done
+            [ -f "$ES_DIR/downloaded_images/$sys/launching.png" ] && break
+        done
+    done
+    rm -rf "$SPLASH_DIR"
+fi
+# Count how many images were downloaded
+IMG_COUNT=$(find "$ES_DIR/downloaded_images" -name "launching.png" | wc -l)
+echo "Launching images: $IMG_COUNT downloaded to downloaded_images/"
 
 chown -R 1000:1000 "$ROOTFS/home/PS4"
 
@@ -815,11 +833,11 @@ find_launch_image() {
     local rom_bn="${rom##*/}"
     rom_bn="${rom_bn%.*}"
     for img in \
+        "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.png" \
+        "/home/PS4/.emulationstation/downloaded_images/$system/launching.png" \
         "/home/PS4/ROMS/$system/images/${rom_bn}-launching.png" \
-        "/home/PS4/ROMS/$system/images/${rom_bn}-launching.jpg" \
-        "/home/PS4/.emulationstation/configs/$system/launching.png" \
-        "/home/PS4/.emulationstation/configs/all/launching.png" \
-        "/home/PS4/ROMS/$system/launching.png"; do
+        "/home/PS4/ROMS/$system/launching.png" \
+        "/home/PS4/.emulationstation/configs/all/launching.png"; do
         [ -f "$img" ] && echo "$img" && return
     done
 }
@@ -1205,19 +1223,19 @@ echo "=== Launching Images Setup ==="
 echo ""
 echo "Place images to show before games launch:"
 echo ""
-echo "  Global:      /home/PS4/launching/launching.png"
-echo "  Per-system:  /home/PS4/ROMS/<system>/launching.png"
-echo "  Per-ROM:     /home/PS4/ROMS/<system>/images/<rom>-launching.png"
+echo "  Per-system:  /home/PS4/.emulationstation/downloaded_images/<system>/launching.png"
+echo "  Per-ROM:     /home/PS4/.emulationstation/downloaded_images/<system>/images/<rom>-launching.png"
+echo "  Fallback:    /home/PS4/ROMS/<system>/launching.png"
 echo ""
 echo "Supported formats: PNG, JPG"
 echo "Recommended size: 1920x1080"
 echo ""
 echo "Example for NES:"
-echo "  /home/PS4/ROMS/nes/launching.png          (all NES games)"
-echo "  /home/PS4/ROMS/nes/images/Mega Man-launching.png  (specific game)"
+echo "  /home/PS4/.emulationstation/downloaded_images/nes/launching.png"
+echo "  /home/PS4/.emulationstation/downloaded_images/nes/images/Mega Man-launching.png"
 echo ""
 echo "Use SCP/SFTP from your PC to upload images:"
-echo "  scp my-image.png PS4@<IP>:/home/PS4/launching/launching.png"
+echo "  scp my-image.png PS4@<IP>:/home/PS4/.emulationstation/downloaded_images/nes/launching.png"
 echo ""
 read -p "Press Enter to continue..."
 IMAGES
