@@ -860,7 +860,8 @@ show_image() {
     local img="$1"
     timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
     if [ -f /tmp/launch_fb.raw ]; then
-        chvt 1 2>/dev/null
+        # Clear fb0 first to avoid showing previous image
+        dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null
         dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
         sleep 2
         rm -f /tmp/launch_fb.raw
