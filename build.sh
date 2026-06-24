@@ -363,7 +363,7 @@ Type=simple
 User=PS4
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
-Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=SDL_AUDIODRIVER=alsa
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
@@ -406,7 +406,6 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <int name="ScraperResizeWidth" value="400" />
   <int name="ScraperResizeHeight" value="0" />
 </config>
-ESCFG
 
 # es_input.cfg (keyboard + DS4 joystick)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
@@ -775,7 +774,7 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
-audio_driver = "pulse"
+audio_driver = "alsa"
 input_driver = "udev"
 input_autodetect_enable = "false"
 input_keyboard_provider = "udev"
@@ -784,10 +783,11 @@ screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
-menu_driver = "xmb"
+menu_driver = "rgui"
 
-input_hotkey_enable_btn = "8"
-input_exit_emulator_btn = "9"
+input_enable_hotkey_btn = "nul"
+input_exit_emulator_btn = "nul"
+input_menu_toggle_btn = "nul"
 input_menu_toggle_gamepad_combo = "0"
 input_load_state_btn = "nul"
 input_save_state_btn = "nul"
@@ -795,6 +795,8 @@ input_hold_fast_forward_btn = "nul"
 input_screenshot_btn = "nul"
 input_state_slot_decrease_btn = "nul"
 input_state_slot_increase_btn = "nul"
+menu_unified_controls = "true"
+all_users_control_menu = "true"
 
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
@@ -848,10 +850,13 @@ find_launch_image() {
 
 show_image() {
     local img="$1"
-    ffmpeg -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
-    dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
-    sleep 3
-    rm -f /tmp/launch_fb.raw
+    timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
+    if [ -f /tmp/launch_fb.raw ]; then
+        chvt 1 2>/dev/null
+        dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
+        sleep 2
+        rm -f /tmp/launch_fb.raw
+    fi
 }
 
 SYSTEM=""
@@ -917,7 +922,7 @@ fi
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
-export XDG_RUNTIME_DIR=/tmp/runtime-PS4
+export XDG_RUNTIME_DIR=/run/user/1000
 /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 RESULT=$?
 systemctl start es-session.service 2>/dev/null
@@ -928,17 +933,26 @@ chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 # === Create RetroArch appendconfig (DS4 bindings + hotkeys) ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
-input_keyboard_provider = "udev"
-menu_driver = "xmb"
-input_hotkey_enable_btn = "8"
-input_menu_toggle_gamepad_combo = "0"
-input_exit_emulator_btn = "nul"
+menu_driver = "rgui"
+
+# Hotkey: Select holds to enable hotkey functions
+input_enable_hotkey_btn = "8"
+
+# Menu: Select + Cross (btn 1) = open/close RetroArch menu
+input_menu_toggle_btn = "1"
+
+# Exit: Select + Start = exit emulator
+input_exit_emulator_btn = "9"
+
+# Disable unused hotkeys (Select alone does nothing)
 input_load_state_btn = "nul"
 input_save_state_btn = "nul"
 input_hold_fast_forward_btn = "nul"
 input_screenshot_btn = "nul"
 input_state_slot_decrease_btn = "nul"
 input_state_slot_increase_btn = "nul"
+input_reset_btn = "nul"
+input_rewind_btn = "nul"
 input_device_p1 = "Wireless Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
