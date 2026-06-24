@@ -363,7 +363,7 @@ Type=simple
 User=PS4
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
 Environment=SDL_AUDIODRIVER=alsa
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
@@ -774,7 +774,7 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
-audio_driver = "alsa"
+audio_driver = "pulse"
 input_driver = "udev"
 input_autodetect_enable = "false"
 input_keyboard_provider = "udev"
@@ -783,7 +783,8 @@ screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
-menu_driver = "rgui"
+menu_driver = "xmb"
+pulse_server = "unix:/run/user/1000/pulse/native"
 
 input_enable_hotkey_btn = "nul"
 input_exit_emulator_btn = "nul"
@@ -905,16 +906,14 @@ for arg in "$@"; do
     [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
 done
 
+systemctl stop es-session.service 2>/dev/null
+sleep 2
+
+# Show launching image
 IMAGE=""
 if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
     IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
 fi
-
-systemctl stop es-session.service 2>/dev/null
-sleep 1
-chvt 1 2>/dev/null
-sleep 1
-
 if [ -n "$IMAGE" ]; then
     show_image "$IMAGE"
 fi
@@ -922,7 +921,8 @@ fi
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
-export XDG_RUNTIME_DIR=/run/user/1000
+export XDG_RUNTIME_DIR=/tmp/runtime-PS4
+export PULSE_SERVER=unix:/run/user/1000/pulse/native
 /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 RESULT=$?
 systemctl start es-session.service 2>/dev/null
@@ -933,7 +933,7 @@ chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 # === Create RetroArch appendconfig (DS4 bindings + hotkeys) ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
-menu_driver = "rgui"
+menu_driver = "xmb"
 
 # Hotkey: Select holds to enable hotkey functions
 input_enable_hotkey_btn = "8"
