@@ -11,6 +11,9 @@ fi
 
 ROOTFS="${1:-/mnt/ps4root}"
 
+# Master system list — 39 systems
+ALL_SYSTEMS="snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear famicom fds genesis sfc segacd mega-cd sega32x wonderswan wonderswancolor atarijaguar atarilynx colecovision gameandwatch ngp ngpc psp sg-1000 supergrafx virtualboy channelf mame-libretro vectrex"
+
 run_chroot() {
     chroot "$ROOTFS" /bin/bash -c "$1"
 }
@@ -123,7 +126,10 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
 BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
-for core in nestopia fbneo stella prosystem; do
+for core in nestopia fbneo stella prosystem \
+    mesen picodrive mednafen_wswan virtualjaguar mednafen_lynx \
+    gearcoleco gw mednafen_ngp ppsspp gearsystem \
+    mednafen_supergrafx mednafen_vb freechaf mame2003_plus vecx; do
     echo "  Downloading ${core}_libretro.so..."
     wget -q -O "$LIBRETRO_DIR/${core}_libretro.so.zip" "$BUILDBOT/${core}_libretro.so.zip" 2>/dev/null && \
         cd "$LIBRETRO_DIR" && unzip -o "${core}_libretro.so.zip" 2>/dev/null && \
@@ -464,7 +470,7 @@ mkdir -p "$ROOTFS/home/PS4/screenshots"
 
 # Create ROM directories in .img (empty fallback for UFS mode, populated for .img mode)
 ROMS_DIR="$ROOTFS/home/PS4/ROMS"
-for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+for sys in $ALL_SYSTEMS; do
     mkdir -p "$ROMS_DIR/$sys"
 done
 
@@ -473,7 +479,7 @@ done
 HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMS"
 if [ -d "$HOMEBREW_DIR" ]; then
     echo "Copying homebrew ROMs to .img..."
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+    for sys in $ALL_SYSTEMS; do
         if [ -d "$HOMEBREW_DIR/$sys" ]; then
             cp -r "$HOMEBREW_DIR/$sys"/* "$ROMS_DIR/$sys/" 2>/dev/null || true
         fi
@@ -490,7 +496,7 @@ fi
 # Create empty gamelists so ES can parse systems on first boot
 echo "=== Creating empty gamelists ==="
 GAMEDIR="$ROOTFS/home/PS4/.emulationstation/gamelists"
-for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+for sys in $ALL_SYSTEMS; do
     mkdir -p "$GAMEDIR/$sys"
     echo '<?xml version="1.0"?>' > "$GAMEDIR/$sys/gamelist.xml"
     echo '<gameList />' >> "$GAMEDIR/$sys/gamelist.xml"
@@ -506,7 +512,7 @@ mkdir -p "$ES_DIR/PS4-RetroBox-Save"
 mkdir -p "$ES_DIR/system_art"
 mkdir -p "$ES_DIR/systems"
 mkdir -p "$ES_DIR/configs/all/launching"
-for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+for sys in $ALL_SYSTEMS; do
     mkdir -p "$ES_DIR/downloaded_images/$sys"
     mkdir -p "$ES_DIR/configs/$sys/launching"
 done
@@ -517,20 +523,18 @@ echo "=== Downloading launching images ==="
 SPLEASH_DIR="/tmp/es-runcommand-splash"
 rm -rf "$SPLASH_DIR"
 git clone --depth 1 https://github.com/ehettervik/es-runcommand-splash.git "$SPLASH_DIR" 2>/dev/null || true
-if [ -d "$SPLASH_DIR" ]; then
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
-        # ehettervik uses different folder names — try common variants
-        for src_name in "$sys" "$sys"_* "${sys}_*" "neogeo"; do
-            for f in "$SPLASH_DIR/$src_name/launching.png" "$SPLASH_DIR/$src_name"/launching*.png; do
-                if [ -f "$f" ]; then
-                    cp "$f" "$ES_DIR/downloaded_images/$sys/launching.png" 2>/dev/null
-                    break
-                fi
-            done
-            [ -f "$ES_DIR/downloaded_images/$sys/launching.png" ] && break
-        done
+if [ -d "$SPLEASH_DIR" ]; then
+    # Map system name to ehettervik folder name (most match 1:1)
+    for sys in $ALL_SYSTEMS; do
+        src="$sys"
+        case "$sys" in
+            genesis) src="megadrive" ;;
+        esac
+        if [ -f "$SPLEASH_DIR/$src/launching.png" ]; then
+            cp "$SPLEASH_DIR/$src/launching.png" "$ES_DIR/downloaded_images/$sys/launching.png" 2>/dev/null
+        fi
     done
-    rm -rf "$SPLASH_DIR"
+    rm -rf "$SPLEASH_DIR"
 fi
 # Count how many images were downloaded
 IMG_COUNT=$(find "$ES_DIR/downloaded_images" -name "launching.png" | wc -l)
@@ -870,6 +874,28 @@ for arg in "$@"; do
         *atari7800*) SYSTEM="atari7800" ;;
         *mastersystem*) SYSTEM="mastersystem" ;;
         *gamegear*) SYSTEM="gamegear" ;;
+        *famicom*) SYSTEM="famicom" ;;
+        *fds*) SYSTEM="fds" ;;
+        *genesis*) SYSTEM="genesis" ;;
+        *sfc*) SYSTEM="sfc" ;;
+        *mega-cd*) SYSTEM="mega-cd" ;;
+        *segacd*) SYSTEM="segacd" ;;
+        *sega32x*) SYSTEM="sega32x" ;;
+        *wonderswancolor*) SYSTEM="wonderswancolor" ;;
+        *wonderswan*) SYSTEM="wonderswan" ;;
+        *atarijaguar*) SYSTEM="atarijaguar" ;;
+        *atarilynx*) SYSTEM="atarilynx" ;;
+        *colecovision*) SYSTEM="colecovision" ;;
+        *gameandwatch*) SYSTEM="gameandwatch" ;;
+        *ngpc*) SYSTEM="ngpc" ;;
+        *ngp*) SYSTEM="ngp" ;;
+        *psp*) SYSTEM="psp" ;;
+        *sg-1000*) SYSTEM="sg-1000" ;;
+        *supergrafx*) SYSTEM="supergrafx" ;;
+        *virtualboy*) SYSTEM="virtualboy" ;;
+        *channelf*) SYSTEM="channelf" ;;
+        *mame-libretro*) SYSTEM="mame-libretro" ;;
+        *vectrex*) SYSTEM="vectrex" ;;
     esac
     [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
 done
@@ -1133,6 +1159,204 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <theme>gamegear</theme>
   </system>
   <system>
+    <name>famicom</name>
+    <fullname>Nintendo Famicom</fullname>
+    <path>/home/PS4/ROMS/famicom</path>
+    <extension>.nes .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
+    <platform>famicom</platform>
+    <theme>famicom</theme>
+  </system>
+  <system>
+    <name>fds</name>
+    <fullname>Nintendo Famicom Disk System</fullname>
+    <path>/home/PS4/ROMS/fds</path>
+    <extension>.fds .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mesen_libretro.so %ROM%</command>
+    <platform>fds</platform>
+    <theme>fds</theme>
+  </system>
+  <system>
+    <name>genesis</name>
+    <fullname>Sega Genesis</fullname>
+    <path>/home/PS4/ROMS/genesis</path>
+    <extension>.md .bin .gen .smd .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <platform>genesis</platform>
+    <theme>genesis</theme>
+  </system>
+  <system>
+    <name>sfc</name>
+    <fullname>Super Famicom</fullname>
+    <path>/home/PS4/ROMS/sfc</path>
+    <extension>.sfc .smc .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
+    <platform>sfc</platform>
+    <theme>sfc</theme>
+  </system>
+  <system>
+    <name>segacd</name>
+    <fullname>Sega CD</fullname>
+    <path>/home/PS4/ROMS/segacd</path>
+    <extension>.bin .cue .iso .chd .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <platform>segacd</platform>
+    <theme>segacd</theme>
+  </system>
+  <system>
+    <name>mega-cd</name>
+    <fullname>Mega CD</fullname>
+    <path>/home/PS4/ROMS/mega-cd</path>
+    <extension>.bin .cue .iso .chd .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <platform>mega-cd</platform>
+    <theme>segacd</theme>
+  </system>
+  <system>
+    <name>sega32x</name>
+    <fullname>Sega 32X</fullname>
+    <path>/home/PS4/ROMS/sega32x</path>
+    <extension>.32x .bin .smd .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/picodrive_libretro.so %ROM%</command>
+    <platform>sega32x</platform>
+    <theme>sega32x</theme>
+  </system>
+  <system>
+    <name>wonderswan</name>
+    <fullname>Bandai WonderSwan</fullname>
+    <path>/home/PS4/ROMS/wonderswan</path>
+    <extension>.ws .wsc .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
+    <platform>wonderswan</platform>
+    <theme>wonderswan</theme>
+  </system>
+  <system>
+    <name>wonderswancolor</name>
+    <fullname>Bandai WonderSwan Color</fullname>
+    <path>/home/PS4/ROMS/wonderswancolor</path>
+    <extension>.wsc .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
+    <platform>wonderswancolor</platform>
+    <theme>wonderswancolor</theme>
+  </system>
+  <system>
+    <name>atarijaguar</name>
+    <fullname>Atari Jaguar</fullname>
+    <path>/home/PS4/ROMS/atarijaguar</path>
+    <extension>.j64 .jag .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/virtualjaguar_libretro.so %ROM%</command>
+    <platform>atarijaguar</platform>
+    <theme>atarijaguar</theme>
+  </system>
+  <system>
+    <name>atarilynx</name>
+    <fullname>Atari Lynx</fullname>
+    <path>/home/PS4/ROMS/atarilynx</path>
+    <extension>.lnx .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_lynx_libretro.so %ROM%</command>
+    <platform>atarilynx</platform>
+    <theme>atarilynx</theme>
+  </system>
+  <system>
+    <name>colecovision</name>
+    <fullname>ColecoVision</fullname>
+    <path>/home/PS4/ROMS/colecovision</path>
+    <extension>.col .bin .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gearcoleco_libretro.so %ROM%</command>
+    <platform>colecovision</platform>
+    <theme>colecovision</theme>
+  </system>
+  <system>
+    <name>gameandwatch</name>
+    <fullname>Game and Watch</fullname>
+    <path>/home/PS4/ROMS/gameandwatch</path>
+    <extension>.gw .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gw_libretro.so %ROM%</command>
+    <platform>gameandwatch</platform>
+    <theme>gameandwatch</theme>
+  </system>
+  <system>
+    <name>ngp</name>
+    <fullname>SNK Neo Geo Pocket</fullname>
+    <path>/home/PS4/ROMS/ngp</path>
+    <extension>.ngp .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
+    <platform>ngp</platform>
+    <theme>ngp</theme>
+  </system>
+  <system>
+    <name>ngpc</name>
+    <fullname>SNK Neo Geo Pocket Color</fullname>
+    <path>/home/PS4/ROMS/ngpc</path>
+    <extension>.ngc .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
+    <platform>ngpc</platform>
+    <theme>ngpc</theme>
+  </system>
+  <system>
+    <name>psp</name>
+    <fullname>Sony PlayStation Portable</fullname>
+    <path>/home/PS4/ROMS/psp</path>
+    <extension>.iso .cso .pbp .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/ppsspp_libretro.so %ROM%</command>
+    <platform>psp</platform>
+    <theme>psp</theme>
+  </system>
+  <system>
+    <name>sg-1000</name>
+    <fullname>Sega SG-1000</fullname>
+    <path>/home/PS4/ROMS/sg-1000</path>
+    <extension>.sg .bin .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gearsystem_libretro.so %ROM%</command>
+    <platform>sg-1000</platform>
+    <theme>sg-1000</theme>
+  </system>
+  <system>
+    <name>supergrafx</name>
+    <fullname>NEC SuperGrafx</fullname>
+    <path>/home/PS4/ROMS/supergrafx</path>
+    <extension>.pce .sg .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_supergrafx_libretro.so %ROM%</command>
+    <platform>supergrafx</platform>
+    <theme>supergrafx</theme>
+  </system>
+  <system>
+    <name>virtualboy</name>
+    <fullname>Nintendo Virtual Boy</fullname>
+    <path>/home/PS4/ROMS/virtualboy</path>
+    <extension>.vb .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_vb_libretro.so %ROM%</command>
+    <platform>virtualboy</platform>
+    <theme>virtualboy</theme>
+  </system>
+  <system>
+    <name>channelf</name>
+    <fullname>Fairchild Channel F</fullname>
+    <path>/home/PS4/ROMS/channelf</path>
+    <extension>.chf .bin .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/freechaf_libretro.so %ROM%</command>
+    <platform>channelf</platform>
+    <theme>channelf</theme>
+  </system>
+  <system>
+    <name>mame-libretro</name>
+    <fullname>MAME</fullname>
+    <path>/home/PS4/ROMS/mame-libretro</path>
+    <extension>.zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mame2003_plus_libretro.so %ROM%</command>
+    <platform>mame-libretro</platform>
+    <theme>mame-libretro</theme>
+  </system>
+  <system>
+    <name>vectrex</name>
+    <fullname>GCE Vectrex</fullname>
+    <path>/home/PS4/ROMS/vectrex</path>
+    <extension>.vec .zip</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/vecx_libretro.so %ROM%</command>
+    <platform>vectrex</platform>
+    <theme>vectrex</theme>
+  </system>
+  <system>
     <name>ps4_retrobox</name>
     <fullname>PS4 RetroBox</fullname>
     <path>/usr/local/bin/scripts</path>
@@ -1184,7 +1408,7 @@ echo ""
 echo "RetroArch: $(retroarch --version 2>&1 | head -1)"
 echo "ES: EmulationStation v2.0.1a"
 echo ""
-echo "Systems: $(grep '<name>' /home/PS4/.emulationstation/es_systems.cfg | wc -l)"
+echo "Systems: $(grep '<name>' /home/PS4/.emulationstation/es_systems.cfg | grep -v ps4_retrobox | wc -l)"
 echo "Cores: $(ls /usr/lib/x86_64-linux-gnu/libretro/*.so 2>/dev/null | wc -l)"
 echo "ROMS: $(find /home/PS4/ROMS -type f 2>/dev/null | wc -l) files"
 echo ""
@@ -1293,11 +1517,14 @@ git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/nul
 if [ -d "es-theme-carbon" ]; then
     cp -r es-theme-carbon "$THEME_DIR/carbon"
     # Rename theme folders to match es_systems.cfg theme names
-    [ -d "$THEME_DIR/carbon/genesis" ] && mv "$THEME_DIR/carbon/genesis" "$THEME_DIR/carbon/megadrive"
     [ -d "$THEME_DIR/carbon/tg-cd" ] && mv "$THEME_DIR/carbon/tg-cd" "$THEME_DIR/carbon/tgcd"
     [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/tg16"
     [ -d "$THEME_DIR/carbon/gg" ] && mv "$THEME_DIR/carbon/gg" "$THEME_DIR/carbon/gamegear"
     [ -d "$THEME_DIR/carbon/sms" ] && mv "$THEME_DIR/carbon/sms" "$THEME_DIR/carbon/mastersystem"
+    # Symlinks for systems that share a theme with another name
+    [ -d "$THEME_DIR/carbon/segacd" ] && [ ! -e "$THEME_DIR/carbon/mega-cd" ] && ln -sf segacd "$THEME_DIR/carbon/mega-cd"
+    [ -d "$THEME_DIR/carbon/snes" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf snes "$THEME_DIR/carbon/sfc"
+    [ -d "$THEME_DIR/carbon/superfamicom" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf superfamicom "$THEME_DIR/carbon/sfc"
     echo "Theme installed: $THEME_DIR/carbon"
     _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
     echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
@@ -1341,7 +1568,7 @@ echo "Remaining cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l)"
 
 # Remove unneeded .info files — keep only what we use
 INFO_DIR="$ROOTFS/usr/share/libretro/info"
-KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info"
+KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info atari800_libretro.info mesen_libretro.info picodrive_libretro.info mednafen_wswan_libretro.info virtualjaguar_libretro.info mednafen_lynx_libretro.info gearcoleco_libretro.info gw_libretro.info mednafen_ngp_libretro.info ppsspp_libretro.info gearsystem_libretro.info mednafen_supergrafx_libretro.info mednafen_vb_libretro.info freechaf_libretro.info mame2003_plus_libretro.info vecx_libretro.info"
 cd "$INFO_DIR"
 for f in *.info; do
     if ! echo "$KEEP_INFO" | grep -qw "$f"; then
