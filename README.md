@@ -2,8 +2,8 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.3 — WORK IN PROGRESS**  
-> Not a stable release. Sound, Plymouth, and some features need testing. See [Known Issues](#known-issues).
+> **v1.3 — PARTIALLY WORKING**  
+> This is a partial release. Most systems have NOT been tested yet. N64 does not launch. See [Known Issues](#known-issues).
 
 ## What It Does
 
@@ -14,11 +14,13 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
 - [x] **39 retro systems** with **27 libretro cores**
-- [x] RetroArch 1.22.2 — ROMs launch and run
-- [x] DS4 wired USB — buttons work in ES and RetroArch
+- [x] RetroArch 1.22.2 — some ROMs confirmed working
+- [x] Audio via PulseAudio → HDMI output
+- [x] DS4 wired USB — buttons work in ES
 - [x] Launching images before games start (ffmpeg + framebuffer)
 - [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
+- [ ] **Not all systems tested** — NES confirmed, N64 broken
 
 ## Supported Systems
 
@@ -75,8 +77,10 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 
 ## Known Issues (v1.3)
 
-- [ ] Sound not working (PulseAudio configured, ALSA errors)
+- [ ] **N64 does not launch** (mupen64plus core crashes)
+- [ ] Most systems **NOT tested yet** — all emus need testing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
+- [ ] Controller hotkey/menu navigation needs verification
 - [ ] Other controllers untested
 - [ ] Network helpers untested
 - [ ] FTP disabled by default
