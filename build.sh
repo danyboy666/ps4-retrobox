@@ -143,7 +143,7 @@ echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
 # === Install extras ===
 echo "=== Installing extras ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    joystick jstest-gtk evtest ffmpeg netpbm"
+    joystick jstest-gtk evtest ffmpeg netpbm fbv"
 
 # === Install RetroArch autoconfig profiles ===
 echo "=== Installing autoconfig profiles ==="
@@ -848,7 +848,9 @@ find_launch_image() {
     rom_bn="${rom_bn%.*}"
     for img in \
         "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.png" \
+        "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.jpg" \
         "/home/PS4/.emulationstation/downloaded_images/$system/launching.png" \
+        "/home/PS4/.emulationstation/downloaded_images/$system/launching.jpg" \
         "/home/PS4/ROMS/$system/images/${rom_bn}-launching.png" \
         "/home/PS4/ROMS/$system/launching.png" \
         "/home/PS4/.emulationstation/configs/all/launching.png"; do
@@ -858,13 +860,16 @@ find_launch_image() {
 
 show_image() {
     local img="$1"
-    timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
-    if [ -f /tmp/launch_fb.raw ]; then
-        # Clear fb0 first to avoid showing previous image
-        dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null
-        dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
-        sleep 2
-        rm -f /tmp/launch_fb.raw
+    if command -v fbv >/dev/null 2>&1; then
+        fbv -fid -e 1 "$img" 2>/dev/null
+    else
+        timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
+        if [ -f /tmp/launch_fb.raw ]; then
+            dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null
+            dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
+            sleep 1
+            rm -f /tmp/launch_fb.raw
+        fi
     fi
 }
 
@@ -915,9 +920,11 @@ for arg in "$@"; do
 done
 
 systemctl stop es-session.service 2>/dev/null
-sleep 2
+for i in $(seq 1 20); do
+    pidof emulationstation >/dev/null 2>&1 || break
+    sleep 0.2
+done
 
-# Show launching image
 IMAGE=""
 if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
     IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
@@ -1566,13 +1573,13 @@ chown -R 1000:1000 "$ROOTFS/home/PS4"
 # === systemd service: fix UFS permissions at boot ===
 cat > "$ROOTFS/etc/systemd/system/fix-ufs-permissions.service" << 'UFSPERM'
 [Unit]
-Description=Fix UFS ROM directory ownership for PS4 user
+Description=Fix UFS permissions for PS4 user
 After=local-fs.target
 Before=es-session.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'if mountpoint -q /ps4hdd/ROMS 2>/dev/null || [ -d /ps4hdd/ROMS ]; then chown -R 1000:1000 /ps4hdd/ROMS; fi'
+ExecStart=/bin/bash -c 'chown 1000:1000 /ps4hdd/home/ 2>/dev/null; chmod 775 /ps4hdd/home/ 2>/dev/null; if [ -d /ps4hdd/ROMS ]; then chown -R 1000:1000 /ps4hdd/ROMS 2>/dev/null; fi'
 RemainAfterExit=yes
 
 [Install]

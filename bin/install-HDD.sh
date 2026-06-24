@@ -319,6 +319,10 @@ if [ "$_ACTUAL_SIZE" -lt 10485760 ]; then
 	rescueshell
 fi
 
+# Fix /ps4hdd/home/ permissions so PS4 user (FTP) can manage .img and ROMS
+chown 1000:1000 /ps4hdd/home/ 2>/dev/null
+chmod 775 /ps4hdd/home/ 2>/dev/null
+
 # Format as ext4
 echo ""
 echo "Formatting ext4..."
