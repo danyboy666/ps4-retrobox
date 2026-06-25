@@ -202,6 +202,8 @@ The `amdgpu_shim.so` library intercepts `amdgpu_query_info(ACCEL_WORKING)` to re
 - [ehettervik](https://github.com/ehettervik/es-runcommand-splash) — Launching images
 - [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel
 - [ArabPixel](https://github.com/ArabPixel) + [rmuxnet](https://github.com/rmuxnet) — PS4 Linux loader
+- [dciabrin](https://github.com/dciabrin/ngdevkit) — ngdevkit nullbios (open-source Neo Geo BIOS)
+- [Abdess](https://github.com/Abdess/retrobios) — retrobios (BIOS files reference)
 
 ## License
 
