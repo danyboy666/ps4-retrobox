@@ -1034,6 +1034,16 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
+
+# Keyboard menu navigation (required for XMB)
+input_up = "up"
+input_down = "down"
+input_left = "left"
+input_right = "right"
+input_a = "x"
+input_b = "z"
+input_start = "enter"
+input_select = "rshift"
 APPENDCFG
 
 # === Create DS4 autoconfig profile ===
@@ -1532,6 +1542,90 @@ echo "  scp my-image.png PS4@<IP>:/home/PS4/.emulationstation/downloaded_images/
 echo ""
 read -p "Press Enter to continue..."
 IMAGES
+
+cat > "$ROOTFS/usr/local/bin/scripts/download-bios.sh" << 'DOWNLOADBIOS'
+#!/bin/bash
+BIOS_DIR="/home/PS4/.config/retroarch/system"
+REPO_BASE="https://raw.githubusercontent.com/Abdess/retrobios/main/bios"
+info()  { echo "[OK] $1"; }
+skip()  { echo "[SKIP] $1"; }
+error() { echo "[FAIL] $1"; }
+download_file() {
+    local url="$1" dest="$2" desc="$3"
+    [ -f "$dest" ] && skip "$desc (exists)" && return 0
+    mkdir -p "$(dirname "$dest")"
+    if curl -fsSL "$url" -o "$dest" 2>/dev/null || wget -qO "$dest" "$url" 2>/dev/null; then
+        info "$desc"
+    else
+        error "$desc"; rm -f "$dest"; return 1
+    fi
+}
+echo "=== PS4 RetroBox - BIOS Downloader ==="
+echo "Source: Abdess/retrobios (MIT License)"
+echo ""
+echo "--- PlayStation ---"
+download_file "$REPO_BASE/Sony/PlayStation/scph5500.bin" "$BIOS_DIR/scph5500.bin" "PS BIOS (Japan)"
+download_file "$REPO_BASE/Sony/PlayStation/scph5501.bin" "$BIOS_DIR/scph5501.bin" "PS BIOS (US)"
+download_file "$REPO_BASE/Sony/PlayStation/scph5502.bin" "$BIOS_DIR/scph5502.bin" "PS BIOS (Europe)"
+echo "--- Sega 32X ---"
+download_file "$REPO_BASE/Sega/32X/32X_M_BIOS.BIN" "$BIOS_DIR/32X_M_BIOS.BIN" "32X Main BIOS"
+download_file "$REPO_BASE/Sega/32X/32X_S_BIOS.BIN" "$BIOS_DIR/32X_S_BIOS.BIN" "32X Slave BIOS"
+download_file "$REPO_BASE/Sega/32X/32X_G_BIOS.BIN" "$BIOS_DIR/32X_G_BIOS.BIN" "32X Game BIOS"
+echo "--- Atari 5200 ---"
+download_file "$REPO_BASE/Atari/5200/5200.rom" "$BIOS_DIR/5200.rom" "Atari 5200 BIOS"
+echo "--- TurboGrafx-CD ---"
+download_file "$REPO_BASE/NEC/PC%20Engine%20CD/PCECD_3.0-(J).pce" "$BIOS_DIR/syscard3.pce" "TG-CD System Card v3.0"
+echo "--- Neo Geo ---"
+[ -f "$BIOS_DIR/neogeo.zip" ] && echo "[SKIP] Neo Geo BIOS (already installed)" || download_file "$REPO_BASE/SNK/Neo%20Geo/neogeo.zip" "$BIOS_DIR/neogeo.zip" "Neo Geo BIOS"
+echo ""
+echo "BIOS files: $BIOS_DIR"
+ls -lh "$BIOS_DIR"/*.{bin,rom,pce,zip} 2>/dev/null
+echo "Done! Restart RetroArch to use new BIOS files."
+DOWNLOADBIOS
+
+cat > "$ROOTFS/usr/local/bin/scripts/rest-mode.sh" << 'RESTMODE'
+#!/bin/bash
+echo "=== PS4 RetroBox - Rest Mode ==="
+echo "Entering rest mode in 3 seconds... (Ctrl+C to cancel)"
+sleep 3
+sudo systemctl suspend
+RESTMODE
+
+cat > "$ROOTFS/usr/local/bin/scripts/led-control.sh" << 'LEDCONTROL'
+#!/bin/bash
+# DS4 LED Controller via USB HID
+# Usage: led-control.sh --color red|green|blue|purple|cyan|yellow|white|off
+COLOR="${2:-blue}"
+case "$1" in
+    --color) ;;
+    *) echo "Usage: led-control.sh --color <red|green|blue|purple|cyan|yellow|white|off>"; exit 1 ;;
+esac
+case "$COLOR" in
+    red) R=255; G=0; B=0 ;;
+    green) R=0; G=255; B=0 ;;
+    blue) R=0; G=0; B=255 ;;
+    purple) R=255; G=0; B=255 ;;
+    cyan) R=0; G=255; B=255 ;;
+    yellow) R=255; G=255; B=0 ;;
+    white) R=255; G=255; B=255 ;;
+    off) R=0; G=0; B=0 ;;
+    *) echo "Unknown color: $COLOR"; exit 1 ;;
+esac
+python3 -c "
+import os
+for i in range(4):
+    try:
+        with open(f'/sys/class/hidraw/hidraw{i}/device/uevent') as f:
+            if '054C' in f.read():
+                dev = f'/dev/hidraw{i}'
+                report = bytes([0x05, 255 if $R+$G+$B>0 else 0, $R, $G, $B, 0, 0, 0])
+                with open(dev, 'wb') as d: d.write(report)
+                print(f'LED set: R=$R G=$G B=$B on {dev}')
+                exit(0)
+    except: pass
+print('DS4 not found')
+"
+LEDCONTROL
 
 chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
 
