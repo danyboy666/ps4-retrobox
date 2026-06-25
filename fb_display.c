@@ -1,6 +1,6 @@
 /*
  * fb_display - Minimal framebuffer image viewer for PS4 RetroBox
- * Displays PNG/JPEG images on /dev/fb0 with correct stride handling.
+ * Displays PNG/JPEG images on /dev/fb0, scaled to fill screen with correct stride.
  * Compile: gcc -O2 -o fb_display fb_display.c -lpng -ljpeg
  */
 #include <stdio.h>
@@ -24,25 +24,38 @@ static void read_fb_geometry(void) {
     else stride = fb_w * 4;
 }
 
-static void display_rgba(unsigned char *rgba, int img_w, int img_h) {
+static void display_scaled(unsigned char *src, int src_w, int src_h) {
     int fd = open("/dev/fb0", O_RDWR);
     if (fd < 0) { perror("open /dev/fb0"); return; }
     void *fb = mmap(NULL, stride * fb_h, PROT_WRITE, MAP_SHARED, fd, 0);
     if (fb == MAP_FAILED) { perror("mmap fb0"); close(fd); return; }
 
-    int off_x = (fb_w - img_w) / 2;
-    int off_y = (fb_h - img_h) / 2;
+    /* Calculate scale to fill screen (like fbv -f) */
+    double sx = (double)fb_w / src_w;
+    double sy = (double)fb_h / src_h;
+    double s = (sx > sy) ? sx : sy;
+
+    int dst_w = (int)(src_w * s);
+    int dst_h = (int)(src_h * s);
+    int off_x = (fb_w - dst_w) / 2;
+    int off_y = (fb_h - dst_h) / 2;
     if (off_x < 0) off_x = 0;
     if (off_y < 0) off_y = 0;
 
-    int copy_w = img_w;
-    if (off_x + copy_w > fb_w) copy_w = fb_w - off_x;
-    int copy_h = img_h;
-    if (off_y + copy_h > fb_h) copy_h = fb_h - off_y;
-
-    for (int y = 0; y < copy_h; y++) {
-        memcpy((char *)fb + (off_y + y) * stride + off_x * 4,
-               rgba + y * img_w * 4, copy_w * 4);
+    for (int dy = 0; dy < dst_h && (off_y + dy) < fb_h; dy++) {
+        int sy2 = dy * src_h / dst_h;
+        if (sy2 >= src_h) sy2 = src_h - 1;
+        unsigned char *src_row = src + sy2 * src_w * 4;
+        unsigned char *dst_row = (unsigned char *)fb + (off_y + dy) * stride + off_x * 4;
+        for (int dx = 0; dx < dst_w && (off_x + dx) < fb_w; dx++) {
+            int sx2 = dx * src_w / dst_w;
+            if (sx2 >= src_w) sx2 = src_w - 1;
+            /* PNG is RGBA, fb0 is XRGB8888 = BGRX in memory */
+            dst_row[dx * 4 + 0] = src_row[sx2 * 4 + 2]; /* B from PNG[2] */
+            dst_row[dx * 4 + 1] = src_row[sx2 * 4 + 1]; /* G from PNG[1] */
+            dst_row[dx * 4 + 2] = src_row[sx2 * 4 + 0]; /* R from PNG[0] */
+            dst_row[dx * 4 + 3] = src_row[sx2 * 4 + 3]; /* A */
+        }
     }
 
     munmap(fb, stride * fb_h);
@@ -124,7 +137,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
-    display_rgba(rgba, img_w, img_h);
+    display_scaled(rgba, img_w, img_h);
     free(rgba);
     return 0;
 }
