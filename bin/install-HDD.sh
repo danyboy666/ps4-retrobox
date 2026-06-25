@@ -321,7 +321,9 @@ fi
 
 # Fix /ps4hdd/home/ permissions so PS4 user (FTP) can manage .img and ROMS
 chown 1000:1000 /ps4hdd/home/ 2>/dev/null
-chmod 775 /ps4hdd/home/ 2>/dev/null
+chmod 777 /ps4hdd/home/ 2>/dev/null
+chown 1000:1000 "$_IMG_FILE" 2>/dev/null
+chmod 666 "$_IMG_FILE" 2>/dev/null
 
 # Format as ext4
 echo ""
@@ -393,12 +395,15 @@ done
 echo ""
 if [ "$_STORAGE_CHOICE" = "ufs" ]; then
     echo "UFS storage selected. Copying ROMs to UFS..."
-    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
+    for sys in $ALL_SYSTEMS; do
         mkdir -p "/ps4hdd/ROMS/$sys"
     done
     cp -r /newroot/home/PS4/ROMS/* /ps4hdd/ROMS/
-    echo "Fixing UFS ROM ownership..."
+    echo "Fixing UFS permissions for FTP access..."
     chown -R 1000:1000 /ps4hdd/ROMS
+    chmod -R 777 /ps4hdd/ROMS
+    chown 1000:1000 /ps4hdd/home/ROMS
+    chmod 777 /ps4hdd/home/ROMS
     # Clean up empty ROM dirs inside .img (they're on UFS now)
     rm -rf /newroot/home/PS4/ROMS
     mkdir -p /newroot/home/PS4/ROMS
