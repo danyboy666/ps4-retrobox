@@ -17,63 +17,63 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 - [x] RetroArch 1.22.2 — some ROMs confirmed working
 - [x] Audio via PulseAudio → HDMI output
 - [x] DS4 wired USB — buttons work in ES
-- [x] Launching images before games start (ffmpeg + framebuffer)
+- [x] Launching images before games start (fb_display + fbv + ffmpeg fallback)
 - [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
-- [ ] **Not all systems tested** — NES confirmed, N64 broken
+- [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
 
 ## Supported Systems
 
-| System | Core | Extensions |
-|--------|------|-----------|
-| **Nintendo** | | |
-| Super Nintendo (snes) | snes9x | .sfc .smc .zip |
-| Super Famicom (sfc) | snes9x | .sfc .smc .zip |
-| Nintendo Entertainment System (nes) | nestopia | .nes .zip |
-| Famicom (famicom) | nestopia | .nes .zip |
-| Famicom Disk System (fds) | mesen | .fds .zip |
-| Nintendo 64 (n64) | mupen64plus | .n64 .z64 .v64 .zip |
-| Game Boy (gb) | gambatte | .gb .zip |
-| Game Boy Color (gbc) | gambatte | .gbc .zip |
-| Game Boy Advance (gba) | mgba | .gba .zip |
-| Virtual Boy (virtualboy) | mednafen_vb | .vb .zip |
-| **Sega** | | |
-| Mega Drive (megadrive) | genesis_plus_gx | .md .bin .gen .smd .zip |
-| Genesis (genesis) | genesis_plus_gx | .md .bin .gen .smd .zip |
-| Sega CD / Mega CD (segacd) | genesis_plus_gx | .bin .cue .iso .chd .zip |
-| Mega CD (mega-cd) | genesis_plus_gx | .bin .cue .iso .chd .zip |
-| Sega 32X (sega32x) | picodrive | .32x .bin .smd .zip |
-| Master System (mastersystem) | genesis_plus_gx | .sms .bin .gen .zip |
-| Game Gear (gamegear) | genesis_plus_gx | .gg .bin .zip |
-| SG-1000 (sg-1000) | gearsystem | .sg .bin .zip |
-| **Sony** | | |
-| PlayStation (psx) | mednafen_psx | .bin .cue .iso .pbp .chd .m3u .zip |
-| PlayStation Portable (psp) | ppsspp | .iso .cso .pbp .zip |
-| **NEC** | | |
-| TurboGrafx-16 (tg16) | mednafen_pce_fast | .pce .cue .zip |
-| TurboGrafx-CD (tgcd) | mednafen_pce_fast | .chd .cue .iso .m3u |
-| SuperGrafx (supergrafx) | mednafen_supergrafx | .pce .sg .zip |
-| **Atari** | | |
-| Atari 2600 (atari2600) | stella | .a26 .bin .rom .zip |
-| Atari 5200 (atari5200) | atari800 | .a52 .bin .xfd .atari .zip |
-| Atari 7800 (atari7800) | prosystem | .a78 .bin .zip |
-| Atari Jaguar (atarijaguar) | virtualjaguar | .j64 .jag .zip |
-| Atari Lynx (atarilynx) | mednafen_lynx | .lnx .zip |
-| **SNK** | | |
-| Neo Geo (neogeo) | fbneo | .zip |
-| Neo Geo Pocket (ngp) | mednafen_ngp | .ngp .zip |
-| Neo Geo Pocket Color (ngpc) | mednafen_ngp | .ngc .zip |
-| **Bandai** | | |
-| WonderSwan (wonderswan) | mednafen_wswan | .ws .wsc .zip |
-| WonderSwan Color (wonderswancolor) | mednafen_wswan | .wsc .zip |
-| **Arcade** | | |
-| Arcade (arcade) | fbneo | .zip |
-| MAME (mame-libretro) | mame2003_plus | .zip |
-| **Others** | | |
-| ColecoVision (colecovision) | gearcoleco | .col .bin .zip |
-| Fairchild Channel F (channelf) | freechaf | .chf .bin .zip |
-| Game and Watch (gameandwatch) | gw | .gw .zip |
-| GCE Vectrex (vectrex) | vecx | .vec .zip |
+| System | Core | BIOS | Status |
+|--------|------|------|--------|
+| **Nintendo** | | | |
+| Super Nintendo (snes) | snes9x | No | ✓ Working |
+| Super Famicom (sfc) | snes9x | No | Untested |
+| NES (nes) | nestopia | No | ✓ Working |
+| Famicom (famicom) | nestopia | No | Untested |
+| Famicom Disk System (fds) | mesen | No | Untested |
+| Nintendo 64 (n64) | mupen64plus | No | ✗ Not working |
+| Game Boy (gb) | gambatte | No | ✓ Working |
+| Game Boy Color (gbc) | gambatte | No | ✓ Working |
+| Game Boy Advance (gba) | mgba | No | ✓ Working |
+| Virtual Boy (virtualboy) | mednafen_vb | No | Untested |
+| **Sega** | | | |
+| Mega Drive (megadrive) | genesis_plus_gx | No | ✓ Working |
+| Genesis (genesis) | genesis_plus_gx | No | ✓ Working |
+| Master System (mastersystem) | genesis_plus_gx | No | ✓ Working |
+| Game Gear (gamegear) | genesis_plus_gx | No | ✓ Working |
+| SG-1000 (sg-1000) | gearsystem | No | Untested |
+| Sega 32X (sega32x) | picodrive | Yes | Untested |
+| Sega CD (segacd) | genesis_plus_gx | Optional | Untested |
+| Mega CD (mega-cd) | genesis_plus_gx | Optional | Untested |
+| **Sony** | | | |
+| PlayStation (psx) | mednafen_psx | Yes | ✓ Working |
+| PlayStation Portable (psp) | ppsspp | Yes | Untested |
+| **NEC** | | | |
+| TurboGrafx-16 (tg16) | mednafen_pce_fast | No | ✓ Working |
+| TurboGrafx-CD (tgcd) | mednafen_pce_fast | Yes | Untested |
+| SuperGrafx (supergrafx) | mednafen_supergrafx | No | Untested |
+| **Atari** | | | |
+| Atari 2600 (atari2600) | stella | No | ✓ Working |
+| Atari 5200 (atari5200) | atari800 | Yes | ✓ Working |
+| Atari 7800 (atari7800) | prosystem | No | ✓ Working |
+| Atari Jaguar (atarijaguar) | virtualjaguar | No | Untested |
+| Atari Lynx (atarilynx) | mednafen_lynx | No | Untested |
+| **SNK** | | | |
+| Neo Geo (neogeo) | fbneo | Included | ✓ Working |
+| Neo Geo Pocket (ngp) | mednafen_ngp | No | Untested |
+| Neo Geo Pocket Color (ngpc) | mednafen_ngp | No | Untested |
+| **Bandai** | | | |
+| WonderSwan (wonderswan) | mednafen_wswan | No | Untested |
+| WonderSwan Color (wonderswancolor) | mednafen_wswan | No | Untested |
+| **Arcade** | | | |
+| Arcade (arcade) | fbneo | Depends | ✓ Working (needs BIOS for most games) |
+| MAME (mame-libretro) | mame2003_plus | Depends | Untested |
+| **Others** | | | |
+| ColecoVision (colecovision) | gearcoleco | No | Untested |
+| Fairchild Channel F (channelf) | freechaf | No | Untested |
+| Game & Watch (gameandwatch) | gw | No | Untested |
+| GCE Vectrex (vectrex) | vecx | No | Untested |
 
 ## Known Issues (v1.3)
 

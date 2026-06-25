@@ -197,6 +197,36 @@ cp "$PWD/fb_display.c" /tmp/fb_display.c
 run_chroot "gcc -O2 -o /usr/local/bin/fb_display /tmp/fb_display.c -lpng -ljpeg"
 rm -f /tmp/fb_display.c
 
+# === Build ngdevkit nullbios (open-source Neo Geo BIOS) ===
+echo "=== Building Neo Geo BIOS (ngdevkit nullbios) ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ngdevkit ngdevkit-toolchain autoconf automake" 2>/dev/null
+run_chroot "cd /tmp && rm -rf ngdevkit && git clone --depth 1 https://github.com/dciabrin/ngdevkit.git && cd ngdevkit && autoreconf -iv 2>/dev/null && ./configure --prefix=/usr 2>/dev/null && make -C nullbios 2>/dev/null && cp nullbios/rom/neogeo.zip /home/PS4/.config/retroarch/system/ && cp nullbios/rom/aes.zip /home/PS4/.config/retroarch/system/ && echo 'Neo Geo BIOS installed'"
+run_chroot "rm -rf /tmp/ngdevkit"
+
+# === Create BIOS README ===
+echo "=== Creating BIOS README ==="
+cat > "$ROOTFS/home/PS4/.config/retroarch/system/BIOS_README.txt" << 'BIOSEOF'
+===============================================================================
+ SYSTEM BIOS DIRECTORY
+===============================================================================
+Some systems require BIOS files. This build includes an open-source Neo Geo
+BIOS (ngdevkit nullbios) pre-installed as neogeo.zip.
+
+Place additional BIOS files in: /home/PS4/.config/retroarch/system/
+
+Systems requiring BIOS:
+- PlayStation: scph5500.bin, scph5501.bin, scph5502.bin
+- Sega 32X: 32x_bios_m.bin, 32x_bios_s.bin, 32x_bios_g.bin
+- Atari 5200: 5200.rom
+- TurboGrafx-CD: syscard3.pce
+- PSP: PPSSPP system files
+
+Neo Geo: neogeo.zip is pre-installed (ngdevkit nullbios).
+For enhanced features: http://unibios.free.fr/ (personal use only)
+MAME BIOS: https://github.com/mamedev/mame
+===============================================================================
+BIOSEOF
+
 # === Compile EmulationStation (PS4 fork with 25-button input + configscripts) ===
 echo "=== Compiling EmulationStation ==="
 run_chroot "cd /tmp && rm -rf ES-build && git clone https://github.com/danyboy666/EmulationStation.git ES-build"
@@ -480,6 +510,7 @@ echo "=== Creating directories ==="
 mkdir -p "$ROOTFS/home/PS4/BIOS"
 mkdir -p "$ROOTFS/home/PS4/saves"
 mkdir -p "$ROOTFS/home/PS4/screenshots"
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/system"
 
 # Create ROM directories in .img (empty fallback for UFS mode, populated for .img mode)
 ROMS_DIR="$ROOTFS/home/PS4/ROMS"
