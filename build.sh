@@ -634,14 +634,17 @@ echo "=== Installing HDMI watcher ==="
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-POLL_INTERVAL=3
+POLL_INTERVAL=2
 LAST_STATE=""
 echo "hdmi-watcher: monitoring $DRM_STATUS"
 while true; do
     if [ -f "$DRM_STATUS" ]; then
         CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
         if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
+            echo "hdmi-watcher: HDMI reconnected, waiting for display to settle"
+            sleep 2
+            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
+            sleep 1
             modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
         fi
         LAST_STATE="$CURRENT"
@@ -1709,7 +1712,7 @@ Before=es-session.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'chown 1000:1000 /ps4hdd/home/ 2>/dev/null; chmod 775 /ps4hdd/home/ 2>/dev/null; if [ -d /ps4hdd/ROMS ]; then chown -R 1000:1000 /ps4hdd/ROMS 2>/dev/null; fi'
+ExecStart=/bin/bash -c 'chown 1000:1000 /ps4hdd/home/ 2>/dev/null; chmod 777 /ps4hdd/home/ 2>/dev/null; chown 1000:1000 /ps4hdd/home/*.img 2>/dev/null; chmod 666 /ps4hdd/home/*.img 2>/dev/null; if [ -d /ps4hdd/ROMS ]; then chown -R 1000:1000 /ps4hdd/ROMS 2>/dev/null; fi'
 RemainAfterExit=yes
 
 [Install]
