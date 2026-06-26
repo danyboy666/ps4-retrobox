@@ -412,6 +412,7 @@ Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null || true"
 ExecStart=emulationstation
+ExecStartPost=/bin/bash -c "sleep 2 && modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 Restart=always
 RestartSec=3
 
@@ -634,20 +635,26 @@ echo "=== Installing HDMI watcher ==="
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-POLL_INTERVAL=2
+POLL_INTERVAL=5
 LAST_STATE=""
+COUNTER=0
 echo "hdmi-watcher: monitoring $DRM_STATUS"
 while true; do
     if [ -f "$DRM_STATUS" ]; then
         CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
         if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, waiting for display to settle"
+            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
             sleep 2
-            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
+            modetest -s HDMI-A-1:1920x1080 2>/dev/null
             sleep 1
-            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
+            modetest -s HDMI-A-1:1920x1080 2>/dev/null
         fi
         LAST_STATE="$CURRENT"
+    fi
+    COUNTER=$((COUNTER + 1))
+    if [ "$COUNTER" -ge 60 ]; then
+        modetest -s HDMI-A-1:1920x1080 2>/dev/null
+        COUNTER=0
     fi
     sleep "$POLL_INTERVAL"
 done
