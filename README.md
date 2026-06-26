@@ -2,25 +2,27 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.3 — PARTIALLY WORKING**  
-> This is a partial release. Most systems have NOT been tested yet. N64 does not launch. See [Known Issues](#known-issues).
+> **v1.4 — PARTIALLY WORKING**  
+> Most systems have NOT been tested yet. N64 does not launch. See [Known Issues](#known-issues).
 
 ## What It Does
 
 Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch** on **Ubuntu 24.04**, installed directly on the PS4's internal HDD. No USB drive needed after setup.
 
-## What Works (v1.3, CUH-1000/1100 Aeolia)
+## What Works (v1.4, CUH-1000/1100 Aeolia)
 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
 - [x] **39 retro systems** with **27 libretro cores**
-- [x] RetroArch 1.22.2 — some ROMs confirmed working
+- [x] RetroArch 1.22.2 — multiple ROMs confirmed working
 - [x] Audio via PulseAudio → HDMI output
 - [x] DS4 wired USB — buttons work in ES
-- [x] Launching images before games start (fb_display + fbv + ffmpeg fallback)
+- [x] Launching images before games start (Python PIL + fb0)
 - [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
 - [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
+- [x] UFS permissions — .img deletable from FTP via HEN
+- [x] HDMI signal recovery after TV close/reopen
 
 ## Supported Systems
 
@@ -75,12 +77,12 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | Game & Watch (gameandwatch) | gw | No | Untested |
 | GCE Vectrex (vectrex) | vecx | No | Untested |
 
-## Known Issues (v1.3)
+## Known Issues (v1.4)
 
-- [ ] **N64 does not launch** (mupen64plus core crashes)
-- [ ] Most systems **NOT tested yet** — all emus need testing
+- [ ] N64 does not launch (mupen64plus core crashes)
+- [ ] Most systems NOT tested yet — all emus need testing
+- [ ] Launching images have slight black screen delay before appearing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
-- [ ] Controller hotkey/menu navigation needs verification
 - [ ] Other controllers untested
 - [ ] Network helpers untested
 - [ ] FTP disabled by default
