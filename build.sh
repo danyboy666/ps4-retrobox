@@ -144,7 +144,7 @@ echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
 # === Install extras ===
 echo "=== Installing extras ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    joystick jstest-gtk evtest ffmpeg netpbm fbv"
+    joystick jstest-gtk evtest ffmpeg netpbm python3-pil"
 
 # === Install RetroArch autoconfig profiles ===
 echo "=== Installing autoconfig profiles ==="
@@ -191,14 +191,12 @@ SHIMEOF
 run_chroot "gcc -shared -fPIC -o /usr/lib/x86_64-linux-gnu/amdgpu_shim.so /tmp/amdgpu_shim.c -ldl"
 rm -f /tmp/amdgpu_shim.c
 
-# === Compile fb_display (framebuffer image viewer with stride handling) ===
-echo "=== Compiling fb_display ==="
-cp "$PWD/fb_display.c" /tmp/fb_display.c
-run_chroot "gcc -O2 -o /usr/local/bin/fb_display /tmp/fb_display.c -lpng -ljpeg"
-rm -f /tmp/fb_display.c
+# === fbi (framebuffer imageviewer) already installed via extras ===
 
 # === Build ngdevkit nullbios (open-source Neo Geo BIOS) ===
 echo "=== Building Neo Geo BIOS (ngdevkit nullbios) ==="
+
+# === Build ngdevkit nullbios (open-source Neo Geo BIOS) ===
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ngdevkit ngdevkit-toolchain autoconf automake" 2>/dev/null
 run_chroot "cd /tmp && rm -rf ngdevkit && git clone --depth 1 https://github.com/dciabrin/ngdevkit.git && cd ngdevkit && autoreconf -iv 2>/dev/null && ./configure --prefix=/usr 2>/dev/null && make -C nullbios 2>/dev/null && cp nullbios/rom/neogeo.zip /home/PS4/.config/retroarch/system/ && cp nullbios/rom/aes.zip /home/PS4/.config/retroarch/system/ && echo 'Neo Geo BIOS installed'"
 run_chroot "rm -rf /tmp/ngdevkit"
@@ -899,18 +897,15 @@ find_launch_image() {
 
 show_image() {
     local img="$1"
-    if [ -x /usr/local/bin/fb_display ]; then
-        fb_display "$img" 2>/dev/null
-    elif command -v fbv >/dev/null 2>&1; then
-        fbv -fid "$img" 2>/dev/null
-    elif command -v ffmpeg >/dev/null 2>&1; then
-        timeout 5 ffmpeg -y -i "$img" -f rawvideo -pix_fmt bgra -vf scale=1920:1080 /tmp/launch_fb.raw 2>/dev/null
-        if [ -f /tmp/launch_fb.raw ]; then
-            dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null
-            dd if=/tmp/launch_fb.raw of=/dev/fb0 bs=4096 2>/dev/null
-            sleep 0.2
-            rm -f /tmp/launch_fb.raw
-        fi
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
+from PIL import Image
+img = Image.open('$img').convert('RGBA')
+data = img.tobytes()
+fd = open('/dev/fb0', 'wb')
+fd.write(data)
+fd.close()
+" 2>/dev/null
     fi
 }
 
