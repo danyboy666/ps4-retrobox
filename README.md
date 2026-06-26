@@ -131,8 +131,8 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
 | v1.4 | **Current** — 39 systems, 27 cores, Neo Geo BIOS, PIL launching images, helper scripts |
 | v1.5 | Fix N64, eliminate black screen gap before launching image, test all helper scripts |
-| v1.6 | Fix carbon theme, add more themes, controller hotkey/menu navigation |
-| v1.7 | Plymouth boot splash, other controllers, UFS ROM permissions |
+| v1.6 | Fix carbon theme, add more themes, fix UFS /ps4hdd/home/ file deletion via FTP |
+| v1.7 | Plymouth boot splash, HDMI signal recovery (modetest), other controllers |
 | v1.8 | Network helpers, FTP, full install flow validation |
 | v1.9 | Performance (needs kernel amdgpu firmware) |
 | v2.0 | Stable release candidate |
