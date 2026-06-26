@@ -412,6 +412,7 @@ Environment=SDL_AUDIODRIVER=alsa
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null || true"
 ExecStart=emulationstation
 Restart=always
 RestartSec=3
