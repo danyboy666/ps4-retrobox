@@ -136,6 +136,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | v1.8 | Network helpers, FTP, full install flow validation |
 | v1.9 | Performance (needs kernel amdgpu firmware) |
 | v2.0 | Stable release candidate |
+| v2.1 | PS4 PKG app — auto-detect southbridge, select payload, user choice: new install vs boot existing .img |
 
 ## Build From Source
 
