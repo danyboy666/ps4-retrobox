@@ -446,6 +446,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <bool name="ScreenSaverEnabled" value="false" />
   <string name="VideoDriver" value="default" />
   <string name="Scraper" value="TheGamesDB" />
+  <string name="TheGamesDBApiKey" value="" />
   <bool name="ScrapeRatings" value="true" />
   <int name="ScraperResizeWidth" value="400" />
   <int name="ScraperResizeHeight" value="0" />
