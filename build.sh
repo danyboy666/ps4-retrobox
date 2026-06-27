@@ -1113,7 +1113,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo 64</fullname>
     <path>/home/PS4/ROMS/n64</path>
     <extension>.n64 .z64 .v64 .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_next_libretro.so %ROM%</command>
     <platform>n64</platform>
     <theme>n64</theme>
   </system>
@@ -1737,7 +1737,7 @@ echo "Remaining cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l)"
 
 # Remove unneeded .info files — keep only what we use
 INFO_DIR="$ROOTFS/usr/share/libretro/info"
-KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info atari800_libretro.info mesen_libretro.info picodrive_libretro.info mednafen_wswan_libretro.info virtualjaguar_libretro.info mednafen_lynx_libretro.info gearcoleco_libretro.info gw_libretro.info mednafen_ngp_libretro.info ppsspp_libretro.info gearsystem_libretro.info mednafen_supergrafx_libretro.info mednafen_vb_libretro.info freechaf_libretro.info mame2003_plus_libretro.info vecx_libretro.info"
+KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_next_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info atari800_libretro.info mesen_libretro.info picodrive_libretro.info mednafen_wswan_libretro.info virtualjaguar_libretro.info mednafen_lynx_libretro.info gearcoleco_libretro.info gw_libretro.info mednafen_ngp_libretro.info ppsspp_libretro.info gearsystem_libretro.info mednafen_supergrafx_libretro.info mednafen_vb_libretro.info freechaf_libretro.info mame2003_plus_libretro.info vecx_libretro.info"
 cd "$INFO_DIR"
 for f in *.info; do
     if ! echo "$KEEP_INFO" | grep -qw "$f"; then
