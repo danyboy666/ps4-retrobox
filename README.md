@@ -131,7 +131,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 |---------|-------|
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
 | v1.4 | **Current** — 39 systems, 27 cores, Neo Geo BIOS, PIL launching images, HDMI recovery, UFS permissions |
-| v1.5 | Fix N64, test all helper scripts, Plymouth boot splash |
+| v1.5 | Fix N64 (mupen64plus_next), test all helper scripts, Plymouth boot splash |
 | v1.6 | Fix carbon theme, add more themes, controller hotkey/menu navigation |
 | v1.7 | Other controllers, network helpers, FTP |
 | v1.8 | Full install flow validation, performance (kernel amdgpu firmware) |
