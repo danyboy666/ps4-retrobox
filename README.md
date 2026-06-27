@@ -81,7 +81,10 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 
 ## Known Issues (v1.4)
 
-- [ ] N64 runs slow with Angrylion (CPU software renderer) — Vulkan paraLLEl-RDP fix in progress
+- [ ] **RetroArch settings inaccessible** — controller and keyboard input does not work in RetroArch menus/settings ([#2](https://github.com/danyboy666/ps4-retrobox/issues/2))
+- [ ] N64 GLideN64 checkered pattern on KMS/DRM — FBO blit fix in progress ([#1181](https://github.com/mupen64plus/mupen64plus-core/issues/1181))
+- [ ] N64 Angrylion works but too slow for playable framerate
+- [ ] HDMI signal lost after RetroArch exit — hdmi-watcher recovery partially working
 - [ ] Most systems NOT tested yet — all emus need testing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
 - [ ] Other controllers untested
@@ -126,14 +129,15 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
 | [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
 | [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
-| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal |
+| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix |
 
 ## Roadmap
 
 | Version | Focus |
 |---------|-------|
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
-| v1.4 | **Current** — 39 systems, 27 cores, N64 working (Angrylion), scrapers with API key UI, Neo Geo BIOS, HDMI recovery |
+| v1.4 | 39 systems, 27 cores, scrapers with API key UI, Neo Geo BIOS, HDMI recovery, N64 FBO blit fix |
+| v1.5 | **Current** — Fix RetroArch controller/keyboard navigation (#2), fix N64 GLideN64 checkered pattern, test all systems |
 | v1.6 | Fix carbon theme, add more themes, controller hotkey/menu navigation |
 | v1.7 | Other controllers, network helpers, FTP |
 | v1.8 | Full install flow validation, performance (kernel amdgpu firmware) |
