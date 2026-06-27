@@ -2,8 +2,8 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.4 — PARTIALLY WORKING**  
-> Most systems have NOT been tested yet. N64 does not launch. See [Known Issues](#known-issues).
+> **v1.4 — WORKING**  
+> N64 now working with Angrylion software renderer. Scraper API keys configurable from ES menu. See [Known Issues](#known-issues).
 
 ## What It Does
 
@@ -22,6 +22,8 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 - [x] Install: 3GB base + optional expansion
 - [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
 - [x] UFS permissions — .img deletable from FTP via HEN
+- [x] N64 — mupen64plus_next with Angrylion renderer (working, Vulkan paraLLEl-RDP planned)
+- [x] Scrapers — TheGamesDB (API v1) + ScreenScraper with in-game API key setup
 - [x] HDMI signal recovery after TV close/reopen
 
 ## Supported Systems
@@ -34,7 +36,7 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | NES (nes) | nestopia | No | ✓ Working |
 | Famicom (famicom) | nestopia | No | Untested |
 | Famicom Disk System (fds) | mesen | No | Untested |
-| Nintendo 64 (n64) | mupen64plus | No | ✗ Not working |
+| Nintendo 64 (n64) | mupen64plus_next | No | ✓ Working (Angrylion, Vulkan planned) |
 | Game Boy (gb) | gambatte | No | ✓ Working |
 | Game Boy Color (gbc) | gambatte | No | ✓ Working |
 | Game Boy Advance (gba) | mgba | No | ✓ Working |
@@ -79,7 +81,7 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 
 ## Known Issues (v1.4)
 
-- [ ] N64 does not launch (mupen64plus core crashes)
+- [ ] N64 runs slow with Angrylion (CPU software renderer) — Vulkan paraLLEl-RDP fix in progress
 - [ ] Most systems NOT tested yet — all emus need testing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
 - [ ] Other controllers untested
@@ -123,15 +125,15 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 |------|-------------|
 | [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
 | [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
-| [RetroArch](https://github.com/danyboy666/RetroArch) | PS4 patches — KMS context, DRM modesetting |
+| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
+| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal |
 
 ## Roadmap
 
 | Version | Focus |
 |---------|-------|
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
-| v1.4 | **Current** — 39 systems, 27 cores, Neo Geo BIOS, PIL launching images, HDMI recovery, UFS permissions |
-| v1.5 | Fix N64 (mupen64plus_next), test all helper scripts, Plymouth boot splash |
+| v1.4 | **Current** — 39 systems, 27 cores, N64 working (Angrylion), scrapers with API key UI, Neo Geo BIOS, HDMI recovery |
 | v1.6 | Fix carbon theme, add more themes, controller hotkey/menu navigation |
 | v1.7 | Other controllers, network helpers, FTP |
 | v1.8 | Full install flow validation, performance (kernel amdgpu firmware) |
