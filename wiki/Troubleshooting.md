@@ -58,6 +58,24 @@ nano /home/PS4/.config/retroarch/retroarch-ps4.cfg
 
 Plymouth theme is installed but the PS4's amdgpu DRM doesn't support Plymouth rendering. This is a known limitation.
 
+### N64 games laggy or graphical glitches
+
+N64 uses the Angrylion software renderer. This is CPU-bound and will be slow. Planned fix: Vulkan paraLLEl-RDP (hardware-accelerated).
+
+If you see overlaid graphical glitches, check the RDP plugin:
+```bash
+ssh PS4@<IP>
+grep rdp-plugin /home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt
+```
+Should show `mupen64plus-rdp-plugin = "angrylion"`.
+
+### Scraping not working
+
+Scrapers require API keys configured in the ES SCRAPER menu:
+1. Open ES → MAIN MENU → SCRAPER
+2. Set **THEGAMESDB API KEY** (get one at https://api.thegamesdb.net)
+3. Optionally set **SCREENSCRAPER USER/PASS** for higher rate limits
+
 ### ES is slow/sluggish
 
 ES uses software GL rendering. This is expected until the PS4 kernel gets proper amdgpu firmware support.

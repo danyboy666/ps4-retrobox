@@ -27,7 +27,7 @@ Launch images are stored in:
 | NES | `nes` | nestopia | .nes .zip |
 | Famicom | `famicom` | nestopia | .nes .zip |
 | Famicom Disk System | `fds` | mesen | .fds .zip |
-| Nintendo 64 | `n64` | mupen64plus | .n64 .z64 .v64 .zip |
+| Nintendo 64 | `n64` | mupen64plus_next | .n64 .z64 .v64 .zip |
 | Game Boy | `gb` | gambatte | .gb .zip |
 | Game Boy Color | `gbc` | gambatte | .gbc .zip |
 | Game Boy Advance | `gba` | mgba | .gba .zip |
