@@ -123,6 +123,25 @@ echo "=== Installing libretro core build deps ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch-assets libretro-core-info" || true
 
+# === Install fonts for XMB menu ===
+echo "=== Installing fonts ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    fonts-dejavu-core fonts-roboto-unhinted" || true
+# Install TTF shortcut directory for RA
+mkdir -p "$ROOTFS/usr/share/fonts/TTF"
+cp "$ROOTFS/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Bold.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+# Fix broken font symlinks in libretro assets
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/chinese-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/korean-fallback-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/osd-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/fallback-font.ttf" 2>/dev/null
+# Set XMB monochrome font.ttf symlink to Roboto
+cp "$ROOTFS/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" "$ROOTFS/usr/share/retroarch/assets/xmb/monochrome/font.ttf" 2>/dev/null
+echo "Fonts installed"
+
 # === Download missing libretro cores from buildbot ===
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
@@ -144,7 +163,8 @@ echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
 # === Install extras ===
 echo "=== Installing extras ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    joystick jstest-gtk evtest ffmpeg netpbm python3-pil"
+    joystick jstest-gtk evtest ffmpeg netpbm python3-pil \
+    gamemode xkb-data"
 
 # === Install RetroArch autoconfig profiles ===
 echo "=== Installing autoconfig profiles ==="
@@ -410,7 +430,8 @@ Environment=SDL_AUDIODRIVER=alsa
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=4096 count=2025 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 ExecStart=emulationstation
 Restart=always
 RestartSec=3
@@ -419,6 +440,22 @@ RestartSec=3
 WantedBy=multi-user.target
 SVCEOF
 ln -sf /etc/systemd/system/es-session.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/es-session.service"
+
+# === CPU governor performance service ===
+cat > "$ROOTFS/etc/systemd/system/cpu-performance.service" << 'CPUEOF'
+[Unit]
+Description=Set CPU governor to performance
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $cpu 2>/dev/null; done"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+CPUEOF
+ln -sf /etc/systemd/system/cpu-performance.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/cpu-performance.service"
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -445,6 +482,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <bool name="ScreenSaverEnabled" value="false" />
   <string name="VideoDriver" value="default" />
   <string name="Scraper" value="TheGamesDB" />
+  <string name="TheGamesDBApiKey" value="" />
   <bool name="ScrapeRatings" value="true" />
   <int name="ScraperResizeWidth" value="400" />
   <int name="ScraperResizeHeight" value="0" />
@@ -634,20 +672,26 @@ echo "=== Installing HDMI watcher ==="
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-POLL_INTERVAL=2
+POLL_INTERVAL=5
 LAST_STATE=""
+COUNTER=0
 echo "hdmi-watcher: monitoring $DRM_STATUS"
 while true; do
     if [ -f "$DRM_STATUS" ]; then
         CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
         if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, waiting for display to settle"
+            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
             sleep 2
-            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
+            modetest -s HDMI-A-1:1920x1080 2>/dev/null
             sleep 1
-            modetest -s HDMI-A-1:1920x1080@60 2>/dev/null
+            modetest -s HDMI-A-1:1920x1080 2>/dev/null
         fi
         LAST_STATE="$CURRENT"
+    fi
+    COUNTER=$((COUNTER + 1))
+    if [ "$COUNTER" -ge 60 ]; then
+        modetest -s HDMI-A-1:1920x1080 2>/dev/null
+        COUNTER=0
     fi
     sleep "$POLL_INTERVAL"
 done
@@ -832,6 +876,11 @@ savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
 pulse_server = "unix:/run/user/1000/pulse/native"
+video_font_enable = "true"
+video_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+video_font_size = "32.000000"
+video_fullscreen = "true"
+video_shared_context = "true"
 
 input_enable_hotkey_btn = "nul"
 input_exit_emulator_btn = "nul"
@@ -977,10 +1026,13 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
-/usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
-RESULT=$?
-systemctl start es-session.service 2>/dev/null
-exit $RESULT
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+if [ -x /usr/games/gamemoderun ]; then
+    /usr/games/gamemoderun /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
+else
+    /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
+fi
+exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
@@ -1045,6 +1097,33 @@ input_start = "enter"
 input_select = "rshift"
 APPENDCFG
 
+# === Create N64 core options (optimized for PS4 base) ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next"
+cat > "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt" << 'N64OPT'
+mupen64plus-43screensize = "320x240"
+mupen64plus-169screensize = "480x270"
+mupen64plus-alt-map = "False"
+mupen64plus-aspect = "4:3"
+mupen64plus-cpucore = "dynamic_recompiler"
+mupen64plus-Framerate = "Original"
+mupen64plus-rdp-plugin = "gliden64"
+mupen64plus-rsp-plugin = "hle"
+mupen64plus-EnableFBEmulation = "True"
+mupen64plus-EnableCopyColorToRDRAM = "Off"
+mupen64plus-EnableCopyDepthToRDRAM = "Off"
+mupen64plus-DitheringPattern = "False"
+mupen64plus-DitheringQuantization = "False"
+mupen64plus-MultiSampling = "0"
+mupen64plus-FXAA = "0"
+mupen64plus-EnableShadersStorage = "False"
+mupen64plus-HybridFilter = "False"
+mupen64plus-BilinearMode = "None"
+mupen64plus-ThreadedRenderer = "True"
+mupen64plus-EnableTextureCache = "True"
+mupen64plus-EnableLegacyBlending = "True"
+mupen64plus-EnableNativeResTexrects = "True"
+N64OPT
+
 # === Create DS4 autoconfig profile ===
 mkdir -p "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev"
 cat > "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev/Wireless_Controller.cfg" << 'DS4CFG'
@@ -1106,7 +1185,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo 64</fullname>
     <path>/home/PS4/ROMS/n64</path>
     <extension>.n64 .z64 .v64 .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_next_libretro.so %ROM%</command>
     <platform>n64</platform>
     <theme>n64</theme>
   </system>
@@ -1730,7 +1809,7 @@ echo "Remaining cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l)"
 
 # Remove unneeded .info files — keep only what we use
 INFO_DIR="$ROOTFS/usr/share/libretro/info"
-KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info atari800_libretro.info mesen_libretro.info picodrive_libretro.info mednafen_wswan_libretro.info virtualjaguar_libretro.info mednafen_lynx_libretro.info gearcoleco_libretro.info gw_libretro.info mednafen_ngp_libretro.info ppsspp_libretro.info gearsystem_libretro.info mednafen_supergrafx_libretro.info mednafen_vb_libretro.info freechaf_libretro.info mame2003_plus_libretro.info vecx_libretro.info"
+KEEP_INFO="bsnes_mercury_balanced_libretro.info snes9x_libretro.info fbneo_libretro.info gambatte_libretro.info genesis_plus_gx_libretro.info mednafen_pce_fast_libretro.info mednafen_psx_libretro.info mgba_libretro.info mupen64plus_next_libretro.info nestopia_libretro.info prosystem_libretro.info stella_libretro.info atari800_libretro.info mesen_libretro.info picodrive_libretro.info mednafen_wswan_libretro.info virtualjaguar_libretro.info mednafen_lynx_libretro.info gearcoleco_libretro.info gw_libretro.info mednafen_ngp_libretro.info ppsspp_libretro.info gearsystem_libretro.info mednafen_supergrafx_libretro.info mednafen_vb_libretro.info freechaf_libretro.info mame2003_plus_libretro.info vecx_libretro.info"
 cd "$INFO_DIR"
 for f in *.info; do
     if ! echo "$KEEP_INFO" | grep -qw "$f"; then
@@ -1763,7 +1842,7 @@ run_chroot "rm -rf /usr/share/info" 2>/dev/null
 run_chroot "rm -rf /usr/share/directfb-1.7*" 2>/dev/null
 run_chroot "rm -rf /usr/share/tcltk" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/branding" 2>/dev/null
-run_chroot "rm -rf /usr/share/libretro/assets/xmb" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/xmb/dot-art /usr/share/libretro/assets/xmb/systematic /usr/share/libretro/assets/xmb/flatui /usr/share/libretro/assets/xmb/daite /usr/share/libretro/assets/xmb/flatux /usr/share/libretro/assets/xmb/retrosystem /usr/share/libretro/assets/xmb/automatic /usr/share/libretro/assets/xmb/monochrome/README.md" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/ozone" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/rgui" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/glui" 2>/dev/null
