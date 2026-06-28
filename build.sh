@@ -123,6 +123,25 @@ echo "=== Installing libretro core build deps ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch-assets libretro-core-info" || true
 
+# === Install fonts for XMB menu ===
+echo "=== Installing fonts ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    fonts-dejavu-core fonts-roboto-unhinted" || true
+# Install TTF shortcut directory for RA
+mkdir -p "$ROOTFS/usr/share/fonts/TTF"
+cp "$ROOTFS/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+cp "$ROOTFS/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Bold.ttf" "$ROOTFS/usr/share/fonts/TTF/" 2>/dev/null
+# Fix broken font symlinks in libretro assets
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/chinese-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/korean-fallback-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/osd-font.ttf" 2>/dev/null
+ln -sf /usr/share/fonts/TTF/DejaVuSans.ttf "$ROOTFS/usr/share/libretro/assets/pkg/fallback-font.ttf" 2>/dev/null
+# Set XMB monochrome font.ttf symlink to Roboto
+ln -sf /usr/share/fonts/TTF/Roboto-Regular.ttf "$ROOTFS/usr/share/retroarch/assets/xmb/monochrome/font.ttf" 2>/dev/null
+echo "Fonts installed"
+
 # === Download missing libretro cores from buildbot ===
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
@@ -840,6 +859,11 @@ savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
 pulse_server = "unix:/run/user/1000/pulse/native"
+video_font_enable = "true"
+video_font_path = "/usr/share/retroarch/assets/xmb/monochrome/font.ttf"
+video_font_size = "32.000000"
+video_fullscreen = "true"
+video_shared_context = "true"
 
 input_enable_hotkey_btn = "nul"
 input_exit_emulator_btn = "nul"
@@ -1771,7 +1795,7 @@ run_chroot "rm -rf /usr/share/info" 2>/dev/null
 run_chroot "rm -rf /usr/share/directfb-1.7*" 2>/dev/null
 run_chroot "rm -rf /usr/share/tcltk" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/branding" 2>/dev/null
-run_chroot "rm -rf /usr/share/libretro/assets/xmb" 2>/dev/null
+run_chroot "rm -rf /usr/share/libretro/assets/xmb/dot-art /usr/share/libretro/assets/xmb/systematic /usr/share/libretro/assets/xmb/flatui /usr/share/libretro/assets/xmb/daite /usr/share/libretro/assets/xmb/flatux /usr/share/libretro/assets/xmb/retrosystem /usr/share/libretro/assets/xmb/automatic /usr/share/libretro/assets/xmb/monochrome/README.md" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/ozone" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/rgui" 2>/dev/null
 run_chroot "rm -rf /usr/share/libretro/assets/glui" 2>/dev/null
