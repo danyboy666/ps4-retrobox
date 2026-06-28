@@ -166,6 +166,29 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     joystick jstest-gtk evtest ffmpeg netpbm python3-pil \
     gamemode xkb-data"
 
+# === Configure GameMode ===
+echo "=== Configuring GameMode ==="
+mkdir -p "$ROOTFS/etc/gamemode"
+cat > "$ROOTFS/etc/gamemode/gamemode.ini" << 'GAMEMODE'
+[general]
+reaper_frequency=5
+desiredgov=performance
+reaper_nice=0
+renice=10
+ioprio=0
+apply_gpu_optimisations=1
+apply_renice=1
+apply_ioprio=1
+GAMEMODE
+
+# === USB power management ===
+echo "=== Creating USB power udev rules ==="
+mkdir -p "$ROOTFS/etc/udev/rules.d"
+cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-power.rules" << 'UDEV'
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="084e", ATTR{power/autosuspend}="-1"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1"
+UDEV
+
 # === Install RetroArch autoconfig profiles ===
 echo "=== Installing autoconfig profiles ==="
 wget -q -O /tmp/ra_autoconfig.zip "https://buildbot.libretro.com/assets/frontend/autoconfig.zip" 2>/dev/null
@@ -1100,28 +1123,17 @@ APPENDCFG
 # === Create N64 core options (optimized for PS4 base) ===
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next"
 cat > "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt" << 'N64OPT'
-mupen64plus-43screensize = "320x240"
-mupen64plus-169screensize = "480x270"
-mupen64plus-alt-map = "False"
-mupen64plus-aspect = "4:3"
-mupen64plus-cpucore = "dynamic_recompiler"
-mupen64plus-Framerate = "Original"
 mupen64plus-rdp-plugin = "gliden64"
 mupen64plus-rsp-plugin = "hle"
+mupen64plus-cpucore = "dynamic_recompiler"
+mupen64plus-Framerate = "Original"
+mupen64plus-43screensize = "640x480"
+mupen64plus-169screensize = "960x540"
+mupen64plus-aspect = "4:3"
 mupen64plus-EnableFBEmulation = "True"
 mupen64plus-EnableCopyColorToRDRAM = "Off"
 mupen64plus-EnableCopyDepthToRDRAM = "Off"
-mupen64plus-DitheringPattern = "False"
-mupen64plus-DitheringQuantization = "False"
-mupen64plus-MultiSampling = "0"
-mupen64plus-FXAA = "0"
-mupen64plus-EnableShadersStorage = "False"
-mupen64plus-HybridFilter = "False"
-mupen64plus-BilinearMode = "None"
 mupen64plus-ThreadedRenderer = "True"
-mupen64plus-EnableTextureCache = "True"
-mupen64plus-EnableLegacyBlending = "True"
-mupen64plus-EnableNativeResTexrects = "True"
 N64OPT
 
 # === Create DS4 autoconfig profile ===
