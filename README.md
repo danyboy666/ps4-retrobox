@@ -3,7 +3,7 @@
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
 > **v1.4 — WORKING**  
-> N64 now working with Angrylion software renderer. Scraper API keys configurable from ES menu. See [Known Issues](#known-issues).
+> N64 working with Angrylion software renderer. Patched RetroArch (glActiveTexture fix + non-fatal GL error + non-fatal KMS modeset). Scraper API keys configurable from ES menu. See [Known Issues](#known-issues).
 
 ## What It Does
 
