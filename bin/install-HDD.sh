@@ -319,12 +319,6 @@ if [ "$_ACTUAL_SIZE" -lt 10485760 ]; then
 	rescueshell
 fi
 
-# Fix /ps4hdd/home/ permissions so PS4 user (FTP) can manage .img and ROMS
-chown 1000:1000 /ps4hdd/home/ 2>/dev/null
-chmod 777 /ps4hdd/home/ 2>/dev/null
-chown 1000:1000 "$_IMG_FILE" 2>/dev/null
-chmod 666 "$_IMG_FILE" 2>/dev/null
-
 # Format as ext4
 echo ""
 echo "Formatting ext4..."
@@ -387,23 +381,21 @@ chown -R 1000:1000 /newroot/home/PS4
 
 # Fix setuid bits — busybox tar/cpio strips them
 echo "Restoring setuid bits..."
-for _suid in /newroot/usr/bin/sudo /newroot/usr/bin/su /newroot/usr/bin/passwd /newroot/usr/bin/pkexec; do
-    [ -f "$_suid" ] && chmod u+s "$_suid"
-done
+chmod u+s /newroot/usr/bin/sudo
+chmod u+s /newroot/usr/bin/su
+chmod u+s /newroot/usr/bin/passwd
+chmod u+s /newroot/usr/bin/pkexec
 
 # Copy ROMs to UFS if user chose that option (BEFORE umount — /newroot must be mounted)
 echo ""
 if [ "$_STORAGE_CHOICE" = "ufs" ]; then
     echo "UFS storage selected. Copying ROMs to UFS..."
-    for sys in $ALL_SYSTEMS; do
+    for sys in snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear; do
         mkdir -p "/ps4hdd/ROMS/$sys"
     done
     cp -r /newroot/home/PS4/ROMS/* /ps4hdd/ROMS/
-    echo "Fixing UFS permissions for FTP access..."
+    echo "Fixing UFS ROM ownership..."
     chown -R 1000:1000 /ps4hdd/ROMS
-    chmod -R 777 /ps4hdd/ROMS
-    chown 1000:1000 /ps4hdd/home/ROMS
-    chmod 777 /ps4hdd/home/ROMS
     # Clean up empty ROM dirs inside .img (they're on UFS now)
     rm -rf /newroot/home/PS4/ROMS
     mkdir -p /newroot/home/PS4/ROMS
@@ -419,11 +411,16 @@ echo ""
 echo "Syncing..."
 sync
 sleep 2
+sync
 echo "Unmounting /newroot..."
+# Kill any processes still using /newroot
+fuser -k /newroot 2>/dev/null
+sleep 1
 if ! umount /newroot; then
     echo "WARNING: umount /newroot failed. Retrying with lazy unmount..."
     umount -l /newroot
-    sleep 2
+    sleep 3
+    sync
 fi
 if ! losetup -d /dev/loop5; then
     echo "WARNING: losetup -d /dev/loop5 failed."
