@@ -187,6 +187,8 @@ mkdir -p "$ROOTFS/etc/udev/rules.d"
 cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-power.rules" << 'UDEV'
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="084e", ATTR{power/autosuspend}="-1"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1"
+# Reduce DS4 polling from 5ms to 8ms (200Hz -> 125Hz)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="8"
 UDEV
 
 # === Install RetroArch autoconfig profiles ===
@@ -450,6 +452,7 @@ Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
 Environment=SDL_AUDIODRIVER=alsa
+Environment=LANG=en_US.UTF-8
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
@@ -479,6 +482,50 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 CPUEOF
 ln -sf /etc/systemd/system/cpu-performance.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/cpu-performance.service"
+
+# === USB3 interrupt storm fix (unbind broken Bus 003 controller) ===
+cat > "$ROOTFS/usr/local/bin/fix-usb-loop.sh" << 'USBEOF'
+#!/bin/bash
+# Unbind the broken Aeolia USB3 controller that generates phantom interrupts
+if [ -d /sys/bus/pci/drivers/xhci_aeolia ]; then
+    echo "0000:00:14.7" > /sys/bus/pci/drivers/xhci_aeolia/unbind 2>/dev/null
+fi
+USBEOF
+chmod +x "$ROOTFS/usr/local/bin/fix-usb-loop.sh"
+cat > "$ROOTFS/etc/systemd/system/fix-usb-loop.service" << 'USBEOF'
+[Unit]
+Description=Fix USB3 interrupt storm on Aeolia
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fix-usb-loop.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+USBEOF
+ln -sf /etc/systemd/system/fix-usb-loop.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-usb-loop.service"
+
+# === IRQ affinity + ethtool for Aeolia interrupt distribution ===
+echo "=== Installing ethtool + irqbalance ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ethtool irqbalance" 2>/dev/null
+
+cat > "$ROOTFS/etc/systemd/system/fix-irq-affinity.service" << 'IRQEOF'
+[Unit]
+Description=Set Aeolia IRQ affinity and eth0 coalescing
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ethtool -C eth0 rx-usecs 1000 rx-frames 10 2>/dev/null || true
+ExecStart=/bin/bash -c "for irq in $(grep Aeolia /proc/interrupts | awk -F: '{print $1}' | tr -d ' '); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+IRQEOF
+ln -sf /etc/systemd/system/fix-irq-affinity.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-irq-affinity.service"
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -590,6 +637,9 @@ if [ -d "$HOMEBREW_DIR" ]; then
     done
     echo "Homebrew ROMs copied."
 fi
+
+# Remove any commercial ROMs that should not be bundled
+rm -f "$ROMS_DIR/n64/Legend of Zelda, The - Ocarina of Time"* 2>/dev/null
 
 # If UFS mode, write flag for install-HDD.sh
 if [ "$ROM_STORAGE" = "ufs" ]; then
@@ -888,7 +938,8 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
-audio_driver = "pulse"
+audio_driver = "alsa"
+audio_device = "alsa_output.pci-0000_00_01.1.hdmi-stereo"
 input_driver = "udev"
 input_autodetect_enable = "false"
 input_keyboard_provider = "udev"
@@ -1050,6 +1101,7 @@ export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+export MESA_NO_ERROR=1
 if [ -x /usr/games/gamemoderun ]; then
     /usr/games/gamemoderun /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 else
@@ -1135,6 +1187,22 @@ mupen64plus-EnableCopyColorToRDRAM = "Off"
 mupen64plus-EnableCopyDepthToRDRAM = "Off"
 mupen64plus-ThreadedRenderer = "True"
 N64OPT
+
+# === Create PSX core options (Beetle PSX async CD + dynarec) ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX"
+cat > "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt" << 'PSXOPT'
+beetle_psx_cd_access_method = "Asynchronous"
+beetle_psx_cpu_freq_scale = "100%"
+beetle_psx_cpu_dynarec = "disabled"
+beetle_psx_draw_frontend_borders = "disabled"
+beetle_psx_enable_og_sce_audio = "disabled"
+PSXOPT
+
+# === Create DS4 USB polling reduction rule ===
+mkdir -p "$ROOTFS/etc/udev/rules.d"
+cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-poll.rules" << 'UDEVPOLL'
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="8"
+UDEVPOLL
 
 # === Create DS4 autoconfig profile ===
 mkdir -p "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev"
@@ -1861,8 +1929,16 @@ run_chroot "rm -rf /usr/share/libretro/assets/glui" 2>/dev/null
 run_chroot "rm -f /var/log/dpkg.log /var/log/apt/term.log /var/log/bootstrap.log /var/log/apt/history.log" 2>/dev/null
 run_chroot "rm -rf /var/cache/apt/archives/*.deb" 2>/dev/null
 run_chroot "rm -rf /usr/share/doc /usr/share/man /usr/share/info" 2>/dev/null
-run_chroot "rm -rf /usr/share/locale /usr/share/i18n" 2>/dev/null
+run_chroot "rm -rf /usr/share/locale" 2>/dev/null
+run_chroot "find /usr/share/i18n -mindepth 1 -maxdepth 1 ! -name 'charmaps' ! -name 'locales' -exec rm -rf {} +" 2>/dev/null
 echo "Rootfs bloat cleaned"
+
+# === Re-generate locale after cleanup (locale-gen needs charmaps + locales source) ===
+echo "=== Regenerating locale ==="
+run_chroot "sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || true"
+run_chroot "locale-gen en_US.UTF-8" 2>/dev/null
+run_chroot "update-locale LANG=en_US.UTF-8" 2>/dev/null
+echo "Locale regenerated"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
