@@ -60,14 +60,61 @@ Plymouth theme is installed but the PS4's amdgpu DRM doesn't support Plymouth re
 
 ### N64 games laggy or graphical glitches
 
-N64 uses the Angrylion software renderer. This is CPU-bound and will be slow. Planned fix: Vulkan paraLLEl-RDP (hardware-accelerated).
+N64 uses GLideN64 renderer with radeonsi GPU. Performance is limited by the eth0 interrupt storm (~3,600 spurious interrupts/sec all on CPU1). The kernel IRQ round-robin fix distributes xhci interrupts but eth0 is pinned by Aeolia hardware.
 
-If you see overlaid graphical glitches, check the RDP plugin:
+To check interrupt load:
 ```bash
 ssh PS4@<IP>
-grep rdp-plugin /home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt
+ps aux --sort=-%cpu | head -5  # Look for ksoftirqd/1
+cat /proc/interrupts | grep eth0
 ```
-Should show `mupen64plus-rdp-plugin = "angrylion"`.
+
+**Workaround**: `isolcpus=1` in bootargs reserves CPU1 for kernel, giving emulators full access to CPUs 2-7.
+
+### PSX crashes or runs very slow
+
+PSX uses Beetle PSX with Lightrec JIT dynarec. Known issues:
+- Dynasty Warriors crashes at gameplay start (Lightrec bug with specific memory access patterns)
+- Other games may crash with Lightrec — use interpreter fallback if needed
+- Performance is limited by CPU (1.6GHz Jaguar) and eth0 interrupt storm
+
+To check dynarec status:
+```bash
+ssh PS4@<IP>
+grep dynarec /home/PS4/.config/retroarch/config/Beetle\ PSX/Beetle\ PSX.opt
+```
+
+### HDMI signal lost after TV power cycle or cable replug
+
+The PS4 Linux amdgpu driver doesn't detect HDMI cable disconnect/reconnect events. When the TV is power-cycled or the HDMI cable is replugged, the TV loses sync and doesn't re-detect the signal.
+
+**Recovery**: SSH into the PS4 and run:
+```bash
+sudo hdmi-recover
+```
+
+This stops ES, starts Xorg, runs xrandr off/on to force EDID re-read, then restarts ES. Takes ~10 seconds.
+
+**Known limitation**: Auto-recovery is not possible without kernel driver changes. The amdgpu driver on PS4 hardware doesn't fire hotplug events for cable disconnect/reconnect.
+
+### RetroArch XMB menu navigation not working
+
+Keyboard and DS4 navigation in the RetroArch XMB menu may not work properly. Known issue under investigation (#2).
+
+**Workaround**: Change PSX/N64 settings directly via config files:
+```bash
+ssh PS4@<IP>
+nano /home/PS4/.config/retroarch/config/Beetle\ PSX/Beetle\ PSX.opt
+nano /home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt
+```
+
+### eth0 interrupt storm (ksoftirqd high CPU)
+
+eth0 generates ~3,600 spurious interrupts/sec, all pinned to CPU1. This causes ksoftirqd/1 to consume 60-90% CPU1, impacting emulator performance.
+
+**Current workaround**: `isolcpus=1` in bootargs reserves CPU1 for kernel, giving emulators CPUs 2-7.
+
+**Known limitation**: Cannot be fixed from userspace. Requires kernel driver patch for Aeolia PCIe interrupt routing.
 
 ### Scraping not working
 
