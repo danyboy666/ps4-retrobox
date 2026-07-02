@@ -64,7 +64,8 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     pulseaudio alsa-utils \
     ntfs-3g exfat-fuse exfatprogs \
     usbutils pciutils net-tools iputils-ping \
-    dbus console-setup keyboard-configuration"
+    dbus console-setup keyboard-configuration \
+    xvfb xserver-xorg-core"
 
 run_chroot "locale-gen en_US.UTF-8"
 run_chroot "update-locale LANG=en_US.UTF-8"
@@ -483,29 +484,23 @@ WantedBy=multi-user.target
 CPUEOF
 ln -sf /etc/systemd/system/cpu-performance.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/cpu-performance.service"
 
-# === USB3 interrupt storm fix (unbind broken Bus 003 controller) ===
-cat > "$ROOTFS/usr/local/bin/fix-usb-loop.sh" << 'USBEOF'
-#!/bin/bash
-# Unbind the broken Aeolia USB3 controller that generates phantom interrupts
-if [ -d /sys/bus/pci/drivers/xhci_aeolia ]; then
-    echo "0000:00:14.7" > /sys/bus/pci/drivers/xhci_aeolia/unbind 2>/dev/null
-fi
-USBEOF
-chmod +x "$ROOTFS/usr/local/bin/fix-usb-loop.sh"
-cat > "$ROOTFS/etc/systemd/system/fix-usb-loop.service" << 'USBEOF'
+# === PS4 sysctl tuning (ASLR off for Lightrec dynarec, threaded NAPI) ===
+cat > "$ROOTFS/etc/systemd/system/sysctl-ps4-tuning.service" << 'SYSCTLEOF'
 [Unit]
-Description=Fix USB3 interrupt storm on Aeolia
-After=multi-user.target
+Description=PS4 sysctl tuning for Lightrec dynarec and performance
+Before=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/fix-usb-loop.sh
+ExecStart=/bin/bash -c "echo 0 > /proc/sys/kernel/randomize_va_space"
+ExecStart=/bin/bash -c "echo 0 > /proc/sys/vm/mmap_min_addr"
+ExecStart=/bin/bash -c "echo 1 > /sys/class/net/eth0/threaded"
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
-USBEOF
-ln -sf /etc/systemd/system/fix-usb-loop.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-usb-loop.service"
+SYSCTLEOF
+ln -sf /etc/systemd/system/sysctl-ps4-tuning.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/sysctl-ps4-tuning.service"
 
 # === IRQ affinity + ethtool for Aeolia interrupt distribution ===
 echo "=== Installing ethtool + irqbalance ==="
@@ -740,35 +735,52 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="06
 SUBSYSTEM=="input", ATTRS{idVendor}=="045e", ATTRS{idProduct}=="0745", ENV{ID_INPUT_JOYSTICK}="0"
 UDEV
 
+# Fix /dev/tty0 permissions for Xorg (needed for xrandr HDMI recovery)
+cat > "$ROOTFS/etc/udev/rules.d/99-tty0-permissions.rules" << 'UDEVTTY'
+KERNEL=="tty0", MODE="0666"
+UDEVTTY
+
 # === HDMI hotplug watcher ===
 echo "=== Installing HDMI watcher ==="
+cat > "$ROOTFS/usr/local/bin/hdmi-recover" << 'RECOVEREOF'
+#!/bin/bash
+echo HDMI recovery: stopping ES...
+systemctl stop es-session.service
+sleep 1
+echo Starting Xorg...
+Xorg :0 -config /dev/null -noreset &
+X_PID=$!
+sleep 2
+echo Running xrandr off/on...
+DISPLAY=:0 xrandr --output HDMI-A-1 --off 2>/dev/null
+sleep 2
+DISPLAY=:0 xrandr --output HDMI-A-1 --auto 2>/dev/null
+sleep 1
+kill $X_PID 2>/dev/null
+wait $X_PID 2>/dev/null
+dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
+echo Starting ES...
+systemctl start es-session.service
+echo HDMI recovery complete.
+RECOVEREOF
+chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
+
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
-DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-POLL_INTERVAL=5
-LAST_STATE=""
-COUNTER=0
-echo "hdmi-watcher: monitoring $DRM_STATUS"
+echo hdmi-watcher started
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
 while true; do
-    if [ -f "$DRM_STATUS" ]; then
-        CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
-        if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
-            sleep 2
-            modetest -s HDMI-A-1:1920x1080 2>/dev/null
-            sleep 1
-            modetest -s HDMI-A-1:1920x1080 2>/dev/null
-        fi
-        LAST_STATE="$CURRENT"
-    fi
-    COUNTER=$((COUNTER + 1))
-    if [ "$COUNTER" -ge 60 ]; then
+    if ! pgrep -f emulationstation > /dev/null 2>&1; then
+        echo hdmi-watcher: ES not running, restarting
         modetest -s HDMI-A-1:1920x1080 2>/dev/null
-        COUNTER=0
+        sleep 1
+        systemctl start es-session.service 2>/dev/null
     fi
-    sleep "$POLL_INTERVAL"
+    sleep 5
 done
 HDMI_EOF
+chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
 # === HDMI watcher systemd service ===
@@ -941,7 +953,7 @@ video_context_driver = "kms"
 audio_driver = "alsa"
 audio_device = "alsa_output.pci-0000_00_01.1.hdmi-stereo"
 input_driver = "udev"
-input_autodetect_enable = "false"
+input_autodetect_enable = "true"
 input_keyboard_provider = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
@@ -998,7 +1010,19 @@ input_player1_analog_dpad_mode = "0"
 input_player1_up = "leftanalogup"
 input_player1_down = "leftanalogdown"
 input_player1_left = "leftanalogleft"
-input_player1_right = "leftanalogright"
+ input_player1_right = "leftanalogright"
+config_save_on_exit = "false"
+keyboard_gamepad_enable = "true"
+input_up = "up"
+input_down = "down"
+input_left = "left"
+input_right = "right"
+input_a = "Return"
+input_b = "backspace"
+input_start = "space"
+input_select = "rshift"
+input_menu_toggle = "f1"
+input_exit_emulator = "escape"
 RETROCFG
 
 # === Create RetroArch wrapper (stops ES, shows launching image, then launches game) ===
@@ -1116,8 +1140,8 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
 
-# Hotkey: Select holds to enable hotkey functions
-input_enable_hotkey_btn = "8"
+# Hotkey: disabled — all buttons work directly in menu
+input_enable_hotkey_btn = "nul"
 
 # Menu: Select + Cross (btn 1) = open/close RetroArch menu
 input_menu_toggle_btn = "1"
@@ -1161,15 +1185,19 @@ input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
 
-# Keyboard menu navigation (required for XMB)
-input_up = "up"
-input_down = "down"
-input_left = "left"
-input_right = "right"
-input_a = "x"
-input_b = "z"
-input_start = "enter"
-input_select = "rshift"
+# Beetle PSX overrides (core rewrites .opt on exit, so set here)
+beetle_psx_cd_access_method = "precache"
+beetle_psx_cd_fastload = "4x(native)"
+beetle_psx_gpu_overclock = "2x(native)"
+beetle_psx_dither_mode = "disabled"
+beetle_psx_crop_overscan = "smart"
+beetle_psx_display_internal_fps = "disabled"
+beetle_psx_draw_frontend_borders = "disabled"
+beetle_psx_enable_og_sce_audio = "disabled"
+beetle_psx_internal_resolution = "1x(native)"
+beetle_psx_aspect_ratio = "corrected"
+beetle_psx_cpu_dynarec = "execute"
+beetle_psx_gte_overclock = "enabled"
 APPENDCFG
 
 # === Create N64 core options (optimized for PS4 base) ===
@@ -1188,15 +1216,29 @@ mupen64plus-EnableCopyDepthToRDRAM = "Off"
 mupen64plus-ThreadedRenderer = "True"
 N64OPT
 
-# === Create PSX core options (Beetle PSX async CD + dynarec) ===
+# === Create PSX core options (Beetle PSX — interpreter, async CD, overclocks) ===
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX"
 cat > "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt" << 'PSXOPT'
-beetle_psx_cd_access_method = "Asynchronous"
-beetle_psx_cpu_freq_scale = "100%"
-beetle_psx_cpu_dynarec = "disabled"
+beetle_psx_cpu_dynarec = "execute"
+beetle_psx_dynarec_invalidate = "full"
+beetle_psx_dynarec_op_cycles = "2"
+beetle_psx_dynarec_eventcycles = "128"
+beetle_psx_dynarec_spgp_opt = "disabled"
+beetle_psx_dynarec_spu_samples = "1"
+beetle_psx_cd_access_method = "precache"
+beetle_psx_cd_fastload = "4x(native)"
+beetle_psx_gte_overclock = "enabled"
+beetle_psx_gpu_overclock = "2x(native)"
+beetle_psx_dither_mode = "disabled"
+beetle_psx_crop_overscan = "smart"
+beetle_psx_internal_resolution = "1x(native)"
+beetle_psx_aspect_ratio = "corrected"
+beetle_psx_region = "ntsc"
+beetle_psx_display_internal_fps = "disabled"
 beetle_psx_draw_frontend_borders = "disabled"
 beetle_psx_enable_og_sce_audio = "disabled"
 PSXOPT
+chmod 444 "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt"
 
 # === Create DS4 USB polling reduction rule ===
 mkdir -p "$ROOTFS/etc/udev/rules.d"
