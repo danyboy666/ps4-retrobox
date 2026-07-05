@@ -1,0 +1,356 @@
+#!/bin/sh
+# better-initramfs project
+# https://bitbucket.org/piotrkarbowski/better-initramfs
+# Copyright (c) 2010-2018, Piotr Karbowski <piotr.karbowski@gmail.com>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without 
+# modification, are permitted provided that the following conditions are met:
+#    * Redistributions of source code must retain the above copyright notice,
+#      this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#    * Neither the name of the Piotr Karbowski nor the names of its contributors
+#      may be used to endorse or promote products derived from this software
+#      without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE
+
+# Load functions.
+. /functions.sh
+
+run_hooks init
+
+# Prepare dirs
+run dodir /dev /newroot /sbin /proc /sys /etc /var/log /var/run /run /run/cryptsetup
+for d in /lib /usr/lib; do
+   # ! -e && ! -h: also skip broken symlinks
+   if [ -d "${d}" ] && [ ! -e "${d}64" ] && [ ! -h "${d}64" ]; then
+      run ln -s "${d}" "${d}64"
+   fi
+done
+unset -v d
+
+# Basic /dev content, we need it as fast as possible.
+[ ! -e /dev/console ]  && run mknod /dev/console c 5 1
+[ ! -e /dev/null ]     && run mknod /dev/null c 1 3
+[ ! -e /dev/tty ]      && run mknod /dev/tty c 5 0
+[ ! -e /dev/urandom ]  && run mknod /dev/urandom c 1 9
+[ ! -e /dev/random ]   && run mknod /dev/random c 1 8
+[ ! -e /dev/zero ]     && run mknod /dev/zero c 1 5
+
+# Clear the screen
+clear
+
+# Save IFS so we can easly restore it if we ever change it.
+readonly default_ifs="${IFS}"
+
+# Basic
+kernelver="$(uname -r)"
+ver="$(cat /VERSION)"
+
+einfo "better-initramfs ${ver}. Linux kernel ${kernelver}.\n"
+echo -e "\nWelcome to better-initramfs ${ver}. Linux kernel ${kernelver}.\n" > /etc/motd
+
+emount /proc /sys
+
+# Disable kernel messages from popping onto the screen
+echo 0 > /proc/sys/kernel/printk
+
+process_commandline_options
+InitializeBusybox
+ln -s /bin/sh /bin/bash # not exactly accurate, but aids with many scripts requiring a #!/bin/bash 
+emount /dev
+
+# Start Plymouth splash (if 'splash' on cmdline)
+if grep -q "splash" /proc/cmdline 2>/dev/null; then
+	mkdir -p /run/plymouth
+	plymouthd --mode=boot --pid-file=/run/plymouth/pid 2>/dev/null
+	plymouth show-splash 2>/dev/null
+	_PLYMOUTH_ACTIVE=1
+fi
+
+# Clean up any stale loop devices from previous boot
+for _lp in /dev/loop[0-9]*; do
+	[ -b "$_lp" ] || continue
+	losetup -d "$_lp" 2>/dev/null
+done
+
+run_hooks early
+#SetupNetwork
+#use sshd && setup_sshd
+loadkeymap
+
+use rootdelay rootdelay #needs rootdelay variable to be set, through kernel parameter?
+
+# Let's try to support all possible combinations of storage layers.
+use bcache register_bcache_devices
+use softraid InitializeSoftwareRaid && use bcache register_bcache_devices
+use lvm InitializeLVM && use bcache register_bcache_devices
+use luks InitializeLUKS && use lvm InitializeLVM && use bcache register_bcache_devices
+
+# populate_dev_disk_by_label_and_uuid #kept this off as it seems unnecessary and overcomplicated with PS4's
+# encrypted partitioning system
+
+use rescueshell rescueshell
+use swsusp && SwsuspResume 
+#missing uswsusp && Uswsuspresume from older initramfs
+use tuxonice TuxOnIceResume
+run_hooks pre_newroot_mount
+
+
+# # PS4 specific section:
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Setting up encrypted HDD" 2>/dev/null
+echo "Setting up (en)crypt(ted) mount setup for PlayStation 4 HDD." 
+echo "Waiting for HDD to appear..."
+
+# Wait for SATA device nodes to appear (up to 15 seconds)
+_waited=0
+while [ "$_waited" -lt 15 ]; do
+	[ -e /dev/sda ] && break
+	sleep 1
+	_waited=$((_waited + 1))
+done
+echo "HDD ready after ${_waited}s. Trying partition 27 (CUH-1200+) then partition 13 (CUH-1000/1100)..."
+
+# Try partition 27 first (Slim/Pro models), then partition 13 (early Aeolia)
+if cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 create ps4hdd /dev/sd?27 2>/dev/null; then
+    echo "Using partition 27"
+elif cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 create ps4hdd /dev/sd?13 2>/dev/null; then
+    echo "Using partition 13"
+else
+    echo "ERROR: Could not find valid PS4 HDD partition"
+    echo "Trying partition 27 with --skip (for models needing ivoffset)..."
+    cryptsetup -d /key/eap_hdd_key.bin --cipher aes-xts-plain64 -s 256 --offset 0 --skip 111669149696 create ps4hdd /dev/sd?27
+fi
+
+echo "Finished cryptsetup. Mounting the encrypted drive. . ."
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Mounting UFS partition" 2>/dev/null
+
+mkdir /ps4hdd
+mount -t ufs -o ufstype=ufs2 /dev/mapper/ps4hdd /ps4hdd
+
+# Verify UFS is writable
+if ! touch /ps4hdd/.write_test 2>/dev/null; then
+	echo "ERROR: UFS mounted read-only. Cannot proceed."
+	echo "Try rebooting and running install-HDD.sh again."
+	rescueshell
+fi
+rm -f /ps4hdd/.write_test
+echo "UFS mounted and writable."
+
+# Quit Plymouth before interactive sections — it grabs keyboard input
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth quit 2>/dev/null
+_PLYMOUTH_ACTIVE=0
+
+clear
+
+# Find existing .img (>1GB, ignore failed partials)
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Looking for boot image" 2>/dev/null
+_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+
+# Fallback: find any .img regardless of size
+if [ -z "$_EXISTING_IMG" ]; then
+	_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' 2>/dev/null | head -1)"
+fi
+
+if [ -n "$_EXISTING_IMG" ]; then
+	_IMG_MB=$(( $(stat -c %s "$_EXISTING_IMG") / 1048576 ))
+	echo "Existing .img found: $((_IMG_MB / 1024))GB ($_IMG_MB MB)"
+	echo "  Path: $_EXISTING_IMG"
+	echo ""
+	echo "  [Y] Delete and reinstall"
+	echo "  [N] Boot existing image (default)"
+	echo ""
+	echo "Auto-booting existing image in 15 seconds..."
+	_COUNTDOWN=15
+	while [ "$_COUNTDOWN" -gt 0 ]; do
+		printf "\r  [%2ds] " "$_COUNTDOWN"
+		_ANSWER=""
+		read -t 1 _ANSWER 2>/dev/null
+		case "$_ANSWER" in
+			y|Y)
+				echo ""
+				echo "Deleting existing .img..."
+				rm -f "$_EXISTING_IMG"
+				_EXISTING_IMG=""
+				break
+				;;
+			n|N)
+				echo ""
+				echo "Booting existing image."
+				break
+				;;
+		esac
+		_COUNTDOWN=$((_COUNTDOWN - 1))
+	done
+	if [ -n "$_EXISTING_IMG" ]; then
+		echo ""
+		echo "Booting existing image."
+	fi
+fi
+
+if [ -z "$_EXISTING_IMG" ]; then
+	echo "Launching installer..."
+	echo ""
+	install-HDD.sh </dev/tty0 2>&1 | tee /ps4hdd/system/boot/install.log
+fi
+
+# Inline expansion: expand .img to target size BEFORE booting
+_IMG_FILE="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+_TARGET_FILE="/ps4hdd/home/.target_size"
+if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
+	_TARGET_GB=$(cat "$_TARGET_FILE" 2>/dev/null | tr -d '[:space:]')
+	_CUR_BYTES=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+	_CUR_GB=$((_CUR_BYTES / 1073741824))
+	if [ "$_TARGET_GB" -gt "$_CUR_GB" ] 2>/dev/null; then
+		echo ""
+		echo "  Install complete! Rootfs is ${_CUR_GB}GB."
+		echo ""
+		echo "  [1] Expand to ${_TARGET_GB}GB (recommended for more ROMs)"
+		echo "  [2] Boot now with ${_CUR_GB}GB (expansion can be done later)"
+		echo ""
+		echo "Auto-expanding in 15 seconds..."
+		_COUNTDOWN=15
+		_EXPAND=1
+		while [ "$_COUNTDOWN" -gt 0 ]; do
+			printf "\r  [%2ds] " "$_COUNTDOWN"
+			_ANSWER=""
+			read -t 1 _ANSWER 2>/dev/null
+			case "$_ANSWER" in
+				2) _EXPAND=0; echo ""; echo "Booting minimal ${_CUR_GB}GB image." ;;
+				1) _EXPAND=1; echo ""; echo "Expanding to ${_TARGET_GB}GB..." ;;
+			esac
+			[ "$_EXPAND" = "0" ] || [ "$_ANSWER" = "1" ] && break
+			_COUNTDOWN=$((_COUNTDOWN - 1))
+		done
+		if [ "$_EXPAND" -eq 1 ] 2>/dev/null; then
+			[ -z "$_ANSWER" ] && echo "" && echo "Expanding to ${_TARGET_GB}GB..."
+			echo "  This may take several minutes. Please be patient."
+			echo ""
+			_TARGET_MB=$((_TARGET_GB * 1024))
+			_DIFF_MB=$((_TARGET_MB - (_CUR_BYTES / 1048576)))
+			_SEEK_MB=$(( _CUR_BYTES / 1048576 ))
+			[ ! -e /dev/loop5 ] && mknod /dev/loop5 b 7 5
+
+			echo "  Writing ${_DIFF_MB}MB zeros to extend file..."
+			dd if=/dev/zero of="$_IMG_FILE" bs=1M count=$_DIFF_MB seek=$_SEEK_MB 2>/dev/null &
+			_DD_PID=$!
+			sleep 2
+			while kill -0 $_DD_PID 2>/dev/null; do
+				_NOW=$(stat -c %s "$_IMG_FILE" 2>/dev/null || echo 0)
+				_NOW_MB=$(( _NOW / 1048576 ))
+				_PCT=$(( _NOW_MB * 100 / _TARGET_MB ))
+				printf "\r  Extending file: %dMB / %dMB (%d%%) " "$_NOW_MB" "$_TARGET_MB" "$_PCT"
+				sleep 5
+			done
+			wait $_DD_PID
+			printf "\r  Extending file: %dMB / %dMB (100%%) ✓\n" "$_TARGET_MB" "$_TARGET_MB"
+
+			echo "  Attaching .img to loop5..."
+			losetup -o 0 /dev/loop5 "$_IMG_FILE"
+
+			echo "  Resizing ext4 filesystem..."
+			resize2fs /dev/loop5 2>&1 &
+			_RS_PID=$!
+			_SPINNER='|/-\'
+			_SI=0
+			while kill -0 $_RS_PID 2>/dev/null; do
+				_C="${_SPINNER:$_SI:1}"
+				printf "\r  Resizing filesystem... %c " "$_C"
+				_SI=$(( (_SI + 1) % 4 ))
+				sleep 1
+			done
+			wait $_RS_PID
+			printf "\r  Resizing filesystem... done ✓\n"
+
+			sync
+			losetup -d /dev/loop5 2>/dev/null
+			echo "  Expansion complete."
+		fi
+		rm -f "$_TARGET_FILE"
+	fi
+fi
+
+# dmesg > /ps4hdd/system/boot/dmesg_"$(uname -r)"
+# Set _OS from already-known .img path (no need for ls /ps4hdd/home)
+_OS="$(basename "$_IMG_FILE" .img)"
+if [ -z "$_OS" ]; then
+	echo "ERROR: No .img found in /ps4hdd/home/"
+	rescueshell
+fi
+echo "Auto-detected OS: $_OS"
+
+###
+#if [ -f /ps4hdd/home/Arch.img ]; then
+#	echo ""
+#else
+#	echo "No Arch.img found in /ps4hdd/home/ , reentering rescueshell"
+#	rescueshell
+#fi
+###
+
+choose_os_offset
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Mounting root filesystem" 2>/dev/null
+setup_img_loop_device
+os_filesystem_check
+
+if ! mount -t ext4 /dev/loop0 /newroot; then
+	echo "FATAL: mount /dev/loop0 on /newroot failed."
+	echo "The .img file may be corrupt. Try reinstalling with install-HDD.sh."
+	echo "If using USB staging, the transfer to UFS may have failed."
+	rescueshell
+fi
+
+if [ -f /newroot/home/eap_hdd_key.bin ]; then
+	echo ''
+else
+	cp /key/eap_hdd_key.bin /newroot/home/eap_hdd_key.bin
+fi
+
+# # End of PS4 specific section
+
+emount /newroot/usr #new!!
+# Wait for sshd connection only if rescueshell have never occur.
+#use sshd && was_shell || wait_sshd
+
+cleanup
+moveDev
+eumount /sys /proc
+run_hooks pre_switch_root
+
+# # PS4 specific section:
+#
+if [ ! -d /newroot/ps4hdd ]; then
+	mkdir /newroot/ps4hdd
+fi
+mount /ps4hdd /newroot/ps4hdd
+
+# Bind mount ROMs from UFS into Ubuntu (only if UFS storage was chosen during install)
+if [ -d /ps4hdd/ROMS ]; then
+	mkdir -p /newroot/home/PS4/ROMS
+	mount --bind /ps4hdd/ROMS /newroot/home/PS4/ROMS
+fi
+# # End of PS4 specific section
+
+# Quit Plymouth before switching root
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Booting..." 2>/dev/null
+[ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth quit 2>/dev/null
+
+boot_newroot
+
+ewarn "Something went wrong."
+rescueshell
+
+# vim: noexpandtab
