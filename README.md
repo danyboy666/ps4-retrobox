@@ -2,14 +2,31 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.5.5-dev — TESTING**  
+> **v1.5.5-dev — TESTING**
 > PCSX ReARMed core, HDMI hotplug kernel patches, eth0 interrupt coalescing, RetroArch 4:3 forced, SDL2 audio, controller hotkeys, display-init service. See [Known Issues](#known-issues).
+
+## Downloads
+
+You need **three things** to run PS4 Linux:
+
+| Component | Download | Description |
+|-----------|----------|-------------|
+| **Rootfs Image** | [ps4-retrobox releases](https://github.com/danyboy666/ps4-retrobox/releases) | Ubuntu 24.04 with RetroArch, EmulationStation, 39 systems |
+| **Kernel (bzImage)** | [ps4-linux-12xx releases](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) | Kernel 6.15.4 — supports **all PS4 models** (Aeolia/Belize/Baikal) |
+| **Payloads** | [ps4-linux-payloads releases](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) | Boot payloads for FW 5.05–12.00 — pick zip matching your FW |
+
+> **Firmware version** → download the matching payload zip (e.g. `ps4-linux-payloads-fw960.zip` for FW 9.60). Each zip contains regular, pro, and baikal variants for 1–5GB VRAM.
 
 ## What It Does
 
 Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch** on **Ubuntu 24.04**, installed directly on the PS4's internal HDD. No USB drive needed after setup.
 
-## What Works (v1.5.5-dev, CUH-1000/1100 Aeolia)
+## What Works (v1.5.5-dev, All PS4 Models)
+
+**Supported Southbridges** — one kernel works for all PS4 models:
+- **Aeolia** — CUH-10xx/11xx/12xx (Fat)
+- **Belize** — CUH-20xx/21xx (Slim), CUH-70xx/71xx (Pro)
+- **Baikal** — CUH-22xx (Revised Slim/Pro)
 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
@@ -109,23 +126,26 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 ## Quick Start
 
 ### First Time Install
-1. Download [v1.5.2-dev ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.5.2-dev)
-2. FTP all files to PS4 (port 2121)
-3. Jailbreak → GoldHEN → BinLoader → send **1GB payload**
-4. Install runs automatically → choose 3GB or expand
+1. Download [kernel bzImage](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) for your model
+2. Download [payload zip](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) matching your PS4 firmware version
+3. Download [rootfs image](https://github.com/danyboy666/ps4-retrobox/releases) from ps4-retrobox releases
+4. FTP all files to PS4 (port 2121)
+5. Jailbreak → GoldHEN → BinLoader → send payload
+6. Install runs automatically → choose 3GB or expand
 
 ### Daily Use
-1. Jailbreak → GoldHEN → BinLoader → send **2GB payload**
+1. Jailbreak → GoldHEN → BinLoader → send payload
 2. Linux boots → EmulationStation → play!
+
+> **Tip:** You need the correct payload for your FW version and VRAM. Check the [payloads releases](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0).
 
 See [Installation Guide](wiki/Installation-Guide.md) for full details.
 
 ## Requirements
 
-- PS4 Fat CUH-1000/1100 (Aeolia) — only tested model
-> **⚠ Firmware: Only tested on 9.60.** Other FW versions may work but are unverified.
-- Firmware 5.05–13.02 (any jailbreak-compatible)
-- Ethernet cable required (WiFi not supported on CUH-1000/1100)
+- Jailbroken PS4 — **all models supported** (Aeolia, Belize, Baikal)
+- Firmware 5.05–12.00 (any jailbreak-compatible)
+- Ethernet cable required (WiFi not supported yet)
 - Windows PC on same network (for initial FTP)
 
 ## Quick Links
@@ -139,13 +159,13 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 
 ## Project Structure
 
-| Repo | Description |
-|------|-------------|
-| [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
-| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
-| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
-| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix, glColorMask font fix |
-| [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | PS4 Linux kernel 6.15.4 — IRQ round-robin, WiFi MT6632 fixes, Clang+FullLTO |
+| Repo | Description | Downloads |
+|------|-------------|-----------|
+| [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs | [Releases](https://github.com/danyboy666/ps4-retrobox/releases) |
+| [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | Kernel 6.15.4 — Aeolia/Belize/Baikal, IRQ round-robin, WiFi | [bzImage](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) |
+| [ps4-linux-payloads](https://github.com/danyboy666/ps4-linux-payloads) | Boot payloads for FW 5.05–12.00 (regular/pro/baikal) | [Payloads](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) |
+| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts | — |
+| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 — GL stale error fix, KMS modeset, FBO blit, glColorMask font fix | — |
 
 ## Roadmap
 
@@ -189,8 +209,9 @@ Output files in `community-files/`:
 |------|-------------|
 | `arch.tar.xz` | Ubuntu rootfs with RetroArch, ES, cores |
 | `initramfs.cpio.gz` | Boot initramfs |
-| `bzImage_*` | Linux kernel |
-| `payload-960-*.elf` | PS4 payloads |
+| `bzImage_6.15.4-hdmi-poll-fix_LTO` | Linux kernel (all southbridges) |
+
+> **Note:** Payloads are in a separate repo — see [ps4-linux-payloads](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0).
 
 ### Architecture
 

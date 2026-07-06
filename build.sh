@@ -524,18 +524,34 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ethtool irqbalance
 cat > "$ROOTFS/etc/systemd/system/fix-irq-affinity.service" << 'IRQEOF'
 [Unit]
 Description=Set Aeolia IRQ affinity and eth0 coalescing
-After=multi-user.target
+After=multi-user.target basic.target
+Wants=basic.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/ethtool -C eth0 rx-usecs 1000 rx-frames 10 2>/dev/null || true
-ExecStart=/bin/bash -c "for irq in $(grep Aeolia /proc/interrupts | awk -F: '{print $1}' | tr -d ' '); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done"
+ExecStart=/bin/bash -c 'for irq in $(grep Aeolia /proc/interrupts | awk -F: '"'"'{print $1}'"'"' | tr -d '"'"' '"'"'); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done'
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 IRQEOF
 ln -sf /etc/systemd/system/fix-irq-affinity.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-irq-affinity.service"
+
+# === TCP/IP tuning for faster SSH/SFTP transfers ===
+cat > "$ROOTFS/etc/sysctl.d/99-ps4-network.conf" << 'SYSCTLNET'
+# Increase TCP buffer sizes for faster SFTP/SCP transfers
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.core.rmem_default = 1048576
+net.core.wmem_default = 1048576
+net.ipv4.tcp_rmem = 4096 1048576 16777216
+net.ipv4.tcp_wmem = 4096 1048576 16777216
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_timestamps = 1
+net.ipv4.tcp_sack = 1
+net.core.netdev_max_backlog = 5000
+SYSCTLNET
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
