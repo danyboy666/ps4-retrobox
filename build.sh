@@ -800,18 +800,15 @@ chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 echo hdmi-watcher started
-modetest -s HDMI-A-1:1920x1080 2>/dev/null
 while true; do
-    if ! pgrep -f emulationstation > /dev/null 2>&1; then
+    if ! pgrep -x emulationstation > /dev/null 2>&1; then
         echo hdmi-watcher: ES not running, restarting
-        modetest -s HDMI-A-1:1920x1080 2>/dev/null
         sleep 1
         systemctl start es-session.service 2>/dev/null
     fi
     sleep 5
 done
 HDMI_EOF
-chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
 # === HDMI watcher systemd service ===
@@ -997,16 +994,16 @@ savestate_directory = "/home/PS4/saves"
 screenshot_directory = "/home/PS4/screenshots"
 menu_driver = "xmb"
 video_font_enable = "false"
-input_enable_hotkey_btn = "nul"
-input_exit_emulator_btn = "nul"
-input_menu_toggle_btn = "nul"
+input_enable_hotkey_btn = "8"
+input_exit_emulator_btn = "9"
+input_menu_toggle_btn = "1"
 input_menu_toggle_gamepad_combo = "2"
-input_load_state_btn = "nul"
-input_save_state_btn = "nul"
-input_hold_fast_forward_btn = "nul"
-input_screenshot_btn = "nul"
-input_state_slot_decrease_btn = "nul"
-input_state_slot_increase_btn = "nul"
+input_load_state_btn = "4"
+input_save_state_btn = "5"
+input_hold_fast_forward_btn = "7"
+input_screenshot_btn = "3"
+input_state_slot_decrease_btn = "h0left"
+input_state_slot_increase_btn = "h0right"
 menu_unified_controls = "true"
 all_users_control_menu = "true"
 keyboard_gamepad_enable = "true"
@@ -1170,27 +1167,37 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
 
-# Gamepad combo: L3+R3 held = open RetroArch menu
+# Gamepad combo: L3+R3 held = open RetroArch menu (standalone combo, no hotkey needed)
 input_menu_toggle_gamepad_combo = "2"
 
-# Hotkey: disabled — all buttons work directly in menu
-input_enable_hotkey_btn = "nul"
+# Hotkey enable: Hold Select to activate combo buttons
+input_enable_hotkey_btn = "8"
 
-# Menu: Select + Cross (btn 1) = open/close RetroArch menu
+# Menu: Select + Cross = open/close RetroArch menu
 input_menu_toggle_btn = "1"
 
 # Exit: Select + Start = exit emulator
 input_exit_emulator_btn = "9"
 
-# Disable unused hotkeys (Select alone does nothing)
-input_load_state_btn = "nul"
-input_save_state_btn = "nul"
-input_hold_fast_forward_btn = "nul"
-input_screenshot_btn = "nul"
-input_state_slot_decrease_btn = "nul"
-input_state_slot_increase_btn = "nul"
-input_reset_btn = "nul"
-input_rewind_btn = "nul"
+# Save/Load state: Select + R/L
+input_save_state_btn = "5"
+input_load_state_btn = "4"
+
+# Screenshot: Select + Y
+input_screenshot_btn = "3"
+
+# Fast forward: Select + R2
+input_hold_fast_forward_btn = "7"
+
+# State slot: Select + D-pad Left/Right
+input_state_slot_decrease_btn = "h0left"
+input_state_slot_increase_btn = "h0right"
+
+# Rewind: Select + L2
+input_rewind_btn = "6"
+
+# Reset game: Select + B
+input_reset_btn = "1"
 input_device_p1 = "Wireless Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
