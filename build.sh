@@ -984,7 +984,7 @@ video_font_enable = "false"
 input_enable_hotkey_btn = "nul"
 input_exit_emulator_btn = "nul"
 input_menu_toggle_btn = "nul"
-input_menu_toggle_gamepad_combo = "0"
+input_menu_toggle_gamepad_combo = "2"
 input_load_state_btn = "nul"
 input_save_state_btn = "nul"
 input_hold_fast_forward_btn = "nul"
@@ -1153,6 +1153,9 @@ chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
+
+# Gamepad combo: L3+R3 held = open RetroArch menu
+input_menu_toggle_gamepad_combo = "2"
 
 # Hotkey: disabled — all buttons work directly in menu
 input_enable_hotkey_btn = "nul"
