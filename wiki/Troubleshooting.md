@@ -86,7 +86,7 @@ grep dynarec /home/PS4/.config/retroarch/config/Beetle\ PSX/Beetle\ PSX.opt
 
 ### HDMI signal lost after TV power cycle or cable replug
 
-The PS4 Linux amdgpu driver doesn't detect HDMI cable disconnect/reconnect events. When the TV is power-cycled or the HDMI cable is replugged, the TV loses sync and doesn't re-detect the signal.
+The PS4 Linux amdgpu driver doesn't always detect HDMI cable disconnect/reconnect events. When the TV is power-cycled or the HDMI cable is replugged, the TV may lose sync.
 
 **Recovery**: SSH into the PS4 and run:
 ```bash
@@ -97,16 +97,20 @@ This stops ES, starts Xorg, runs xrandr off/on to force EDID re-read, then resta
 
 **Known limitation**: Auto-recovery is not possible without kernel driver changes. The amdgpu driver on PS4 hardware doesn't fire hotplug events for cable disconnect/reconnect.
 
-### RetroArch XMB menu navigation not working
+### RetroArch controller navigation
 
-Keyboard and DS4 navigation in the RetroArch XMB menu may not work properly. Known issue under investigation (#2).
+Select + Cross opens the RetroArch menu. Select + Start exits the emulator. D-pad navigates the menu. If navigation stops working, reflash the latest rootfs.
 
-**Workaround**: Change PSX/N64 settings directly via config files:
-```bash
-ssh PS4@<IP>
-nano /home/PS4/.config/retroarch/config/Beetle\ PSX/Beetle\ PSX.opt
-nano /home/PS4/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt
-```
+### N64 OSD fonts garbled
+
+GLideN64 uses GL font rendering for OSD text that fails on PS4's KMS framebuffer (GL error 501). This is a kernel-level GL driver limitation — the amdgpu GL driver doesn't support the GL calls GLideN64 uses. Requires a kernel-level GL driver patch to fix.
+
+### N64 / PSX performance slow
+
+- eth0 interrupt coalescing patch reduces phantom interrupts but Aeolia hardware limitation persists
+- PCSX ReARMed replaces Beetle PSX for better PS4 performance
+- N64 uses GLideN64 with 1x resolution and ThreadedRenderer enabled
+- Check that CPU governor is set to performance mode
 
 ### eth0 interrupt storm (ksoftirqd high CPU)
 
