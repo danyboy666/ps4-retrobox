@@ -9,7 +9,7 @@
 
 ## Files Needed
 
-Download [v1.3 ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.3) and extract:
+Download [v1.5.5-dev ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.5.5-dev) and extract:
 
 | File | FTP To | Notes |
 |------|--------|-------|
