@@ -2,29 +2,36 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.4 — WORKING**  
-> N64 working with Angrylion software renderer. Patched RetroArch (glActiveTexture fix + non-fatal GL error + non-fatal KMS modeset). Scraper API keys configurable from ES menu. See [Known Issues](#known-issues).
+> **v1.5.2-dev — WORKING**  
+> PSX dynarec (Lightrec JIT) working, N64 with GLideN64, RetroArch font fix, IRQ interrupt distribution, keyboard navigation. See [Known Issues](#known-issues).
 
 ## What It Does
 
 Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch** on **Ubuntu 24.04**, installed directly on the PS4's internal HDD. No USB drive needed after setup.
 
-## What Works (v1.4, CUH-1000/1100 Aeolia)
+## What Works (v1.5.2-dev, CUH-1000/1100 Aeolia)
 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
 - [x] **39 retro systems** with **27 libretro cores**
 - [x] RetroArch 1.22.2 — multiple ROMs confirmed working
 - [x] Audio via PulseAudio → HDMI output
-- [x] DS4 wired USB — buttons work in ES
+- [x] DS4 wired USB — buttons work in ES and RetroArch
 - [x] Launching images before games start (Python PIL + fb0)
 - [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
 - [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
 - [x] UFS permissions — .img deletable from FTP via HEN
-- [x] N64 — mupen64plus_next with Angrylion renderer (working, Vulkan paraLLEl-RDP planned)
+- [x] **N64** — mupen64plus_next with GLideN64 (working, performance improving)
+- [x] **PSX** — Beetle PSX with Lightrec JIT dynarec (working, performance tuning needed)
+- [x] RetroArch font rendering fixed (glColorMask GL state reset)
+- [x] **Keyboard navigation** in RetroArch XMB (arrow keys, Enter/Backspace)
+- [x] DS4 controller support in ES and RetroArch
+- [x] **IRQ interrupt distribution** — kernel-level Aeolia MSI interrupt round-robin across CPUs
+- [x] Locale fix — ES no longer crashes on boot
+- [x] sysctl tuning — ASLR off, mmap_min_addr=0 (required for Lightrec dynarec)
+- [x] HDMI recovery — hdmi-recover command via xrandr (manual, after cable replug)
 - [x] Scrapers — TheGamesDB (API v1) + ScreenScraper with in-game API key setup
-- [x] HDMI signal recovery after TV close/reopen
 
 ## Supported Systems
 
@@ -79,12 +86,14 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | Game & Watch (gameandwatch) | gw | No | Untested |
 | GCE Vectrex (vectrex) | vecx | No | Untested |
 
-## Known Issues (v1.4)
+## Known Issues (v1.5.2-dev)
 
-- [ ] **RetroArch settings inaccessible** — controller and keyboard input does not work in RetroArch menus/settings ([#2](https://github.com/danyboy666/ps4-retrobox/issues/2))
-- [ ] N64 GLideN64 checkered pattern on KMS/DRM — FBO blit fix in progress ([#1181](https://github.com/mupen64plus/mupen64plus-core/issues/1181))
-- [ ] N64 Angrylion works but too slow for playable framerate
-- [ ] HDMI signal lost after RetroArch exit — hdmi-watcher recovery partially working
+- [ ] **RetroArch XMB menu navigation** — keyboard works when DS4 unplugged, DS4 d-pad doesn't navigate XMB ([#2](https://github.com/danyboy666/ps4-retrobox/issues/2))
+- [ ] **PSX performance** — Beetle PSX dynarec (Lightrec JIT) works but Dynasty Warriors crashes at gameplay start. Other games need testing. Interpreter fallback available but slow.
+- [ ] **N64 performance** — GLideN64 runs but slow due to eth0 interrupt storm (ksoftirqd/1 at 60-90% CPU)
+- [ ] **eth0 interrupt storm** — ~3,600 spurious interrupts/sec all on CPU1. Kernel IRQ round-robin fix distributes xhci interrupts but eth0 is pinned by Aeolia hardware. Workaround: `isolcpus=1` in bootargs reserves CPU1 for kernel.
+- [ ] **HDMI signal recovery** — TV power cycle or cable replug loses signal. Manual recovery via `sudo hdmi-recover` required (uses xrandr to force EDID re-read). Auto-recovery not possible without kernel driver changes.
+- [ ] N64 GLideN64 font rendering — glColorMask fix deployed, inverted colors may persist
 - [ ] Most systems NOT tested yet — all emus need testing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
 - [ ] Other controllers untested
@@ -94,8 +103,8 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 ## Quick Start
 
 ### First Time Install
-1. Download [v1.3 ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.3)
-2. Rename kernel to `bzImage`, FTP 4 files to PS4 (port 2121)
+1. Download [v1.5.2-dev ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.5.2-dev)
+2. FTP all files to PS4 (port 2121)
 3. Jailbreak → GoldHEN → BinLoader → send **1GB payload**
 4. Install runs automatically → choose 3GB or expand
 
@@ -129,7 +138,8 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
 | [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
 | [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
-| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix |
+| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix, glColorMask font fix |
+| [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | PS4 Linux kernel 6.15.4 — IRQ round-robin, WiFi MT6632 fixes, Clang+FullLTO |
 
 ## Roadmap
 
@@ -137,11 +147,12 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 |---------|-------|
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
 | v1.4 | 39 systems, 27 cores, scrapers with API key UI, Neo Geo BIOS, HDMI recovery, N64 FBO blit fix |
-| v1.5 | **Current** — Fix RetroArch controller/keyboard navigation (#2), fix N64 GLideN64 checkered pattern, test all systems |
-| v1.6 | Fix carbon theme, add more themes, controller hotkey/menu navigation |
-| v1.7 | Other controllers, network helpers, FTP |
-| v1.8 | Full install flow validation, performance (kernel amdgpu firmware) |
-| v1.9 | Stable release candidate |
+| v1.5 | Kernel IRQ fix, PSX dynarec, RetroArch font fix, keyboard navigation, sysctl tuning |
+| **v1.5.2-dev** | **Current** — PSX Lightrec JIT working, IRQ round-robin kernel, HDMI xrandr recovery, keyboard nav, font fix |
+| v1.6 | Fix RetroArch XMB navigation with DS4, N64 GLideN64 font colors, eth0 interrupt mitigation |
+| v1.7 | PSX performance tuning (dynarec optimization), test all systems |
+| v1.8 | Fix HDMI auto-recovery (kernel driver patch), controller hotkey/menu navigation |
+| v1.9 | Other controllers, network helpers, FTP |
 | v2.0 | PS4 PKG app — auto-detect southbridge, select payload, user choice: new install vs boot existing .img |
 
 ## Build From Source
