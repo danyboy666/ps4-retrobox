@@ -64,7 +64,8 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     pulseaudio alsa-utils \
     ntfs-3g exfat-fuse exfatprogs \
     usbutils pciutils net-tools iputils-ping \
-    dbus console-setup keyboard-configuration"
+    dbus console-setup keyboard-configuration \
+    xvfb xserver-xorg-core"
 
 run_chroot "locale-gen en_US.UTF-8"
 run_chroot "update-locale LANG=en_US.UTF-8"
@@ -187,6 +188,8 @@ mkdir -p "$ROOTFS/etc/udev/rules.d"
 cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-power.rules" << 'UDEV'
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="084e", ATTR{power/autosuspend}="-1"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1"
+# Reduce DS4 polling from 5ms to 8ms (200Hz -> 125Hz)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="8"
 UDEV
 
 # === Install RetroArch autoconfig profiles ===
@@ -450,6 +453,7 @@ Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
 Environment=SDL_AUDIODRIVER=alsa
+Environment=LANG=en_US.UTF-8
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
@@ -479,6 +483,44 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 CPUEOF
 ln -sf /etc/systemd/system/cpu-performance.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/cpu-performance.service"
+
+# === PS4 sysctl tuning (ASLR off for Lightrec dynarec, threaded NAPI) ===
+cat > "$ROOTFS/etc/systemd/system/sysctl-ps4-tuning.service" << 'SYSCTLEOF'
+[Unit]
+Description=PS4 sysctl tuning for Lightrec dynarec and performance
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "echo 0 > /proc/sys/kernel/randomize_va_space"
+ExecStart=/bin/bash -c "echo 0 > /proc/sys/vm/mmap_min_addr"
+ExecStart=/bin/bash -c "echo 1 > /sys/class/net/eth0/threaded"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+SYSCTLEOF
+ln -sf /etc/systemd/system/sysctl-ps4-tuning.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/sysctl-ps4-tuning.service"
+
+# === IRQ affinity + ethtool for Aeolia interrupt distribution ===
+echo "=== Installing ethtool + irqbalance ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ethtool irqbalance" 2>/dev/null
+
+cat > "$ROOTFS/etc/systemd/system/fix-irq-affinity.service" << 'IRQEOF'
+[Unit]
+Description=Set Aeolia IRQ affinity and eth0 coalescing
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ethtool -C eth0 rx-usecs 1000 rx-frames 10 2>/dev/null || true
+ExecStart=/bin/bash -c "for irq in $(grep Aeolia /proc/interrupts | awk -F: '{print $1}' | tr -d ' '); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+IRQEOF
+ln -sf /etc/systemd/system/fix-irq-affinity.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-irq-affinity.service"
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -591,6 +633,9 @@ if [ -d "$HOMEBREW_DIR" ]; then
     echo "Homebrew ROMs copied."
 fi
 
+# Remove any commercial ROMs that should not be bundled
+rm -f "$ROMS_DIR/n64/Legend of Zelda, The - Ocarina of Time"* 2>/dev/null
+
 # If UFS mode, write flag for install-HDD.sh
 if [ "$ROM_STORAGE" = "ufs" ]; then
     echo "ufs" > "$ROOTFS/home/PS4/.rom_storage"
@@ -690,35 +735,52 @@ SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="06
 SUBSYSTEM=="input", ATTRS{idVendor}=="045e", ATTRS{idProduct}=="0745", ENV{ID_INPUT_JOYSTICK}="0"
 UDEV
 
+# Fix /dev/tty0 permissions for Xorg (needed for xrandr HDMI recovery)
+cat > "$ROOTFS/etc/udev/rules.d/99-tty0-permissions.rules" << 'UDEVTTY'
+KERNEL=="tty0", MODE="0666"
+UDEVTTY
+
 # === HDMI hotplug watcher ===
 echo "=== Installing HDMI watcher ==="
+cat > "$ROOTFS/usr/local/bin/hdmi-recover" << 'RECOVEREOF'
+#!/bin/bash
+echo HDMI recovery: stopping ES...
+systemctl stop es-session.service
+sleep 1
+echo Starting Xorg...
+Xorg :0 -config /dev/null -noreset &
+X_PID=$!
+sleep 2
+echo Running xrandr off/on...
+DISPLAY=:0 xrandr --output HDMI-A-1 --off 2>/dev/null
+sleep 2
+DISPLAY=:0 xrandr --output HDMI-A-1 --auto 2>/dev/null
+sleep 1
+kill $X_PID 2>/dev/null
+wait $X_PID 2>/dev/null
+dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
+echo Starting ES...
+systemctl start es-session.service
+echo HDMI recovery complete.
+RECOVEREOF
+chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
+
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
-DRM_STATUS="/sys/class/drm/card0-HDMI-A-1/status"
-POLL_INTERVAL=5
-LAST_STATE=""
-COUNTER=0
-echo "hdmi-watcher: monitoring $DRM_STATUS"
+echo hdmi-watcher started
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
 while true; do
-    if [ -f "$DRM_STATUS" ]; then
-        CURRENT=$(cat "$DRM_STATUS" 2>/dev/null)
-        if [ "$CURRENT" = "connected" ] && [ "$LAST_STATE" = "disconnected" ]; then
-            echo "hdmi-watcher: HDMI reconnected, forcing modeset"
-            sleep 2
-            modetest -s HDMI-A-1:1920x1080 2>/dev/null
-            sleep 1
-            modetest -s HDMI-A-1:1920x1080 2>/dev/null
-        fi
-        LAST_STATE="$CURRENT"
-    fi
-    COUNTER=$((COUNTER + 1))
-    if [ "$COUNTER" -ge 60 ]; then
+    if ! pgrep -f emulationstation > /dev/null 2>&1; then
+        echo hdmi-watcher: ES not running, restarting
         modetest -s HDMI-A-1:1920x1080 2>/dev/null
-        COUNTER=0
+        sleep 1
+        systemctl start es-session.service 2>/dev/null
     fi
-    sleep "$POLL_INTERVAL"
+    sleep 5
 done
 HDMI_EOF
+chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
 # === HDMI watcher systemd service ===
@@ -888,9 +950,10 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
-audio_driver = "pulse"
+audio_driver = "alsa"
+audio_device = "alsa_output.pci-0000_00_01.1.hdmi-stereo"
 input_driver = "udev"
-input_autodetect_enable = "false"
+input_autodetect_enable = "true"
 input_keyboard_provider = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
@@ -947,7 +1010,19 @@ input_player1_analog_dpad_mode = "0"
 input_player1_up = "leftanalogup"
 input_player1_down = "leftanalogdown"
 input_player1_left = "leftanalogleft"
-input_player1_right = "leftanalogright"
+ input_player1_right = "leftanalogright"
+config_save_on_exit = "false"
+keyboard_gamepad_enable = "true"
+input_up = "up"
+input_down = "down"
+input_left = "left"
+input_right = "right"
+input_a = "Return"
+input_b = "backspace"
+input_start = "space"
+input_select = "rshift"
+input_menu_toggle = "f1"
+input_exit_emulator = "escape"
 RETROCFG
 
 # === Create RetroArch wrapper (stops ES, shows launching image, then launches game) ===
@@ -1050,6 +1125,7 @@ export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+export MESA_NO_ERROR=1
 if [ -x /usr/games/gamemoderun ]; then
     /usr/games/gamemoderun /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 else
@@ -1064,8 +1140,8 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
 
-# Hotkey: Select holds to enable hotkey functions
-input_enable_hotkey_btn = "8"
+# Hotkey: disabled — all buttons work directly in menu
+input_enable_hotkey_btn = "nul"
 
 # Menu: Select + Cross (btn 1) = open/close RetroArch menu
 input_menu_toggle_btn = "1"
@@ -1109,15 +1185,19 @@ input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
 
-# Keyboard menu navigation (required for XMB)
-input_up = "up"
-input_down = "down"
-input_left = "left"
-input_right = "right"
-input_a = "x"
-input_b = "z"
-input_start = "enter"
-input_select = "rshift"
+# Beetle PSX overrides (core rewrites .opt on exit, so set here)
+beetle_psx_cd_access_method = "precache"
+beetle_psx_cd_fastload = "4x(native)"
+beetle_psx_gpu_overclock = "2x(native)"
+beetle_psx_dither_mode = "disabled"
+beetle_psx_crop_overscan = "smart"
+beetle_psx_display_internal_fps = "disabled"
+beetle_psx_draw_frontend_borders = "disabled"
+beetle_psx_enable_og_sce_audio = "disabled"
+beetle_psx_internal_resolution = "1x(native)"
+beetle_psx_aspect_ratio = "corrected"
+beetle_psx_cpu_dynarec = "execute"
+beetle_psx_gte_overclock = "enabled"
 APPENDCFG
 
 # === Create N64 core options (optimized for PS4 base) ===
@@ -1135,6 +1215,36 @@ mupen64plus-EnableCopyColorToRDRAM = "Off"
 mupen64plus-EnableCopyDepthToRDRAM = "Off"
 mupen64plus-ThreadedRenderer = "True"
 N64OPT
+
+# === Create PSX core options (Beetle PSX — interpreter, async CD, overclocks) ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX"
+cat > "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt" << 'PSXOPT'
+beetle_psx_cpu_dynarec = "execute"
+beetle_psx_dynarec_invalidate = "full"
+beetle_psx_dynarec_op_cycles = "2"
+beetle_psx_dynarec_eventcycles = "128"
+beetle_psx_dynarec_spgp_opt = "disabled"
+beetle_psx_dynarec_spu_samples = "1"
+beetle_psx_cd_access_method = "precache"
+beetle_psx_cd_fastload = "4x(native)"
+beetle_psx_gte_overclock = "enabled"
+beetle_psx_gpu_overclock = "2x(native)"
+beetle_psx_dither_mode = "disabled"
+beetle_psx_crop_overscan = "smart"
+beetle_psx_internal_resolution = "1x(native)"
+beetle_psx_aspect_ratio = "corrected"
+beetle_psx_region = "ntsc"
+beetle_psx_display_internal_fps = "disabled"
+beetle_psx_draw_frontend_borders = "disabled"
+beetle_psx_enable_og_sce_audio = "disabled"
+PSXOPT
+chmod 444 "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt"
+
+# === Create DS4 USB polling reduction rule ===
+mkdir -p "$ROOTFS/etc/udev/rules.d"
+cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-poll.rules" << 'UDEVPOLL'
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="8"
+UDEVPOLL
 
 # === Create DS4 autoconfig profile ===
 mkdir -p "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev"
@@ -1861,8 +1971,16 @@ run_chroot "rm -rf /usr/share/libretro/assets/glui" 2>/dev/null
 run_chroot "rm -f /var/log/dpkg.log /var/log/apt/term.log /var/log/bootstrap.log /var/log/apt/history.log" 2>/dev/null
 run_chroot "rm -rf /var/cache/apt/archives/*.deb" 2>/dev/null
 run_chroot "rm -rf /usr/share/doc /usr/share/man /usr/share/info" 2>/dev/null
-run_chroot "rm -rf /usr/share/locale /usr/share/i18n" 2>/dev/null
+run_chroot "rm -rf /usr/share/locale" 2>/dev/null
+run_chroot "find /usr/share/i18n -mindepth 1 -maxdepth 1 ! -name 'charmaps' ! -name 'locales' -exec rm -rf {} +" 2>/dev/null
 echo "Rootfs bloat cleaned"
+
+# === Re-generate locale after cleanup (locale-gen needs charmaps + locales source) ===
+echo "=== Regenerating locale ==="
+run_chroot "sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || true"
+run_chroot "locale-gen en_US.UTF-8" 2>/dev/null
+run_chroot "update-locale LANG=en_US.UTF-8" 2>/dev/null
+echo "Locale regenerated"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
