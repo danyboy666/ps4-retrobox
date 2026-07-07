@@ -2,61 +2,36 @@
 
 > **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
 
-> **v1.5.5-dev — TESTING**
-> PCSX ReARMed core, HDMI hotplug kernel patches, eth0 interrupt coalescing, RetroArch 4:3 forced, SDL2 audio, controller hotkeys, display-init service. See [Known Issues](#known-issues).
-
-## Downloads
-
-You need **three things** to run PS4 Linux:
-
-| Component | Download | Description |
-|-----------|----------|-------------|
-| **Rootfs Image** | [ps4-retrobox releases](https://github.com/danyboy666/ps4-retrobox/releases) | Ubuntu 24.04 with RetroArch, EmulationStation, 39 systems |
-| **Kernel (bzImage)** | [ps4-linux-12xx releases](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) | Kernel 6.15.4 — supports **all PS4 models** (Aeolia/Belize/Baikal) |
-| **Payloads** | [ps4-linux-payloads releases](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) | Boot payloads for FW 5.05–12.00 — pick zip matching your FW |
-
-> **Firmware version** → download the matching payload zip (e.g. `ps4-linux-payloads-fw960.zip` for FW 9.60). Each zip contains regular, pro, and baikal variants for 1–5GB VRAM.
+> **v1.5.2-dev — WORKING**  
+> PSX dynarec (Lightrec JIT) working, N64 with GLideN64, RetroArch font fix, IRQ interrupt distribution, keyboard navigation. See [Known Issues](#known-issues).
 
 ## What It Does
 
 Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch** on **Ubuntu 24.04**, installed directly on the PS4's internal HDD. No USB drive needed after setup.
 
-## What Works (v1.5.5-dev, All PS4 Models)
-
-**Supported Southbridges** — one kernel works for all PS4 models:
-- **Aeolia** — CUH-10xx/11xx/12xx (Fat)
-- **Belize** — CUH-20xx/21xx (Slim), CUH-70xx/71xx (Pro)
-- **Baikal** — CUH-22xx (Revised Slim/Pro)
+## What Works (v1.5.2-dev, CUH-1000/1100 Aeolia)
 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
 - [x] **39 retro systems** with **27 libretro cores**
 - [x] RetroArch 1.22.2 — multiple ROMs confirmed working
-- [x] Audio via ALSA → HDMI output (hw:0,3)
+- [x] Audio via PulseAudio → HDMI output
 - [x] DS4 wired USB — buttons work in ES and RetroArch
 - [x] Launching images before games start (Python PIL + fb0)
-- [x] SSH access (port 22, UseDNS=no for fast connection)
+- [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
 - [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
 - [x] UFS permissions — .img deletable from FTP via HEN
-- [x] **N64** — mupen64plus_next with GLideN64 (1x resolution, ThreadedRenderer)
-- [x] **PSX** — PCSX ReARMed core (replaced Beetle PSX for better PS4 performance)
+- [x] **N64** — mupen64plus_next with GLideN64 (working, performance improving)
+- [x] **PSX** — Beetle PSX with Lightrec JIT dynarec (working, performance tuning needed)
 - [x] RetroArch font rendering fixed (glColorMask GL state reset)
-- [x] **Controller hotkeys** — Select+Cross = menu, Select+Start = exit
-- [x] **4:3 aspect ratio** forced globally for all cores
-- [x] **Keyboard navigation** in RetroArch (arrow keys, Enter/Backspace, F1)
+- [x] **Keyboard navigation** in RetroArch XMB (arrow keys, Enter/Backspace)
 - [x] DS4 controller support in ES and RetroArch
 - [x] **IRQ interrupt distribution** — kernel-level Aeolia MSI interrupt round-robin across CPUs
-- [x] **eth0 interrupt coalescing** — sky2 driver patch reduces phantom interrupts from ~3600/sec to near zero
-- [x] **HDMI hotplug kernel patches** — software polling + dc_link_detect for connector re-detection
 - [x] Locale fix — ES no longer crashes on boot
-- [x] sysctl tuning — ASLR off, mmap_min_addr=0 (required for dynarec)
-- [x] **display-init.service** — root-level HDMI mode setup before ES starts
+- [x] sysctl tuning — ASLR off, mmap_min_addr=0 (required for Lightrec dynarec)
 - [x] HDMI recovery — hdmi-recover command via xrandr (manual, after cable replug)
 - [x] Scrapers — TheGamesDB (API v1) + ScreenScraper with in-game API key setup
-- [x] Removed gamemode (caused GameMode errors and popup notifications)
-- [x] GameShark CDX 3.4.cue removed from PSX ROMs
-- [x] ES settings.cfg updated with collection systems
 
 ## Supported Systems
 
@@ -111,12 +86,14 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | Game & Watch (gameandwatch) | gw | No | Untested |
 | GCE Vectrex (vectrex) | vecx | No | Untested |
 
-## Known Issues (v1.5.5-dev)
+## Known Issues (v1.5.2-dev)
 
-- [ ] **N64 GLideN64 OSD fonts** — garbled text during gameplay. GLideN64 uses GL font rendering that fails on PS4's KMS framebuffer (GL error 501). Root cause: amdgpu GL driver doesn't support the GL calls GLideN64 uses for OSD text. Requires kernel-level GL driver patch.
-- [ ] **N64 performance** — GLideN64 runs but slow. eth0 interrupt coalescing helps but Aeolia hardware limitation persists.
-- [ ] **PSX performance** — PCSX ReARMed core is faster than Beetle PSX but still needs testing across more titles.
-- [ ] **HDMI signal recovery** — TV power cycle or cable replug loses signal. Manual recovery via `sudo hdmi-recover` required (uses xrandr to force EDID re-read). Kernel HDMI hotplug patches (software polling + dc_link_detect) added but auto-recovery may not work on all models.
+- [ ] **RetroArch XMB menu navigation** — keyboard works when DS4 unplugged, DS4 d-pad doesn't navigate XMB ([#2](https://github.com/danyboy666/ps4-retrobox/issues/2))
+- [ ] **PSX performance** — Beetle PSX dynarec (Lightrec JIT) works but Dynasty Warriors crashes at gameplay start. Other games need testing. Interpreter fallback available but slow.
+- [ ] **N64 performance** — GLideN64 runs but slow due to eth0 interrupt storm (ksoftirqd/1 at 60-90% CPU)
+- [ ] **eth0 interrupt storm** — ~3,600 spurious interrupts/sec all on CPU1. Kernel IRQ round-robin fix distributes xhci interrupts but eth0 is pinned by Aeolia hardware. Workaround: `isolcpus=1` in bootargs reserves CPU1 for kernel.
+- [ ] **HDMI signal recovery** — TV power cycle or cable replug loses signal. Manual recovery via `sudo hdmi-recover` required (uses xrandr to force EDID re-read). Auto-recovery not possible without kernel driver changes.
+- [ ] N64 GLideN64 font rendering — glColorMask fix deployed, inverted colors may persist
 - [ ] Most systems NOT tested yet — all emus need testing
 - [ ] Plymouth boot splash not rendering (amdgpu DRM limitation)
 - [ ] Other controllers untested
@@ -126,26 +103,23 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 ## Quick Start
 
 ### First Time Install
-1. Download [kernel bzImage](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) for your model
-2. Download [payload zip](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) matching your PS4 firmware version
-3. Download [rootfs image](https://github.com/danyboy666/ps4-retrobox/releases) from ps4-retrobox releases
-4. FTP all files to PS4 (port 2121)
-5. Jailbreak → GoldHEN → BinLoader → send payload
-6. Install runs automatically → choose 3GB or expand
+1. Download [v1.5.2-dev ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.5.2-dev)
+2. FTP all files to PS4 (port 2121)
+3. Jailbreak → GoldHEN → BinLoader → send **1GB payload**
+4. Install runs automatically → choose 3GB or expand
 
 ### Daily Use
-1. Jailbreak → GoldHEN → BinLoader → send payload
+1. Jailbreak → GoldHEN → BinLoader → send **2GB payload**
 2. Linux boots → EmulationStation → play!
-
-> **Tip:** You need the correct payload for your FW version and VRAM. Check the [payloads releases](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0).
 
 See [Installation Guide](wiki/Installation-Guide.md) for full details.
 
 ## Requirements
 
-- Jailbroken PS4 — **all models supported** (Aeolia, Belize, Baikal)
-- Firmware 5.05–12.00 (any jailbreak-compatible)
-- Ethernet cable required (WiFi not supported yet)
+- PS4 Fat CUH-1000/1100 (Aeolia) — only tested model
+> **⚠ Firmware: Only tested on 9.60.** Other FW versions may work but are unverified.
+- Firmware 5.05–13.02 (any jailbreak-compatible)
+- Ethernet cable required (WiFi not supported on CUH-1000/1100)
 - Windows PC on same network (for initial FTP)
 
 ## Quick Links
@@ -159,13 +133,13 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 
 ## Project Structure
 
-| Repo | Description | Downloads |
-|------|-------------|-----------|
-| [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs | [Releases](https://github.com/danyboy666/ps4-retrobox/releases) |
-| [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | Kernel 6.15.4 — Aeolia/Belize/Baikal, IRQ round-robin, WiFi | [bzImage](https://github.com/danyboy666/ps4-linux-12xx/releases/tag/v6.15.4-aeolia-irq-v1) |
-| [ps4-linux-payloads](https://github.com/danyboy666/ps4-linux-payloads) | Boot payloads for FW 5.05–12.00 (regular/pro/baikal) | [Payloads](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0) |
-| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts | — |
-| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 — GL stale error fix, KMS modeset, FBO blit, glColorMask font fix | — |
+| Repo | Description |
+|------|-------------|
+| [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
+| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
+| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
+| [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix, glColorMask font fix |
+| [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | PS4 Linux kernel 6.15.4 — IRQ round-robin, WiFi MT6632 fixes, Clang+FullLTO |
 
 ## Roadmap
 
@@ -174,13 +148,12 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | v1.3 | Stable — radeonsi+shim, 24.04, RetroArch 1.22.2, launching images, audio via HDMI |
 | v1.4 | 39 systems, 27 cores, scrapers with API key UI, Neo Geo BIOS, HDMI recovery, N64 FBO blit fix |
 | v1.5 | Kernel IRQ fix, PSX dynarec, RetroArch font fix, keyboard navigation, sysctl tuning |
-| v1.5.2-dev | PSX Lightrec JIT working, IRQ round-robin kernel, HDMI xrandr recovery, keyboard nav, font fix |
-| v1.5.5-dev | **Current** — PCSX ReARMed, HDMI hotplug kernel patches, eth0 coalescing, 4:3 forced, SDL2 audio, display-init |
-| v1.6 | Fix RetroArch XMB navigation with DS4, eth0 interrupt mitigation kernel patch |
-| v1.7 | PSX performance tuning, test all systems |
-| v1.8 | Fix HDMI auto-recovery (kernel driver patch), N64 GLideN64 GL font fix |
+| **v1.5.2-dev** | **Current** — PSX Lightrec JIT working, IRQ round-robin kernel, HDMI xrandr recovery, keyboard nav, font fix |
+| v1.6 | Fix RetroArch XMB navigation with DS4, N64 GLideN64 font colors, eth0 interrupt mitigation |
+| v1.7 | PSX performance tuning (dynarec optimization), test all systems |
+| v1.8 | Fix HDMI auto-recovery (kernel driver patch), controller hotkey/menu navigation |
 | v1.9 | Other controllers, network helpers, FTP |
-| v2.0 | PS4 PKG app — auto-detect southbridge, select payload |
+| v2.0 | PS4 PKG app — auto-detect southbridge, select payload, user choice: new install vs boot existing .img |
 
 ## Build From Source
 
@@ -209,9 +182,8 @@ Output files in `community-files/`:
 |------|-------------|
 | `arch.tar.xz` | Ubuntu rootfs with RetroArch, ES, cores |
 | `initramfs.cpio.gz` | Boot initramfs |
-| `bzImage_6.15.4-hdmi-poll-fix_LTO` | Linux kernel (all southbridges) |
-
-> **Note:** Payloads are in a separate repo — see [ps4-linux-payloads](https://github.com/danyboy666/ps4-linux-payloads/releases/tag/v2.0).
+| `bzImage_*` | Linux kernel |
+| `payload-960-*.elf` | PS4 payloads |
 
 ### Architecture
 
