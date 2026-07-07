@@ -28,19 +28,8 @@ DS4 connected via USB is the primary controller. Button mapping:
 | Combo | Action |
 |-------|--------|
 | Select + Cross | Open RetroArch Menu |
-| Select + Start | Exit emulator |
 | Start (alone) | Start game |
 | Select (alone) | Select |
-
-## RetroArch Audio
-
-- **Audio driver**: ALSA (hw:0,3 — HDMI output)
-- **No PulseAudio dependency** — audio goes directly to HDMI via ALSA
-
-## RetroArch Aspect Ratio
-
-- **4:3 forced globally** via `aspect_ratio_index = "22"` (Core Provided)
-- All systems output in native 4:3 regardless of TV aspect ratio
 
 ## Customizing Buttons
 

@@ -315,7 +315,6 @@ mkdir -p "$ROOTFS/etc/ssh/sshd_config.d"
 cat > "$ROOTFS/etc/ssh/sshd_config.d/00-ps4retrobox.conf" << 'SSHEOF'
 PasswordAuthentication yes
 KbdInteractiveAuthentication yes
-PermitRootLogin yes
 UsePAM yes
 SSHEOF
 
@@ -333,7 +332,8 @@ ConditionPathExistsGlob=!/etc/ssh/ssh_host_*
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c "ssh-keygen -A && systemctl enable --now ssh.service"
+ExecStart=/usr/sbin/sshd-keygen
+ExecStart=/bin/systemctl enable --now ssh.service
 RemainAfterExit=yes
 
 [Install]
@@ -438,31 +438,13 @@ true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === Display init (root oneshot — sets HDMI mode before ES starts as PS4 user) ===
-mkdir -p "$ROOTFS/etc/systemd/system"
-cat > "$ROOTFS/etc/systemd/system/display-init.service" << 'DISPEOF'
-[Unit]
-Description=Set HDMI display mode
-After=multi-user.target
-Before=es-session.service hdmi-watcher.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/modetest -s HDMI-A-1:1920x1080
-ExecStart=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-DISPEOF
-ln -sf /etc/systemd/system/display-init.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/display-init.service"
-
 # === ES systemd service (no X11 — PS4 can't switch VTs, ES uses SDL2 framebuffer directly) ===
+mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
 Description=EmulationStation (SDL2 framebuffer)
-After=multi-user.target network-online.target plymouth-quit.service display-init.service
-Wants=network-online.target display-init.service
+After=multi-user.target network-online.target plymouth-quit.service
+Wants=network-online.target
 
 [Service]
 Type=simple
@@ -474,6 +456,9 @@ Environment=SDL_AUDIODRIVER=alsa
 Environment=LANG=en_US.UTF-8
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
+ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 ExecStart=emulationstation
 Restart=always
 RestartSec=3
@@ -524,34 +509,18 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ethtool irqbalance
 cat > "$ROOTFS/etc/systemd/system/fix-irq-affinity.service" << 'IRQEOF'
 [Unit]
 Description=Set Aeolia IRQ affinity and eth0 coalescing
-After=multi-user.target basic.target
-Wants=basic.target
+After=multi-user.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/ethtool -C eth0 rx-usecs 1000 rx-frames 10 2>/dev/null || true
-ExecStart=/bin/bash -c 'for irq in $(grep Aeolia /proc/interrupts | awk -F: '"'"'{print $1}'"'"' | tr -d '"'"' '"'"'); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done'
+ExecStart=/bin/bash -c "for irq in $(grep Aeolia /proc/interrupts | awk -F: '{print $1}' | tr -d ' '); do echo ff > /proc/irq/$irq/smp_affinity 2>/dev/null; done"
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 IRQEOF
 ln -sf /etc/systemd/system/fix-irq-affinity.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/fix-irq-affinity.service"
-
-# === TCP/IP tuning for faster SSH/SFTP transfers ===
-cat > "$ROOTFS/etc/sysctl.d/99-ps4-network.conf" << 'SYSCTLNET'
-# Increase TCP buffer sizes for faster SFTP/SCP transfers
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
-net.core.rmem_default = 1048576
-net.core.wmem_default = 1048576
-net.ipv4.tcp_rmem = 4096 1048576 16777216
-net.ipv4.tcp_wmem = 4096 1048576 16777216
-net.ipv4.tcp_window_scaling = 1
-net.ipv4.tcp_timestamps = 1
-net.ipv4.tcp_sack = 1
-net.core.netdev_max_backlog = 5000
-SYSCTLNET
 
 # === Create EmulationStation config files ===
 echo "=== Creating EmulationStation configs ==="
@@ -800,15 +769,18 @@ chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
 echo hdmi-watcher started
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
 while true; do
-    if ! pgrep -x emulationstation > /dev/null 2>&1; then
+    if ! pgrep -f emulationstation > /dev/null 2>&1; then
         echo hdmi-watcher: ES not running, restarting
+        modetest -s HDMI-A-1:1920x1080 2>/dev/null
         sleep 1
         systemctl start es-session.service 2>/dev/null
     fi
     sleep 5
 done
 HDMI_EOF
+chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
 # === HDMI watcher systemd service ===
@@ -978,38 +950,37 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
-video_shared_context = "true"
-video_force_aspect = "true"
-aspect_ratio_index = "22"
-video_aspect_ratio = "1.33333"
 audio_driver = "alsa"
-audio_device = "plughw:Generic,3"
+audio_device = "alsa_output.pci-0000_00_01.1.hdmi-stereo"
 input_driver = "udev"
 input_autodetect_enable = "true"
 input_keyboard_provider = "udev"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
-system_directory = "/home/PS4/BIOS"
+screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
-screenshot_directory = "/home/PS4/screenshots"
+system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
-video_font_enable = "false"
-input_enable_hotkey_btn = "8"
-input_exit_emulator_btn = "9"
-input_menu_toggle_btn = "1"
-input_menu_toggle_gamepad_combo = "2"
-input_load_state_btn = "4"
-input_save_state_btn = "5"
-input_hold_fast_forward_btn = "7"
-input_screenshot_btn = "3"
-input_state_slot_decrease_btn = "h0left"
-input_state_slot_increase_btn = "h0right"
+pulse_server = "unix:/run/user/1000/pulse/native"
+video_font_enable = "true"
+video_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+video_font_size = "32.000000"
+video_fullscreen = "true"
+video_shared_context = "true"
+
+input_enable_hotkey_btn = "nul"
+input_exit_emulator_btn = "nul"
+input_menu_toggle_btn = "nul"
+input_menu_toggle_gamepad_combo = "0"
+input_load_state_btn = "nul"
+input_save_state_btn = "nul"
+input_hold_fast_forward_btn = "nul"
+input_screenshot_btn = "nul"
+input_state_slot_decrease_btn = "nul"
+input_state_slot_increase_btn = "nul"
 menu_unified_controls = "true"
 all_users_control_menu = "true"
-keyboard_gamepad_enable = "true"
-config_save_on_exit = "false"
-menu_show_load_content = "false"
-menu_show_load_disc = "false"
+
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
 input_player1_x_btn = "2"
@@ -1033,13 +1004,15 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
-input_player1_l2_axis = "+6"
-input_player1_r2_axis = "+7"
-input_player1_analog_dpad_mode = "1"
+input_player1_l2_axis = "+2"
+input_player1_r2_axis = "+5"
+input_player1_analog_dpad_mode = "0"
 input_player1_up = "leftanalogup"
 input_player1_down = "leftanalogdown"
 input_player1_left = "leftanalogleft"
-input_player1_right = "leftanalogright"
+ input_player1_right = "leftanalogright"
+config_save_on_exit = "false"
+keyboard_gamepad_enable = "true"
 input_up = "up"
 input_down = "down"
 input_left = "left"
@@ -1167,37 +1140,24 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
 
-# Gamepad combo: L3+R3 held = open RetroArch menu (standalone combo, no hotkey needed)
-input_menu_toggle_gamepad_combo = "2"
+# Hotkey: disabled — all buttons work directly in menu
+input_enable_hotkey_btn = "nul"
 
-# Hotkey enable: Hold Select to activate combo buttons
-input_enable_hotkey_btn = "8"
-
-# Menu: Select + Cross = open/close RetroArch menu
+# Menu: Select + Cross (btn 1) = open/close RetroArch menu
 input_menu_toggle_btn = "1"
 
 # Exit: Select + Start = exit emulator
 input_exit_emulator_btn = "9"
 
-# Save/Load state: Select + R/L
-input_save_state_btn = "5"
-input_load_state_btn = "4"
-
-# Screenshot: Select + Y
-input_screenshot_btn = "3"
-
-# Fast forward: Select + R2
-input_hold_fast_forward_btn = "7"
-
-# State slot: Select + D-pad Left/Right
-input_state_slot_decrease_btn = "h0left"
-input_state_slot_increase_btn = "h0right"
-
-# Rewind: Select + L2
-input_rewind_btn = "6"
-
-# Reset game: Select + B
-input_reset_btn = "1"
+# Disable unused hotkeys (Select alone does nothing)
+input_load_state_btn = "nul"
+input_save_state_btn = "nul"
+input_hold_fast_forward_btn = "nul"
+input_screenshot_btn = "nul"
+input_state_slot_decrease_btn = "nul"
+input_state_slot_increase_btn = "nul"
+input_reset_btn = "nul"
+input_rewind_btn = "nul"
 input_device_p1 = "Wireless Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
