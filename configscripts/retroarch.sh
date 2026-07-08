@@ -36,6 +36,11 @@ savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
+input_autodetect_enable = "true"
+all_users_control_menu = "true"
+menu_unified_controls = "true"
+menu_disable_left_analog = "false"
+menu_disable_right_analog = "false"
 BASECFG
 
 # Function to extract button mapping from es_input.cfg for joystick
@@ -164,6 +169,22 @@ map_input "RightAnalogUp" "input_player1_r_y_minus"
 map_input "RightAnalogDown" "input_player1_r_y_plus"
 map_input "RightAnalogLeft" "input_player1_r_x_minus"
 map_input "RightAnalogRight" "input_player1_r_x_plus"
+
+# Global RetroPad bindings (used by menu navigation)
+map_input "up" "input_up"
+map_input "down" "input_down"
+map_input "left" "input_left"
+map_input "right" "input_right"
+map_input "a" "input_a"
+map_input "b" "input_b"
+map_input "x" "input_x"
+map_input "y" "input_y"
+map_input "start" "input_start"
+map_input "select" "input_select"
+map_input "LeftShoulder" "input_l"
+map_input "RightShoulder" "input_r"
+map_input "LeftThumb" "input_l3"
+map_input "RightThumb" "input_r3"
 
 # Map hotkey enable (use Select as default hotkey if not configured)
 map_input "HotKeyEnable" "input_enable_hotkey"

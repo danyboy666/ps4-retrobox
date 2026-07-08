@@ -11,8 +11,8 @@ fi
 
 ROOTFS="${1:-/mnt/ps4root}"
 
-# Master system list — 39 systems
-ALL_SYSTEMS="snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear famicom fds genesis sfc segacd mega-cd sega32x wonderswan wonderswancolor atarijaguar atarilynx colecovision gameandwatch ngp ngpc psp sg-1000 supergrafx virtualboy channelf mame-libretro vectrex"
+# Master system list — 42 systems
+ALL_SYSTEMS="snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear famicom fds genesis sfc segacd mega-cd sega32x wonderswan wonderswancolor atarijaguar atarilynx colecovision gameandwatch ngp ngpc psp sg-1000 supergrafx virtualboy channelf mame-libretro vectrex dreamcast ps2 gamecube wii"
 
 run_chroot() {
     chroot "$ROOTFS" /bin/bash -c "$1"
@@ -147,7 +147,7 @@ echo "Fonts installed"
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
 BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
-for core in nestopia fbneo stella prosystem \
+for core in nestopia fbneo stella prosystem flycast \
     mesen picodrive mednafen_wswan virtualjaguar mednafen_lynx \
     gearcoleco gw mednafen_ngp ppsspp gearsystem \
     mednafen_supergrafx mednafen_vb freechaf mame2003_plus vecx; do
@@ -160,6 +160,31 @@ for core in nestopia fbneo stella prosystem \
 done
 chmod 644 "$LIBRETRO_DIR"/*.so 2>/dev/null
 echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
+
+# === Install standalone emulators ===
+echo "=== Installing standalone emulators ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y pcsx2 dolphin-emu 2>/dev/null" || true
+# If not in apt, download AppImages
+if ! run_chroot "which pcsx2-qt" 2>/dev/null; then
+    echo "pcsx2 not in apt, downloading AppImage..."
+    wget -q -O /tmp/pcsx2.AppImage "https://github.com/PCSX2/pcsx2/releases/latest/download/pcsx2-Qt-x86_64.AppImage" 2>/dev/null
+    if [ -f /tmp/pcsx2.AppImage ]; then
+        chmod +x /tmp/pcsx2.AppImage
+        cp /tmp/pcsx2.AppImage "$ROOTFS/usr/bin/pcsx2-qt"
+        rm -f /tmp/pcsx2.AppImage
+    fi
+fi
+if ! run_chroot "which dolphin-emu-nogui" 2>/dev/null; then
+    echo "dolphin not in apt, downloading..."
+    wget -q -O /tmp/dolphin.tar.xz "https://dl.dolphin-emu.org/releases/latest/dolphin-x64.tar.xz" 2>/dev/null
+    if [ -f /tmp/dolphin.tar.xz ]; then
+        tar xJf /tmp/dolphin.tar.xz -C /tmp/ 2>/dev/null
+        cp /tmp/dolphin-*/bin/dolphin-emu-nogui "$ROOTFS/usr/bin/" 2>/dev/null
+        cp /tmp/dolphin-*/bin/dolphin-emu "$ROOTFS/usr/bin/" 2>/dev/null
+        cp -r /tmp/dolphin-*/lib/* "$ROOTFS/usr/lib/" 2>/dev/null
+        rm -rf /tmp/dolphin-*
+    fi
+fi
 
 # === Install extras ===
 echo "=== Installing extras ==="
@@ -502,6 +527,21 @@ WantedBy=multi-user.target
 SYSCTLEOF
 ln -sf /etc/systemd/system/sysctl-ps4-tuning.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/sysctl-ps4-tuning.service"
 
+# === TCP/IP tuning for faster SSH/SFTP transfers ===
+mkdir -p "$ROOTFS/etc/sysctl.d"
+cat > "$ROOTFS/etc/sysctl.d/99-ps4-network.conf" << 'SYSCTLNET'
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.core.rmem_default = 1048576
+net.core.wmem_default = 1048576
+net.ipv4.tcp_rmem = 4096 1048576 16777216
+net.ipv4.tcp_wmem = 4096 1048576 16777216
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_timestamps = 1
+net.ipv4.tcp_sack = 1
+net.core.netdev_max_backlog = 5000
+SYSCTLNET
+
 # === IRQ affinity + ethtool for Aeolia interrupt distribution ===
 echo "=== Installing ethtool + irqbalance ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y ethtool irqbalance" 2>/dev/null
@@ -551,6 +591,12 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <bool name="ScrapeRatings" value="true" />
   <int name="ScraperResizeWidth" value="400" />
   <int name="ScraperResizeHeight" value="0" />
+  <string name="CollectionSystemsAuto" value="lastplayed, favorites" />
+  <string name="CollectionSystemsCustom" value="" />
+  <string name="SortAllSystems" value="false" />
+  <string name="UseCustomCollectionsSystem" value="false" />
+  <string name="CollectionShowSystemInfo" value="true" />
+  <string name="DoublePressRemovesFromFavs" value="true" />
 </config>
 
 # es_input.cfg (keyboard + DS4 joystick)
@@ -961,6 +1007,10 @@ savefile_directory = "/home/PS4/saves"
 savestate_directory = "/home/PS4/saves"
 system_directory = "/home/PS4/BIOS"
 menu_driver = "xmb"
+all_users_control_menu = "true"
+menu_unified_controls = "true"
+menu_disable_left_analog = "false"
+menu_disable_right_analog = "false"
 pulse_server = "unix:/run/user/1000/pulse/native"
 video_font_enable = "true"
 video_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -1051,9 +1101,11 @@ show_image() {
         python3 -c "
 from PIL import Image
 img = Image.open('$img').convert('RGBA')
-data = img.tobytes()
+data = bytearray(img.tobytes())
+for i in range(0, len(data), 4):
+    data[i], data[i+2] = data[i+2], data[i]
 fd = open('/dev/fb0', 'wb')
-fd.write(data)
+fd.write(bytes(data))
 fd.close()
 " 2>/dev/null
     fi
@@ -1135,29 +1187,74 @@ exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
-# === Create RetroArch appendconfig (DS4 bindings + hotkeys) ===
+# === Create RetroArch appendconfig (DS4 bindings - matches RetroPie approach) ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 input_autodetect_enable = "true"
 menu_driver = "xmb"
+all_users_control_menu = "true"
+menu_unified_controls = "true"
+menu_disable_left_analog = "false"
+menu_disable_right_analog = "false"
 
-# Hotkey: disabled — all buttons work directly in menu
-input_enable_hotkey_btn = "nul"
+# Hotkey: disabled - buttons work directly (RetroPie style)
+input_enable_hotkey = "nul"
 
-# Menu: Select + Cross (btn 1) = open/close RetroArch menu
-input_menu_toggle_btn = "1"
+# L3+R3 combo for menu (backup)
+input_menu_toggle_gamepad_combo = "2"
 
-# Exit: Select + Start = exit emulator
+# DS4 GLOBAL RetroPad bindings (XMB menu navigation uses these)
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
+input_a_btn = "1"
+input_b_btn = "0"
+input_x_btn = "2"
+input_y_btn = "3"
+input_start_btn = "9"
+input_select_btn = "8"
+input_l_btn = "4"
+input_r_btn = "5"
+input_l2_axis = "+6"
+input_r2_axis = "+7"
+input_l3_btn = "10"
+input_r3_btn = "11"
+input_l_x_plus_axis = "+0"
+input_l_x_minus_axis = "-0"
+input_l_y_plus_axis = "+1"
+input_l_y_minus_axis = "-1"
+input_r_x_plus_axis = "+3"
+input_r_x_minus_axis = "-3"
+input_r_y_plus_axis = "+4"
+input_r_y_minus_axis = "-4"
+
+# Menu: X button opens menu directly (RetroPie style)
+input_menu_toggle_btn = "2"
+
+# Exit: Start exits directly (RetroPie style)
 input_exit_emulator_btn = "9"
 
-# Disable unused hotkeys (Select alone does nothing)
-input_load_state_btn = "nul"
-input_save_state_btn = "nul"
-input_hold_fast_forward_btn = "nul"
-input_screenshot_btn = "nul"
-input_state_slot_decrease_btn = "nul"
-input_state_slot_increase_btn = "nul"
-input_reset_btn = "nul"
-input_rewind_btn = "nul"
+# Save/Load: R/L (RetroPie style)
+input_save_state_btn = "5"
+input_load_state_btn = "4"
+
+# Screenshot: Y
+input_screenshot_btn = "3"
+
+# Fast forward: R2
+input_hold_fast_forward_btn = "7"
+
+# State slot: D-pad Left/Right
+input_state_slot_decrease_btn = "h0left"
+input_state_slot_increase_btn = "h0right"
+
+# Rewind: L2
+input_rewind_btn = "6"
+
+# Reset: B
+input_reset_btn = "1"
+
+# DS4 player1 bindings (gameplay)
 input_device_p1 = "Wireless Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
@@ -1184,6 +1281,7 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
+APPENDCFG
 
 # Beetle PSX overrides (core rewrites .opt on exit, so set here)
 beetle_psx_cd_access_method = "precache"
@@ -1636,6 +1734,43 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <theme>vectrex</theme>
   </system>
   <system>
+  <system>
+    <name>dreamcast</name>
+    <fullname>Sega Dreamcast</fullname>
+    <path>/home/PS4/ROMS/dreamcast</path>
+    <extension>.cdi .chd .gdi .iso</extension>
+    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/flycast_libretro.so %ROM%</command>
+    <platform>dreamcast</platform>
+    <theme>dreamcast</theme>
+  </system>
+
+    <name>ps2</name>
+    <fullname>Sony PlayStation 2</fullname>
+    <path>/home/PS4/ROMS/ps2</path>
+    <extension>.iso .bin .img .mdf .nrg .chd .cso .gz</extension>
+    <command>bash -c 'LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so MESA_LOADER_DRIVER_OVERRIDE=radeonsi /usr/bin/pcsx2-qt %ROM%'</command>
+    <platform>ps2</platform>
+    <theme>ps2</theme>
+  </system>
+  <system>
+    <name>gamecube</name>
+    <fullname>Nintendo GameCube</fullname>
+    <path>/home/PS4/ROMS/gamecube</path>
+    <extension>.iso .gcm .rvz .wbfs .ciso .dol</extension>
+    <command>bash -c 'DISPLAY=:0 /usr/bin/dolphin-emu-nogui -e %ROM%'</command>
+    <platform>gamecube</platform>
+    <theme>gamecube</theme>
+  </system>
+  <system>
+    <name>wii</name>
+    <fullname>Nintendo Wii</fullname>
+    <path>/home/PS4/ROMS/wii</path>
+    <extension>.iso .wbfs .ciso .dol .wad .nkit.iso</extension>
+    <command>bash -c 'DISPLAY=:0 /usr/bin/dolphin-emu-nogui -e %ROM%'</command>
+    <platform>wii</platform>
+    <theme>wii</theme>
+  </system>
+  <system>
     <name>ps4_retrobox</name>
     <fullname>PS4 RetroBox</fullname>
     <path>/usr/local/bin/scripts</path>
@@ -1873,7 +2008,7 @@ mkdir -p "$THEME_DIR"
 cd /tmp
 rm -rf es-theme-carbon
 git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
-    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon-2021.git es-theme-carbon 2>/dev/null || \
+    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
     git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
     echo "Warning: Could not clone carbon theme."
 
