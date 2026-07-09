@@ -1079,7 +1079,7 @@ input_menu_toggle = "f1"
 input_exit_emulator = "escape"
 RETROCFG
 
-# === Create RetroArch wrapper (stops ES, shows launching image, then launches game) ===
+# === Create RetroArch wrapper (shows image FIRST, then stops ES, then launches game) ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
 
@@ -1089,10 +1089,7 @@ find_launch_image() {
     rom_bn="${rom_bn%.*}"
     for img in \
         "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.png" \
-        "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.jpg" \
         "/home/PS4/.emulationstation/downloaded_images/$system/launching.png" \
-        "/home/PS4/.emulationstation/downloaded_images/$system/launching.jpg" \
-        "/home/PS4/ROMS/$system/images/${rom_bn}-launching.png" \
         "/home/PS4/ROMS/$system/launching.png" \
         "/home/PS4/.emulationstation/configs/all/launching.png"; do
         [ -f "$img" ] && echo "$img" && return
@@ -1157,16 +1154,15 @@ for arg in "$@"; do
         *channelf*) SYSTEM="channelf" ;;
         *mame-libretro*) SYSTEM="mame-libretro" ;;
         *vectrex*) SYSTEM="vectrex" ;;
+        *dreamcast*) SYSTEM="dreamcast" ;;
+        *ps2*) SYSTEM="ps2" ;;
+        *gamecube*) SYSTEM="gamecube" ;;
+        *wii*) SYSTEM="wii" ;;
     esac
     [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
 done
 
-systemctl stop es-session.service 2>/dev/null
-for i in $(seq 1 20); do
-    pidof emulationstation >/dev/null 2>&1 || break
-    sleep 0.2
-done
-
+# SHOW IMAGE FIRST (before stopping ES) - instant display, no delay
 IMAGE=""
 if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
     IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
@@ -1175,6 +1171,13 @@ if [ -n "$IMAGE" ]; then
     show_image "$IMAGE"
 fi
 
+# THEN stop ES (after image is shown)
+systemctl stop es-session.service 2>/dev/null
+for i in $(seq 1 10); do
+    pidof emulationstation >/dev/null 2>&1 || break
+    sleep 0.1
+done
+
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
@@ -1182,11 +1185,7 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-if [ -x /usr/games/gamemoderun ]; then
-    /usr/games/gamemoderun /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
-else
-    /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
-fi
+/usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
