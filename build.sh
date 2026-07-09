@@ -316,6 +316,10 @@ mkdir -p "$ROOTFS/usr/local/bin"
 cp "$PWD/configscripts/retroarch.sh" "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 
+# Install inputconfiguration.sh (bridges ES input config to RetroArch)
+cp "$PWD/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
+chmod +x "$ROOTFS/usr/local/bin/inputconfiguration.sh"
+
 # === Create user ===
 echo "=== Creating user PS4 ==="
 run_chroot "useradd -m -s /bin/bash -G sudo,video,input,plugdev,render PS4"
@@ -1187,8 +1191,10 @@ exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
-# === Create RetroArch appendconfig (DS4 bindings - matches RetroPie approach) ===
+# === Create RetroArch appendconfig (DS4 defaults matching ES mapping) ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
+input_driver = "udev"
+input_device = "PS4 Controller"
 input_autodetect_enable = "true"
 menu_driver = "xmb"
 all_users_control_menu = "true"
@@ -1196,91 +1202,91 @@ menu_unified_controls = "true"
 menu_disable_left_analog = "false"
 menu_disable_right_analog = "false"
 
-# Hotkey: disabled - buttons work directly (RetroPie style)
-input_enable_hotkey = "nul"
-
-# L3+R3 combo for menu (backup)
+# L3+R3 combo opens menu
 input_menu_toggle_gamepad_combo = "2"
 
-# DS4 GLOBAL RetroPad bindings (XMB menu navigation uses these)
-input_up_btn = "h0up"
-input_down_btn = "h0down"
-input_left_btn = "h0left"
-input_right_btn = "h0right"
+# Hotkey: PS button (guide)
+input_enable_hotkey_btn = "5"
+
+# Menu: X button (direct - RetroPie style)
+input_menu_toggle_btn = "3"
+
+# Exit: Start (direct - RetroPie style)
+input_exit_emulator_btn = "6"
+
+# Save/Load: R/L
+input_save_state_btn = "10"
+input_load_state_btn = "9"
+
+# Screenshot: Y
+input_screenshot_btn = "2"
+
+# Fast forward: R2
+input_hold_fast_forward_btn = "+4"
+
+# State slot: D-pad Left/Right
+input_state_slot_decrease_btn = "13"
+input_state_slot_increase_btn = "14"
+
+# Rewind: L2
+input_rewind_btn = "+4"
+
+# Reset: B
+input_reset_btn = "0"
+
+# GLOBAL RetroPad bindings (XMB menu navigation)
+input_up_btn = "11"
+input_down_btn = "12"
+input_left_btn = "13"
+input_right_btn = "14"
 input_a_btn = "1"
 input_b_btn = "0"
-input_x_btn = "2"
-input_y_btn = "3"
-input_start_btn = "9"
-input_select_btn = "8"
-input_l_btn = "4"
-input_r_btn = "5"
-input_l2_axis = "+6"
-input_r2_axis = "+7"
-input_l3_btn = "10"
-input_r3_btn = "11"
+input_x_btn = "3"
+input_y_btn = "2"
+input_start_btn = "6"
+input_select_btn = "4"
+input_l_btn = "10"
+input_r_btn = "9"
+input_l2_axis = "+4"
+input_r2_axis = "+4"
+input_l3_btn = "7"
+input_r3_btn = "8"
 input_l_x_plus_axis = "+0"
 input_l_x_minus_axis = "-0"
 input_l_y_plus_axis = "+1"
 input_l_y_minus_axis = "-1"
-input_r_x_plus_axis = "+3"
-input_r_x_minus_axis = "-3"
-input_r_y_plus_axis = "+4"
-input_r_y_minus_axis = "-4"
+input_r_x_plus_axis = "+2"
+input_r_x_minus_axis = "-2"
+input_r_y_plus_axis = "+3"
+input_r_y_minus_axis = "-3"
 
-# Menu: X button opens menu directly (RetroPie style)
-input_menu_toggle_btn = "2"
-
-# Exit: Start exits directly (RetroPie style)
-input_exit_emulator_btn = "9"
-
-# Save/Load: R/L (RetroPie style)
-input_save_state_btn = "5"
-input_load_state_btn = "4"
-
-# Screenshot: Y
-input_screenshot_btn = "3"
-
-# Fast forward: R2
-input_hold_fast_forward_btn = "7"
-
-# State slot: D-pad Left/Right
-input_state_slot_decrease_btn = "h0left"
-input_state_slot_increase_btn = "h0right"
-
-# Rewind: L2
-input_rewind_btn = "6"
-
-# Reset: B
-input_reset_btn = "1"
-
-# DS4 player1 bindings (gameplay)
-input_device_p1 = "Wireless Controller"
+# DS4 player1 bindings
+input_device_p1 = "PS4 Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
-input_player1_x_btn = "2"
-input_player1_y_btn = "3"
-input_player1_l_btn = "4"
-input_player1_r_btn = "5"
-input_player1_l2_axis = "+6"
-input_player1_r2_axis = "+7"
-input_player1_select_btn = "8"
-input_player1_start_btn = "9"
-input_player1_l3_btn = "10"
-input_player1_r3_btn = "11"
-input_player1_guide_btn = "12"
-input_player1_up_btn = "h0up"
-input_player1_down_btn = "h0down"
-input_player1_left_btn = "h0left"
-input_player1_right_btn = "h0right"
+input_player1_x_btn = "3"
+input_player1_y_btn = "2"
+input_player1_l_btn = "9"
+input_player1_r_btn = "10"
+input_player1_l2_axis = "+4"
+input_player1_r2_axis = "+4"
+input_player1_select_btn = "4"
+input_player1_start_btn = "6"
+input_player1_l3_btn = "7"
+input_player1_r3_btn = "8"
+input_player1_guide_btn = "5"
+input_player1_up_btn = "11"
+input_player1_down_btn = "12"
+input_player1_left_btn = "13"
+input_player1_right_btn = "14"
 input_player1_l_x_plus_axis = "+0"
 input_player1_l_x_minus_axis = "-0"
 input_player1_l_y_plus_axis = "+1"
 input_player1_l_y_minus_axis = "-1"
-input_player1_r_x_plus_axis = "+3"
-input_player1_r_x_minus_axis = "-3"
-input_player1_r_y_plus_axis = "+4"
-input_player1_r_y_minus_axis = "-4"
+input_player1_r_x_plus_axis = "+2"
+input_player1_r_x_minus_axis = "-2"
+input_player1_r_y_plus_axis = "+3"
+input_player1_r_y_minus_axis = "-3"
 APPENDCFG
 
 # Beetle PSX overrides (core rewrites .opt on exit, so set here)
