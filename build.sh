@@ -1429,22 +1429,22 @@ UDEVPOLL
 mkdir -p "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev"
 cat > "$ROOTFS/usr/share/retroarch/assets/autoconfig/udev/Wireless_Controller.cfg" << 'DS4CFG'
 input_driver = "udev"
-input_device = "Wireless Controller"
+input_device = "Sony Interactive Entertainment Wireless Controller"
 input_device_display_name = "PS4 DualShock 4"
 
 input_a_btn = "1"
 input_b_btn = "0"
-input_x_btn = "2"
-input_y_btn = "3"
+input_x_btn = "3"
+input_y_btn = "2"
 input_l_btn = "4"
 input_r_btn = "5"
 input_l2_axis = "+6"
 input_r2_axis = "+7"
-input_select_btn = "8"
-input_start_btn = "9"
+input_select_btn = "4"
+input_start_btn = "6"
 input_l3_btn = "10"
 input_r3_btn = "11"
-input_guide_btn = "12"
+input_guide_btn = "5"
 input_up_btn = "h0up"
 input_down_btn = "h0down"
 input_left_btn = "h0left"
@@ -1457,6 +1457,7 @@ input_r_x_plus_axis = "+3"
 input_r_x_minus_axis = "-3"
 input_r_y_plus_axis = "+4"
 input_r_y_minus_axis = "-4"
+DS4CFG
 DS4CFG
 
 # === Configure EmulationStation ===
