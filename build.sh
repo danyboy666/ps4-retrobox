@@ -1457,6 +1457,14 @@ input_r_x_plus_axis = "+3"
 input_r_x_minus_axis = "-3"
 input_r_y_plus_axis = "+4"
 input_r_y_minus_axis = "-4"
+input_up = "h0up"
+input_down = "h0down"
+input_left = "h0left"
+input_right = "h0right"
+input_a = "1"
+input_b = "0"
+input_x = "3"
+input_y = "2"
 DS4CFG
 DS4CFG
 
