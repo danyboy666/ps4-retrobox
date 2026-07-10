@@ -1195,8 +1195,10 @@ exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
-# === Create RetroArch appendconfig (DS4 defaults matching ES mapping) ===
+# === RetroArch appendconfig (empty - all settings in retroarch.cfg) ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
+# All input settings are in retroarch.cfg directly
+APPENDCFG'
 input_driver = "udev"
 input_device = "PS4 Controller"
 input_autodetect_enable = "true"
