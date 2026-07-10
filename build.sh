@@ -1186,6 +1186,11 @@ export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
 /usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
+
+# Retrain display after RetroArch exits
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
+dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+
 exit $?
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
