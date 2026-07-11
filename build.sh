@@ -314,7 +314,15 @@ run_chroot "cd /tmp/ES-build && \
 # Install RetroArch configscript
 mkdir -p "$ROOTFS/usr/local/bin"
 cp "$PWD/configscripts/retroarch.sh" "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+
+# Install inputconfiguration.sh (bridges ES input config to RetroArch)
+cp "$PWD/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
+chmod +x "$ROOTFS/usr/local/bin/inputconfiguration.sh"
 chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+
+# Install inputconfiguration.sh (bridges ES input config to RetroArch)
+cp "$PWD/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
+chmod +x "$ROOTFS/usr/local/bin/inputconfiguration.sh"
 
 # Install inputconfiguration.sh (bridges ES input config to RetroArch)
 cp "$PWD/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
