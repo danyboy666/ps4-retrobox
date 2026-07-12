@@ -698,7 +698,7 @@ done
 
 # Copy homebrew ROMs into .img (source: es_configs import/ROMS/)
 # NOTE: tgcd excluded — empty, users can add via FTP/Samba
-HOMEBREW_DIR="/mnt/c/Users/dferron/Desktop/opencode working folder/es_configs import/ROMS"
+HOMEBREW_DIR="$SCRIPT_DIR/es_configs import/ROMS"
 if [ -d "$HOMEBREW_DIR" ]; then
     echo "Copying homebrew ROMs to .img..."
     for sys in $ALL_SYSTEMS; do
@@ -2297,10 +2297,44 @@ LEDCONTROL
 
 chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
 
-# === Create ps4_retrobox theme for ES carousel ===
-mkdir -p "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art"
-cp "$PWD/logos/ps4-retrobox-logo.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || cp "$PWD/es-theme-carbon/ps4_retrobox/art/system.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || true
-cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'THEME'
+# === Install RetroPie carbon theme ===
+echo "=== Installing RetroPie carbon theme ==="
+
+# ES 2.0.1a looks in ~/.emulationstation/themes/ AND /etc/emulationstation/themes/
+THEME_DIR="$ROOTFS/etc/emulationstation/themes"
+mkdir -p "$THEME_DIR"
+
+# Clone the carbon theme (try user fork first, fall back to RetroPie 2021)
+cd /tmp
+rm -rf es-theme-carbon
+git clone --depth 1 https://github.com/danyboy666/PSRB-es-theme-carbon.git es-theme-carbon 2>/dev/null || \
+    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
+    echo "Warning: Could not clone carbon theme."
+
+if [ -d "es-theme-carbon" ]; then
+    rm -rf "$THEME_DIR/carbon"
+    cp -r es-theme-carbon "$THEME_DIR/carbon"
+    # Rename theme folders to match es_systems.cfg theme names
+    [ -d "$THEME_DIR/carbon/tg-cd" ] && mv "$THEME_DIR/carbon/tg-cd" "$THEME_DIR/carbon/tgcd"
+    [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/tg16"
+    [ -d "$THEME_DIR/carbon/gg" ] && mv "$THEME_DIR/carbon/gg" "$THEME_DIR/carbon/gamegear"
+    [ -d "$THEME_DIR/carbon/sms" ] && mv "$THEME_DIR/carbon/sms" "$THEME_DIR/carbon/mastersystem"
+    # Symlinks for systems that share a theme with another name
+    [ -d "$THEME_DIR/carbon/segacd" ] && [ ! -e "$THEME_DIR/carbon/mega-cd" ] && ln -sf segacd "$THEME_DIR/carbon/mega-cd"
+    [ -d "$THEME_DIR/carbon/snes" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf snes "$THEME_DIR/carbon/sfc"
+    [ -d "$THEME_DIR/carbon/superfamicom" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf superfamicom "$THEME_DIR/carbon/sfc"
+    echo "Theme installed: $THEME_DIR/carbon"
+    _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
+    echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
+else
+    echo "ERROR: carbon theme clone failed"
+    exit 1
+fi
+
+# === Create ps4_retrobox theme for ES carousel (AFTER theme install) ===
+mkdir -p "$THEME_DIR/carbon/ps4_retrobox/art"
+cp "$PWD/logos/ps4-retrobox-logo.svg" "$THEME_DIR/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || cp "$PWD/es-theme-carbon/ps4_retrobox/art/system.svg" "$THEME_DIR/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || true
+cat > "$THEME_DIR/carbon/ps4_retrobox/theme.xml" << 'THEME'
 <?xml version="1.0"?>
 <theme>
     <formatVersion>3</formatVersion>
@@ -2323,46 +2357,11 @@ cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'TH
 </theme>
 THEME
 
-# Fix theme directory permissions for PS4 user
-chown -R 1000:1000 "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox"
-chmod -R 775 "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox"
+chown -R 1000:1000 "$THEME_DIR/carbon/ps4_retrobox"
+chmod -R 775 "$THEME_DIR/carbon/ps4_retrobox"
 chmod 755 "$ROOTFS/etc/emulationstation"
 chmod 755 "$ROOTFS/etc/emulationstation/themes"
-chmod 755 "$ROOTFS/etc/emulationstation/themes/carbon"
-
-# === Install RetroPie carbon theme ===
-echo "=== Installing RetroPie carbon theme ==="
-
-# ES 2.0.1a looks in ~/.emulationstation/themes/ AND /etc/emulationstation/themes/
-THEME_DIR="$ROOTFS/etc/emulationstation/themes"
-mkdir -p "$THEME_DIR"
-
-# Clone the carbon theme (try user fork first, fall back to RetroPie 2021)
-cd /tmp
-rm -rf es-theme-carbon
-git clone --depth 1 https://github.com/danyboy666/es-theme-carbon.git 2>/dev/null || \
-    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
-    git clone --depth 1 https://github.com/RetroPie/es-theme-carbon.git es-theme-carbon 2>/dev/null || \
-    echo "Warning: Could not clone carbon theme."
-
-if [ -d "es-theme-carbon" ]; then
-    cp -r es-theme-carbon "$THEME_DIR/carbon"
-    # Rename theme folders to match es_systems.cfg theme names
-    [ -d "$THEME_DIR/carbon/tg-cd" ] && mv "$THEME_DIR/carbon/tg-cd" "$THEME_DIR/carbon/tgcd"
-    [ -d "$THEME_DIR/carbon/pcengine" ] && mv "$THEME_DIR/carbon/pcengine" "$THEME_DIR/carbon/tg16"
-    [ -d "$THEME_DIR/carbon/gg" ] && mv "$THEME_DIR/carbon/gg" "$THEME_DIR/carbon/gamegear"
-    [ -d "$THEME_DIR/carbon/sms" ] && mv "$THEME_DIR/carbon/sms" "$THEME_DIR/carbon/mastersystem"
-    # Symlinks for systems that share a theme with another name
-    [ -d "$THEME_DIR/carbon/segacd" ] && [ ! -e "$THEME_DIR/carbon/mega-cd" ] && ln -sf segacd "$THEME_DIR/carbon/mega-cd"
-    [ -d "$THEME_DIR/carbon/snes" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf snes "$THEME_DIR/carbon/sfc"
-    [ -d "$THEME_DIR/carbon/superfamicom" ] && [ ! -e "$THEME_DIR/carbon/sfc" ] && ln -sf superfamicom "$THEME_DIR/carbon/sfc"
-    echo "Theme installed: $THEME_DIR/carbon"
-    _file_count=$(find "$THEME_DIR/carbon" -type f | wc -l)
-    echo "Theme: $_file_count files (SVGs and PNGs kept as-is)"
-else
-    echo "ERROR: carbon theme clone failed"
-    exit 1
-fi
+chmod 755 "$THEME_DIR/carbon"
 
 # Create symlink from user themes dir (ES checks both paths)
 mkdir -p "$ROOTFS/home/PS4/.emulationstation"
@@ -2416,6 +2415,16 @@ cp "$PWD/usr/share/plymouth/themes/default.plymouth" "$ROOTFS/usr/share/plymouth
 run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/es-logo/es-logo.plymouth 100" 2>/dev/null || true
 run_chroot "plymouth-set-default-theme es-logo" 2>/dev/null || true
 echo "Plymouth theme: es-logo"
+
+# === Remove build dependencies (after all compilation is done) ===
+echo "=== Removing build dependencies ==="
+run_chroot "DEBIAN_FRONTEND=noninteractive apt-get purge -y build-essential cmake nasm 2>/dev/null" || true
+run_chroot "rm -rf /usr/include" 2>/dev/null
+run_chroot "rm -rf /usr/share/icons" 2>/dev/null
+run_chroot "rm -rf /usr/share/cmake-3.28" 2>/dev/null
+run_chroot "rm -rf /usr/share/pocketsphinx" 2>/dev/null
+run_chroot "rm -rf /usr/lib/git-core" 2>/dev/null
+run_chroot "rm -rf /usr/share/devhelp" 2>/dev/null
 
 # === Remove unnecessary files from rootfs ===
 echo "=== Cleaning rootfs bloat ==="
