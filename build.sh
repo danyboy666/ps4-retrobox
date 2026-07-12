@@ -2231,7 +2231,6 @@ find . \
     -not -name 'LICENSE' \
     -not -name 'AUTHORS' \
     -not -name 'LICENCE.Marvell' \
-    -not -name 'VERSION' \
     -not -name '.gitignore' \
     -not -name '.gitattributes' \
     -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
