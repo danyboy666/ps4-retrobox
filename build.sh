@@ -20,7 +20,12 @@ run_chroot() {
 }
 
 # === Create rootfs directory ===
+# Clean stale mounts from previous builds
+for fs in tmp run dev/pts dev sys proc; do
+    umount "$ROOTFS/$fs" 2>/dev/null || true
+done
 mkdir -p "$ROOTFS"
+rm -rf "$ROOTFS"/*
 
 # === Bootstrap Ubuntu 24.04 ===
 echo "=== Bootstrapping Ubuntu 24.04 ==="
@@ -153,7 +158,10 @@ mkdir -p "$LIBRETRO_DIR"
 BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
 CORES_OK=0
 CORES_FAIL=0
-for core in nestopia fbneo stella prosystem flycast \
+for core in atari800 bsnes_mercury_balanced gambatte genesis_plus_gx \
+    mednafen_pce_fast mednafen_psx mgba mupen64plus_next \
+    parallel_n64 pcsx_rearmed snes9x \
+    nestopia fbneo stella prosystem flycast \
     mesen picodrive mednafen_wswan virtualjaguar mednafen_lynx \
     gearcoleco gw mednafen_ngp ppsspp gearsystem \
     mednafen_supergrafx mednafen_vb freechaf mame2003_plus vecx; do
@@ -889,7 +897,11 @@ ln -sf /etc/systemd/system/ps4-dhcp-fallback.service "$ROOTFS/etc/systemd/system
 
 # === Samba ROM share ===
 echo "=== Configuring Samba share ==="
-cat >> "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
+mkdir -p "$ROOTFS/etc/samba"
+cat > "$ROOTFS/etc/samba/smb.conf" << 'SAMBAEOF'
+[global]
+   workgroup = WORKGROUP
+   server string = PS4 RetroBox
 
 [PS4_ROMs]
    comment = PS4 RetroBox ROMs
@@ -1697,7 +1709,6 @@ input_a = "1"
 input_b = "0"
 input_x = "3"
 input_y = "2"
-DS4CFG
 DS4CFG
 
 # === Configure EmulationStation ===
