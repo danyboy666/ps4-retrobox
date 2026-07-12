@@ -1,37 +1,31 @@
 # PS4 RetroBox
 
-> **DISCLAIMER**: Assembled by AI assistant (OpenCode). Use at your own risk. Author assumes no responsibility for console damage.
-
-> **v1.5.2-dev — WORKING**  
-> PSX dynarec (Lightrec JIT) working, N64 with GLideN64, RetroArch font fix, IRQ interrupt distribution, keyboard navigation. See [Known Issues](#known-issues).
+> **v1.7-stable**
+> First stable release with all boot, theme, and build fixes resolved. 31 libretro cores, 44 systems, 66 bundled homebrew ROMs, Plymouth boot splash, PS4 RetroBox carousel theme.
 
 ## What It Does
 
 Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** + **RetroArch** on **Ubuntu 24.04**, installed directly on the PS4's internal HDD. No USB drive needed after setup.
 
-## What Works (v1.5.2-dev, CUH-1000/1100 Aeolia)
+## What Works (v1.7-stable, CUH-1000/1100 Aeolia)
 
 - [x] Jailbreak + payload → Linux boot → EmulationStation
 - [x] ES at 1080p with hardware GL (radeonsi + amdgpu_shim.so)
-- [x] **39 retro systems** with **27 libretro cores**
-- [x] RetroArch 1.22.2 — multiple ROMs confirmed working
+- [x] **44 retro systems** with **31 libretro cores**
+- [x] **66 bundled homebrew ROMs** — playable out of the box
+- [x] RetroArch 1.22.2 with full DS4 controller mapping
 - [x] Audio via PulseAudio → HDMI output
 - [x] DS4 wired USB — buttons work in ES and RetroArch
-- [x] Launching images before games start (Python PIL + fb0)
+- [x] Plymouth es-logo boot splash
+- [x] PS4 RetroBox carousel theme with system logos
 - [x] SSH access (port 22)
 - [x] Install: 3GB base + optional expansion
 - [x] Open-source Neo Geo BIOS included (ngdevkit nullbios)
-- [x] UFS permissions — .img deletable from FTP via HEN
-- [x] **N64** — mupen64plus_next with GLideN64 (working, performance improving)
-- [x] **PSX** — Beetle PSX with Lightrec JIT dynarec (working, performance tuning needed)
-- [x] RetroArch font rendering fixed (glColorMask GL state reset)
-- [x] **Keyboard navigation** in RetroArch XMB (arrow keys, Enter/Backspace)
-- [x] DS4 controller support in ES and RetroArch
-- [x] **IRQ interrupt distribution** — kernel-level Aeolia MSI interrupt round-robin across CPUs
-- [x] Locale fix — ES no longer crashes on boot
-- [x] sysctl tuning — ASLR off, mmap_min_addr=0 (required for Lightrec dynarec)
-- [x] HDMI recovery — hdmi-recover command via xrandr (manual, after cable replug)
-- [x] Scrapers — TheGamesDB (API v1) + ScreenScraper with in-game API key setup
+- [x] DS4 hotkey combo: Select+Cross for RetroArch menu
+- [x] OSD notifications enabled (game-loaded overlay disabled)
+- [x] RetroArch appendconfig with full DS4 button mapping
+- [x] Beetle PSX + Mupen64Plus-Next optimized core options
+- [x] Keyboard navigation in RetroArch XMB
 
 ## Supported Systems
 
@@ -103,10 +97,14 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 ## Quick Start
 
 ### First Time Install
-1. Download [v1.5.2-dev ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.5.2-dev)
-2. FTP all files to PS4 (port 2121)
-3. Jailbreak → GoldHEN → BinLoader → send **1GB payload**
-4. Install runs automatically → choose 3GB or expand
+1. Download [v1.7-stable ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.7-stable)
+2. Extract `arch.tar.xz`, `initramfs.cpio.gz`, `bzImage`
+3. FTP to PS4 via FileZilla (port 2121):
+   - `bzImage` → `/data/linux/boot/bzImage`
+   - `initramfs.cpio.gz` → `/data/linux/boot/initramfs.cpio.gz`
+   - `arch.tar.xz` → `/user/system/boot/arch.tar.xz`
+4. Jailbreak → GoldHEN → BinLoader → send **1GB payload**
+5. Install runs automatically → choose 3GB or expand
 
 ### Daily Use
 1. Jailbreak → GoldHEN → BinLoader → send **2GB payload**
@@ -150,7 +148,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | v1.5 | Kernel IRQ fix, PSX dynarec, RetroArch font fix, keyboard navigation, sysctl tuning |
 | **v1.5.2-dev** | **Current** — PSX Lightrec JIT working, IRQ round-robin kernel, HDMI xrandr recovery, keyboard nav, font fix |
 | v1.6 | Fix RetroArch XMB navigation with DS4, N64 GLideN64 font colors, eth0 interrupt mitigation |
-| v1.7 | PSX performance tuning (dynarec optimization), test all systems |
+| **v1.7-stable** | **Current** — All boot/theme/build fixes, Plymouth splash, PS4 RetroBox carousel, 31 cores, 66 homebrew ROMs, DS4 hotkey combo, OSD notifications |
 | v1.8 | Fix HDMI auto-recovery (kernel driver patch), controller hotkey/menu navigation |
 | v1.9 | Other controllers, network helpers, FTP |
 | v2.0 | PS4 PKG app — auto-detect southbridge, select payload, user choice: new install vs boot existing .img |
