@@ -654,13 +654,13 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="down" type="button" id="12" value="1" />
     <input name="left" type="button" id="13" value="1" />
     <input name="right" type="button" id="14" value="1" />
-    <input name="leftshoulder" type="button" id="4" value="1" />
-    <input name="rightshoulder" type="button" id="5" value="1" />
-    <input name="lefttrigger" type="axis" id="4" value="1" />
-    <input name="righttrigger" type="axis" id="5" value="1" />
-    <input name="leftthumb" type="button" id="10" value="1" />
-    <input name="rightthumb" type="button" id="11" value="1" />
-    <input name="hotkeyenable" type="button" id="12" value="1" />
+    <input name="leftshoulder" type="button" id="9" value="1" />
+    <input name="rightshoulder" type="button" id="10" value="1" />
+    <input name="lefttrigger" type="axis" id="4" value="-1" />
+    <input name="righttrigger" type="axis" id="4" value="1" />
+    <input name="leftthumb" type="axis" id="5" value="-1" />
+    <input name="rightthumb" type="axis" id="5" value="1" />
+    <input name="hotkeyenable" type="button" id="5" value="1" />
     <input name="leftanalogleft" type="axis" id="0" value="-1" />
     <input name="leftanalogright" type="axis" id="0" value="1" />
     <input name="leftanalogup" type="axis" id="1" value="-1" />
