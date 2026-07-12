@@ -10,6 +10,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 ROOTFS="${1:-/mnt/ps4root}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Master system list — 42 systems
 ALL_SYSTEMS="snes nes n64 gba gb gbc megadrive psx tg16 tgcd arcade neogeo atari2600 atari5200 atari7800 mastersystem gamegear famicom fds genesis sfc segacd mega-cd sega32x wonderswan wonderswancolor atarijaguar atarilynx colecovision gameandwatch ngp ngpc psp sg-1000 supergrafx virtualboy channelf mame-libretro vectrex dreamcast ps2 gamecube wii"
@@ -123,6 +124,8 @@ run_chroot "rm -rf /tmp/RetroArch"
 echo "=== Installing libretro core build deps ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch-assets libretro-core-info" || true
+# Remove 330MB noto fonts pulled in as dependency (keep retroarch-assets installed)
+run_chroot "rm -rf /usr/share/fonts/truetype/noto" 2>/dev/null || true
 
 # === Install fonts for XMB menu ===
 echo "=== Installing fonts ==="
@@ -146,20 +149,33 @@ echo "Fonts installed"
 # === Download missing libretro cores from buildbot ===
 echo "=== Downloading missing libretro cores ==="
 LIBRETRO_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/libretro"
+mkdir -p "$LIBRETRO_DIR"
 BUILDBOT="https://buildbot.libretro.com/nightly/linux/x86_64/latest"
+CORES_OK=0
+CORES_FAIL=0
 for core in nestopia fbneo stella prosystem flycast \
     mesen picodrive mednafen_wswan virtualjaguar mednafen_lynx \
     gearcoleco gw mednafen_ngp ppsspp gearsystem \
     mednafen_supergrafx mednafen_vb freechaf mame2003_plus vecx; do
     echo "  Downloading ${core}_libretro.so..."
-    wget -q -O "$LIBRETRO_DIR/${core}_libretro.so.zip" "$BUILDBOT/${core}_libretro.so.zip" 2>/dev/null && \
-        cd "$LIBRETRO_DIR" && unzip -o "${core}_libretro.so.zip" 2>/dev/null && \
-        rm -f "${core}_libretro.so.zip" && \
-        echo "    OK: ${core}_libretro.so" || \
-        echo "    FAILED: ${core}_libretro.so"
+    if wget -q -O "/tmp/${core}_libretro.so.zip" "$BUILDBOT/${core}_libretro.so.zip" 2>/dev/null; then
+        cd "$LIBRETRO_DIR" && unzip -o "/tmp/${core}_libretro.so.zip" 2>/dev/null
+        rm -f "/tmp/${core}_libretro.so.zip"
+        if [ -f "$LIBRETRO_DIR/${core}_libretro.so" ]; then
+            echo "    OK: ${core}_libretro.so"
+            CORES_OK=$((CORES_OK + 1))
+        else
+            echo "    FAILED (extract): ${core}_libretro.so"
+            CORES_FAIL=$((CORES_FAIL + 1))
+        fi
+    else
+        echo "    FAILED (download): ${core}_libretro.so"
+        CORES_FAIL=$((CORES_FAIL + 1))
+    fi
+    cd /
 done
 chmod 644 "$LIBRETRO_DIR"/*.so 2>/dev/null
-echo "Libretro cores: $(ls "$LIBRETRO_DIR"/*.so 2>/dev/null | wc -l) total"
+echo "Libretro cores: $CORES_OK OK, $CORES_FAIL failed"
 
 # === Install standalone emulators ===
 echo "=== Installing standalone emulators ==="
@@ -274,6 +290,7 @@ run_chroot "rm -rf /tmp/ngdevkit"
 
 # === Create BIOS README ===
 echo "=== Creating BIOS README ==="
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/system"
 cat > "$ROOTFS/home/PS4/.config/retroarch/system/BIOS_README.txt" << 'BIOSEOF'
 ===============================================================================
  SYSTEM BIOS DIRECTORY
@@ -313,10 +330,10 @@ run_chroot "cd /tmp/ES-build && \
 
 # Install RetroArch configscript
 mkdir -p "$ROOTFS/usr/local/bin"
-cp "$PWD/configscripts/retroarch.sh" "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+cp "$SCRIPT_DIR/configscripts/retroarch.sh" "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 
 # Install inputconfiguration.sh (bridges ES input config to RetroArch)
-cp "$PWD/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
+cp "$SCRIPT_DIR/configscripts/inputconfiguration.sh" "$ROOTFS/usr/local/bin/inputconfiguration.sh"
 chmod +x "$ROOTFS/usr/local/bin/inputconfiguration.sh"
 chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 
@@ -602,6 +619,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
   <string name="CollectionShowSystemInfo" value="true" />
   <string name="DoublePressRemovesFromFavs" value="true" />
 </config>
+ESCFG
 
 # es_input.cfg (keyboard + DS4 joystick)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
@@ -2270,7 +2288,7 @@ chmod +x "$ROOTFS/usr/local/bin/scripts/"*.sh
 
 # === Create ps4_retrobox theme for ES carousel ===
 mkdir -p "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art"
-cp "$PWD/community-files/ps4-retrobox-logo.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg"
+cp "$PWD/logos/ps4-retrobox-logo.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || cp "$PWD/es-theme-carbon/ps4_retrobox/art/system.svg" "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || true
 cat > "$ROOTFS/etc/emulationstation/themes/carbon/ps4_retrobox/theme.xml" << 'THEME'
 <?xml version="1.0"?>
 <theme>
@@ -2381,10 +2399,11 @@ echo "Remaining info files: $(ls "$INFO_DIR"/*.info 2>/dev/null | wc -l)"
 
 # === Install Plymouth es-logo splash theme ===
 echo "=== Installing Plymouth es-logo theme ==="
-run_chroot "cd /usr/share/plymouth/themes && git clone https://github.com/raelgc/es-logo.git"
-run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/es-logo/es-logo.plymouth 100"
-run_chroot "plymouth-set-default-theme es-logo"
-run_chroot "systemctl enable plymouth-start.service"
+mkdir -p "$ROOTFS/usr/share/plymouth/themes/es-logo"
+cp "$PWD/usr/share/plymouth/themes/es-logo/"* "$ROOTFS/usr/share/plymouth/themes/es-logo/" 2>/dev/null || true
+cp "$PWD/usr/share/plymouth/themes/default.plymouth" "$ROOTFS/usr/share/plymouth/themes/default.plymouth" 2>/dev/null || true
+run_chroot "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/es-logo/es-logo.plymouth 100" 2>/dev/null || true
+run_chroot "plymouth-set-default-theme es-logo" 2>/dev/null || true
 echo "Plymouth theme: es-logo"
 
 # === Remove unnecessary files from rootfs ===
@@ -2433,7 +2452,8 @@ done
 
 # === Package rootfs as arch.tar.xz ===
 echo "=== Packaging rootfs ==="
-tar -cJf community-files/arch.tar.xz -C "$ROOTFS" \
+mkdir -p "$SCRIPT_DIR/community-files"
+tar -cJf "$SCRIPT_DIR/community-files/arch.tar.xz" -C "$ROOTFS" \
     --exclude='./proc' --exclude='./sys' --exclude='./run' \
     --exclude='./dev' --exclude='./tmp' .
 
