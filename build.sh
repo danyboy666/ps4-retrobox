@@ -643,32 +643,32 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="pageup" type="key" id="1073741899" value="1" />
     <input name="pagedown" type="key" id="1073741902" value="1" />
   </inputConfig>
-  <inputConfig type="joystick" deviceName="PS4 Controller" deviceGUID="030000004c050000cc09000000016800">
+  <inputConfig type="joystick" deviceName="PS4 Controller" deviceGUID="03008fe54c050000cc09000000016800">
     <input name="a" type="button" id="1" value="1" />
     <input name="b" type="button" id="0" value="1" />
-    <input name="x" type="button" id="3" value="1" />
-    <input name="y" type="button" id="2" value="1" />
-    <input name="start" type="button" id="6" value="1" />
-    <input name="select" type="button" id="4" value="1" />
-    <input name="up" type="button" id="11" value="1" />
     <input name="down" type="button" id="12" value="1" />
-    <input name="left" type="button" id="13" value="1" />
-    <input name="right" type="button" id="14" value="1" />
-    <input name="leftshoulder" type="button" id="9" value="1" />
-    <input name="rightshoulder" type="button" id="10" value="1" />
-    <input name="lefttrigger" type="axis" id="4" value="-1" />
-    <input name="righttrigger" type="axis" id="4" value="1" />
-    <input name="leftthumb" type="axis" id="5" value="-1" />
-    <input name="rightthumb" type="axis" id="5" value="1" />
     <input name="hotkeyenable" type="button" id="5" value="1" />
-    <input name="leftanalogleft" type="axis" id="0" value="-1" />
-    <input name="leftanalogright" type="axis" id="0" value="1" />
+    <input name="left" type="button" id="13" value="1" />
+    <input name="leftanalogdown" type="axis" id="1" value="-1" />
+    <input name="leftanalogleft" type="axis" id="1" value="-1" />
+    <input name="leftanalogright" type="axis" id="1" value="-1" />
     <input name="leftanalogup" type="axis" id="1" value="-1" />
-    <input name="leftanalogdown" type="axis" id="1" value="1" />
+    <input name="leftshoulder" type="button" id="9" value="1" />
+    <input name="leftthumb" type="button" id="7" value="1" />
+    <input name="lefttrigger" type="axis" id="4" value="-1" />
+    <input name="right" type="button" id="14" value="1" />
+    <input name="rightanalogdown" type="axis" id="3" value="1" />
     <input name="rightanalogleft" type="axis" id="2" value="-1" />
     <input name="rightanalogright" type="axis" id="2" value="1" />
     <input name="rightanalogup" type="axis" id="3" value="-1" />
-    <input name="rightanalogdown" type="axis" id="3" value="1" />
+    <input name="rightshoulder" type="button" id="10" value="1" />
+    <input name="rightthumb" type="button" id="8" value="1" />
+    <input name="righttrigger" type="axis" id="5" value="1" />
+    <input name="select" type="button" id="4" value="1" />
+    <input name="start" type="button" id="6" value="1" />
+    <input name="up" type="button" id="11" value="1" />
+    <input name="x" type="button" id="3" value="1" />
+    <input name="y" type="button" id="2" value="1" />
   </inputConfig>
 </inputList>
 INPUTEOF
@@ -1099,8 +1099,8 @@ input_start = "11"
 input_select = "10"
 input_l = "6"
 input_r = "7"
-input_l2_axis = "+5"
-input_r2_axis = "-5"
+input_l2_axis = "+4"
+input_r2_axis = "+5"
 input_l3_btn = "13"
 input_r3_btn = "14"
 input_guide_btn = "12"
@@ -1124,8 +1124,8 @@ input_start_btn = "11"
 input_select_btn = "10"
 input_l_btn = "6"
 input_r_btn = "7"
-input_l2_axis = "+5"
-input_r2_axis = "-5"
+input_l2_axis = "+4"
+input_r2_axis = "+5"
 input_l3_btn = "13"
 input_r3_btn = "14"
 input_l_x_plus_axis = "+0"
@@ -1159,8 +1159,8 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
-input_player1_l2_axis = "+5"
-input_player1_r2_axis = "-5"
+input_player1_l2_axis = "+4"
+input_player1_r2_axis = "+5"
 RETROCFG
 
 # === Create RetroArch wrapper (shows image FIRST, then stops ES, then launches game) ===
@@ -1325,8 +1325,8 @@ input_start_btn = "6"
 input_select_btn = "4"
 input_l_btn = "4"
 input_r_btn = "5"
-input_l2_axis = "+6"
-input_r2_axis = "+7"
+input_l2_axis = "+4"
+input_r2_axis = "+5"
 input_l3_btn = "10"
 input_r3_btn = "11"
 input_l_x_plus_axis = "+0"
@@ -1361,8 +1361,8 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
-input_player1_l2_axis = "+6"
-input_player1_r2_axis = "+7"
+input_player1_l2_axis = "+4"
+input_player1_r2_axis = "+5"
 beetle_psx_cd_access_method = "precache"
 beetle_psx_cd_fastload = "4x(native)"
 beetle_psx_gpu_overclock = "2x(native)"
@@ -1436,8 +1436,8 @@ input_x_btn = "3"
 input_y_btn = "2"
 input_l_btn = "4"
 input_r_btn = "5"
-input_l2_axis = "+6"
-input_r2_axis = "+7"
+input_l2_axis = "+4"
+input_r2_axis = "+5"
 input_select_btn = "4"
 input_start_btn = "6"
 input_l3_btn = "10"
