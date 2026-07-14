@@ -2247,6 +2247,7 @@ find . \
     -not -name 'LICENCE.Marvell' \
     -not -name '.gitignore' \
     -not -name '.gitattributes' \
+    -not -name '*.zip' \
     -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
 echo "  initramfs rebuilt from source tree (with Plymouth)"
 
