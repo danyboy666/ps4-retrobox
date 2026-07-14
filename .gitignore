@@ -10,6 +10,7 @@ AGENTS.md
 .opencode/
 .opencode-workspace/
 opencode-logs/
+opencode.json
 
 # Local AI Scratchpads & Logs
 opencode_history.md
