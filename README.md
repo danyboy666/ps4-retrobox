@@ -1,7 +1,7 @@
 # PS4 RetroBox
 
-> **v1.7-stable**
-> First stable release with all boot, theme, and build fixes resolved. 31 libretro cores, 44 systems, 66 bundled homebrew ROMs, Plymouth boot splash, PS4 RetroBox carousel theme.
+> **v1.7.1-dev**
+> Development build with ES Configure Input fixes: OK/Cancel buttons, PS4 DS4 trigger cooldown (prevents auto-assignment), left analog stick fix, full 25-button mapping with 35 inputs.
 
 ## What It Does
 
@@ -80,7 +80,7 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | Game & Watch (gameandwatch) | gw | No | Untested |
 | GCE Vectrex (vectrex) | vecx | No | Untested |
 
-## Known Issues (v1.5.2-dev)
+## Known Issues (v1.7.1-dev)
 
 - [ ] **RetroArch XMB menu navigation** — keyboard works when DS4 unplugged, DS4 d-pad doesn't navigate XMB ([#2](https://github.com/danyboy666/ps4-retrobox/issues/2))
 - [ ] **PSX performance** — Beetle PSX dynarec (Lightrec JIT) works but Dynasty Warriors crashes at gameplay start. Other games need testing. Interpreter fallback available but slow.
@@ -148,7 +148,8 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | v1.5 | Kernel IRQ fix, PSX dynarec, RetroArch font fix, keyboard navigation, sysctl tuning |
 | **v1.5.2-dev** | **Current** — PSX Lightrec JIT working, IRQ round-robin kernel, HDMI xrandr recovery, keyboard nav, font fix |
 | v1.6 | Fix RetroArch XMB navigation with DS4, N64 GLideN64 font colors, eth0 interrupt mitigation |
-| **v1.7-stable** | **Current** — All boot/theme/build fixes, Plymouth splash, PS4 RetroBox carousel, 31 cores, 66 homebrew ROMs, DS4 hotkey combo, OSD notifications |
+| **v1.7-stable** | All boot/theme/build fixes, Plymouth splash, PS4 RetroBox carousel, 31 cores, 66 homebrew ROMs, DS4 hotkey combo, OSD notifications |
+| **v1.7.1-dev** | **Current** — ES Configure Input: OK/Cancel buttons, PS4 DS4 trigger cooldown (prevents auto-assignment), left analog fix, full 25-button mapping |
 | v1.8 | Fix HDMI auto-recovery (kernel driver patch), controller hotkey/menu navigation |
 | v1.9 | Other controllers, network helpers, FTP |
 | v2.0 | PS4 PKG app — auto-detect southbridge, select payload, user choice: new install vs boot existing .img |

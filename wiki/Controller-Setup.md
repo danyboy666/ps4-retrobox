@@ -50,8 +50,10 @@ Users can reconfigure at any time:
 
 ### From EmulationStation
 1. Press **Start** → Controller Settings → Configure Input
-2. Map each button when prompted
-3. Press **A** to save — ES will auto-generate RetroArch config
+2. Map each button when prompted (25 buttons: D-Pad, A/B/X/Y, Start/Select, Shoulders, Triggers, Thumb sticks, Analog sticks, Hotkey)
+3. **OK/CANCEL buttons** appear at the bottom after mapping all buttons
+4. Press **OK** to save — ES will auto-generate RetroArch config
+5. Press **CANCEL** to discard and exit
 
 ### From command line
 ```bash
@@ -75,3 +77,12 @@ nano /home/PS4/.config/retroarch/retroarch-ps4.cfg
 Other USB controllers may work but are untested. The DS4 wired USB is the only confirmed controller.
 
 > **⚠ Do NOT load `hid-sony` kernel module** — it crashes the PS4's USB controller (xhci_aeolia).
+
+## PS4 DS4 Specific Notes
+
+The PS4 Linux kernel reports **14 axes** (not 6 like standard Linux). This affects how EmulationStation handles triggers:
+
+- Both L2 and R2 share **axis 4** (L2=negative, R2=positive)
+- A **cooldown mechanism** prevents resting trigger signals from auto-assigning the next mapping row
+- After mapping a trigger, wait ~200ms before pressing the next button
+- The OK/CANCEL buttons at the bottom let you save or discard your mapping
