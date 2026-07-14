@@ -2240,6 +2240,8 @@ find . \
     -not -path './.github/*' \
     -not -path './community-files/*' \
     -not -path './es_configs import/*' \
+    -not -path './.env' \
+    -not -path './.opencode/*' \
     -not -name 'build.sh' \
     -not -name 'README.md' \
     -not -name 'LICENSE' \
@@ -2247,6 +2249,7 @@ find . \
     -not -name 'LICENCE.Marvell' \
     -not -name '.gitignore' \
     -not -name '.gitattributes' \
+    -not -name 'AGENTS.md' \
     -not -name '*.zip' \
     -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
 echo "  initramfs rebuilt from source tree (with Plymouth)"

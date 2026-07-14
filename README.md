@@ -163,17 +163,19 @@ Download the [latest release](https://github.com/danyboy666/ps4-retrobox/release
 ### Full Build (Linux PC)
 
 Requirements:
-- x86_64 Linux PC (Ubuntu/Debian)
-- `sudo` access
-- Internet connection
-- ~5GB free disk space
-- ~15-30 minutes
+- x86_64 Linux PC (Ubuntu 22.04+ / Debian 12+)
+- `sudo` access (build.sh runs as root for debootstrap)
+- Internet connection (downloads ~2GB of packages)
+- ~10GB free disk space
+- ~15-30 minutes build time
 
 ```bash
 git clone https://github.com/danyboy666/ps4-retrobox.git
 cd ps4-retrobox
 sudo ./build.sh
 ```
+
+**Important:** Do NOT run `sudo ./build.sh` from inside the project folder if you have large files (zip, images) in the root — they will be included in the initramfs. The build.sh excludes common large files automatically.
 
 Output files in `community-files/`:
 
