@@ -1,3 +1,21 @@
+# Credentials & Secrets — NEVER COMMITTED
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# OpenCode & Agent Config
+AGENTS.md
+.opencode/
+.opencode-workspace/
+opencode-logs/
+
+# Local AI Scratchpads & Logs
+opencode_history.md
+ai_scratchpad.md
+.opencode-logs/
+
 # Large binary files — tracked via Git LFS
 # community-files/arch.tar.xz, initramfs.cpio.gz, bzImage*, payload-* are tracked by LFS
 
