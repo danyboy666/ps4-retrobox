@@ -30,7 +30,7 @@ sudo ./build.sh
 2. Builds RetroArch 1.22.2 from source (DRM/KMS + EGL)
 3. Builds EmulationStation from the PS4 fork (25-button input)
 4. Compiles `amdgpu_shim.so` (tricks Mesa into using radeonsi)
-5. Compiles `fb_display` (stride-aware framebuffer image viewer)
+5. Compiles `fb_display` from `scripts/fb_display.c` (stride-aware framebuffer image viewer)
 6. Downloads 27 libretro cores from the buildbot
 7. Installs 39 system configs, launching images, carbon theme
 8. Creates ps4_retrobox settings menu with helper scripts
@@ -73,7 +73,7 @@ ssh PS4@<PS4_IP>
 | File | Purpose |
 |------|---------|
 | `/usr/local/bin/retroarch-wrapper.sh` | Game launcher (shows launching images) |
-| `/usr/local/bin/fb_display` | Framebuffer image viewer |
+| `/usr/local/bin/fb_display` | Framebuffer image viewer (compiled from `scripts/fb_display.c`) |
 | `/home/PS4/.config/retroarch/retroarch.cfg` | Main RetroArch config |
 | `/home/PS4/.config/retroarch/retroarch-ps4.cfg` | DS4 bindings + hotkeys |
 | `/home/PS4/.emulationstation/es_systems.cfg` | System definitions |

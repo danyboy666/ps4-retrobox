@@ -292,7 +292,29 @@ rm -f /tmp/amdgpu_shim.c
 echo "=== Building Neo Geo BIOS (ngdevkit nullbios) ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y autoconf automake make gcc 2>/dev/null"
 run_chroot "mkdir -p /home/PS4/.config/retroarch/system && cd /tmp && rm -rf ngdevkit && git clone --depth 1 https://github.com/dciabrin/ngdevkit.git && cd ngdevkit && autoreconf -iv 2>/dev/null && ./configure --prefix=/usr 2>/dev/null && make -C nullbios 2>/dev/null && cp nullbios/rom/neogeo.zip /home/PS4/.config/retroarch/system/ && cp nullbios/rom/aes.zip /home/PS4/.config/retroarch/system/ && echo 'Neo Geo BIOS installed'"
-run_chroot "rm -rf /tmp/ngdevkit"
+ run_chroot "rm -rf /tmp/ngdevkit"
+
+# === Download additional BIOS files (Abdess/retrobios, MIT License) ===
+echo "=== Downloading additional BIOS files ==="
+BIOS_DIR="$ROOTFS/home/PS4/.config/retroarch/system"
+BIOS_URL="https://raw.githubusercontent.com/Abdess/retrobios/main/bios"
+mkdir -p "$BIOS_DIR"
+
+# PlayStation BIOS
+curl -fsSL "$BIOS_URL/Sony/PlayStation/scph5500.bin" -o "$BIOS_DIR/scph5500.bin" 2>/dev/null && echo "  [OK] PlayStation BIOS (Japan)" || echo "  [FAIL] PlayStation BIOS (Japan)"
+curl -fsSL "$BIOS_URL/Sony/PlayStation/scph5501.bin" -o "$BIOS_DIR/scph5501.bin" 2>/dev/null && echo "  [OK] PlayStation BIOS (US)" || echo "  [FAIL] PlayStation BIOS (US)"
+curl -fsSL "$BIOS_URL/Sony/PlayStation/scph5502.bin" -o "$BIOS_DIR/scph5502.bin" 2>/dev/null && echo "  [OK] PlayStation BIOS (Europe)" || echo "  [FAIL] PlayStation BIOS (Europe)"
+
+# Sega 32X BIOS
+curl -fsSL "$BIOS_URL/Sega/32X/32X_M_BIOS.BIN" -o "$BIOS_DIR/32X_M_BIOS.BIN" 2>/dev/null && echo "  [OK] 32X Main BIOS" || echo "  [FAIL] 32X Main BIOS"
+curl -fsSL "$BIOS_URL/Sega/32X/32X_S_BIOS.BIN" -o "$BIOS_DIR/32X_S_BIOS.BIN" 2>/dev/null && echo "  [OK] 32X Slave BIOS" || echo "  [FAIL] 32X Slave BIOS"
+curl -fsSL "$BIOS_URL/Sega/32X/32X_G_BIOS.BIN" -o "$BIOS_DIR/32X_G_BIOS.BIN" 2>/dev/null && echo "  [OK] 32X Game BIOS" || echo "  [FAIL] 32X Game BIOS"
+
+# Atari 5200 BIOS
+curl -fsSL "$BIOS_URL/Atari/5200/5200.rom" -o "$BIOS_DIR/5200.rom" 2>/dev/null && echo "  [OK] Atari 5200 BIOS" || echo "  [FAIL] Atari 5200 BIOS"
+
+# TurboGrafx-CD System Card
+curl -fsSL "$BIOS_URL/NEC/PC%20Engine%20CD/PCECD_3.0-(J).pce" -o "$BIOS_DIR/syscard3.pce" 2>/dev/null && echo "  [OK] TurboGrafx-CD System Card v3.0" || echo "  [FAIL] TurboGrafx-CD System Card"
 
 # === Create BIOS README ===
 echo "=== Creating BIOS README ==="
@@ -2086,7 +2108,6 @@ fi
 
 # === Create ps4_retrobox theme for ES carousel (AFTER theme install) ===
 mkdir -p "$THEME_DIR/carbon/ps4_retrobox/art"
-cp "$SCRIPT_DIR/logos/ps4-retrobox-logo.svg" "$THEME_DIR/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || cp "$SCRIPT_DIR/es-theme-carbon/ps4_retrobox/art/system.svg" "$THEME_DIR/carbon/ps4_retrobox/art/system.svg" 2>/dev/null || true
 cat > "$THEME_DIR/carbon/ps4_retrobox/theme.xml" << 'THEME'
 <?xml version="1.0"?>
 <theme>
@@ -2261,6 +2282,10 @@ echo "  arch.tar.xz          $(du -h community-files/arch.tar.xz | cut -f1)  (Ub
 echo "  initramfs.cpio.gz    $(du -h community-files/initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (with Plymouth splash)"
 echo "  bzImage*             (kernel - already in community-files)"
 echo "  payload-960-*.elf    (payloads - already in community-files)"
+echo ""
+echo "Creating release zip..."
+cd "$SCRIPT_DIR/community-files" && zip -j "../ps4-retrobox-v$(cat ../VERSION).zip" arch.tar.xz initramfs.cpio.gz bootargs.txt 2>/dev/null && echo "  Release zip: ps4-retrobox-v$(cat ../VERSION).zip ($(du -h "../ps4-retrobox-v$(cat ../VERSION).zip" | cut -f1))"
+cd "$SCRIPT_DIR"
 echo ""
 echo "FTP these 3 files to your PS4:"
 echo "  1. bzImage*           -> /data/linux/boot/bzImage"
