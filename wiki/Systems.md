@@ -50,7 +50,7 @@ Launch images are stored in:
 
 | System | Folder | Core | Extensions |
 |--------|--------|------|-----------|
-| PlayStation | `psx` | mednafen_psx | .bin .cue .iso .pbp .chd .m3u .zip |
+| PlayStation | `psx` | mednafen_psx | **Yes — official BIOS required (scph5500.bin, scph5501.bin, scph5502.bin)** |
 | PlayStation Portable | `psp` | ppsspp | .iso .cso .pbp .zip |
 
 ### NEC

@@ -1,7 +1,7 @@
 # PS4 RetroBox
 
-> **v1.7.1-dev**
-> Development build with ES Configure Input fixes: OK/Cancel buttons, PS4 DS4 trigger cooldown (prevents auto-assignment), left analog stick fix, full 25-button mapping with 35 inputs.
+> **v1.7.2-dev**
+> Audio fix (SDL2 driver), PSX BIOS requirement documented, N64/PSX performance tuning.
 
 ## What It Does
 
@@ -52,7 +52,7 @@ Turns a jailbroken PS4 into a retro gaming machine running **EmulationStation** 
 | Sega CD (segacd) | genesis_plus_gx | Optional | Untested |
 | Mega CD (mega-cd) | genesis_plus_gx | Optional | Untested |
 | **Sony** | | | |
-| PlayStation (psx) | mednafen_psx | Yes | ✓ Working |
+| PlayStation (psx) | mednafen_psx | **Yes — official BIOS required** | ✓ Working |
 | PlayStation Portable (psp) | ppsspp | Yes | Untested |
 | **NEC** | | | |
 | TurboGrafx-16 (tg16) | mednafen_pce_fast | No | ✓ Working |
