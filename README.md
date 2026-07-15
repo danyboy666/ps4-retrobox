@@ -218,7 +218,10 @@ The `amdgpu_shim.so` library intercepts `amdgpu_query_info(ACCEL_WORKING)` to re
 - [Piotr Karbowski](https://bitbucket.org/piotrkarbowski/better-initramfs) — better-initramfs
 - [feeRnt](https://github.com/feeRnt/ps4-linux-initramfs) — PS4 initramfs adaptation
 - [Aloshi](https://github.com/Aloshi/EmulationStation) — EmulationStation
-- [RetroPie](https://github.com/RetroPie/EmulationStation) — 25-button input, configscripts
+- [RetroPie](https://github.com/RetroPie/EmulationStation) — ES 25-button input, configscripts, trigger filtering approach
+- [RetroPie](https://retropie.org.uk/docs/) — RetroArch configuration patterns, hotkey system, RetroPad mapping
+- [Batocera](https://ps4linux.com/batocera-40-ps4-linux-distro/) — PS4 Linux Batocera 4.0 reference, mAllInputs ES Configure Input approach, N64/PSX performance tuning
+- [Batocera](https://github.com/batocera-linux/batocera-emulationstation) — ES fork with mAllInputs button→axis swap, OK/Cancel UI
 - [libretro](https://www.libretro.com) — RetroArch and libretro cores
 - [ehettervik](https://github.com/ehettervik/es-runcommand-splash) — Launching images
 - [feeRnt](https://github.com/feeRnt/ps4-linux-12xx) — PS4 Linux kernel
