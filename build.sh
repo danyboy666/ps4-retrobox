@@ -1406,8 +1406,8 @@ mupen64plus-rdp-plugin = "gliden64"
 mupen64plus-rsp-plugin = "hle"
 mupen64plus-cpucore = "dynamic_recompiler"
 mupen64plus-Framerate = "Original"
-mupen64plus-43screensize = "640x480"
-mupen64plus-169screensize = "960x540"
+mupen64plus-43screensize = "320x240"
+mupen64plus-169screensize = "640x360"
 mupen64plus-aspect = "4:3"
 mupen64plus-EnableFBEmulation = "True"
 mupen64plus-EnableCopyColorToRDRAM = "Off"
@@ -1415,9 +1415,10 @@ mupen64plus-EnableCopyDepthToRDRAM = "Off"
 mupen64plus-ThreadedRenderer = "True"
 N64OPT
 
-# === Create PSX core options (Beetle PSX — interpreter, async CD, overclocks) ===
+# === Create PSX core options (Beetle PSX — dynarec, overclocks, analog calibration) ===
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX"
 cat > "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt" << 'PSXOPT'
+beetle_psx_cpu_freq_scale = "110%"
 beetle_psx_cpu_dynarec = "execute"
 beetle_psx_dynarec_invalidate = "full"
 beetle_psx_dynarec_op_cycles = "2"
@@ -1436,6 +1437,8 @@ beetle_psx_region = "ntsc"
 beetle_psx_display_internal_fps = "disabled"
 beetle_psx_draw_frontend_borders = "disabled"
 beetle_psx_enable_og_sce_audio = "disabled"
+beetle_psx_analog_calibration = "enabled"
+PSXOPT
 PSXOPT
 chmod 444 "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt"
 
