@@ -1268,7 +1268,7 @@ for arg in "$@"; do
     [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
 done
 
-# SHOW IMAGE FIRST (before stopping ES) - instant display, no delay
+# Show launch image
 IMAGE=""
 if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
     IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
@@ -1277,12 +1277,9 @@ if [ -n "$IMAGE" ]; then
     show_image "$IMAGE"
 fi
 
-# THEN stop ES (after image is shown)
-systemctl stop es-session.service 2>/dev/null
-for i in $(seq 1 10); do
-    pidof emulationstation >/dev/null 2>&1 || break
-    sleep 0.1
-done
+# Clear framebuffer and set mode BEFORE RetroArch grabs it
+dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+modetest -s HDMI-A-1:1920x1080 2>/dev/null
 
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
