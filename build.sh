@@ -2304,23 +2304,20 @@ tar -cJf "$SCRIPT_DIR/community-files/arch.tar.xz" -C "$ROOTFS" \
 echo "=== Rebuilding initramfs ==="
 cd "$SCRIPT_DIR"
 find . \
-    -not -path './.git/*' \
-    -not -path './.github/*' \
-    -not -path './community-files/*' \
-    -not -path './es_configs import/*' \
-    -not -path './.env' \
-    -not -path './.opencode/*' \
-    -not -path './dev/*' \
-    -not -path './etc/emulationstation/*' \
+    \( -name '.git' -o -name '.opencode' -o -name '.github' -o -name 'community-files' -o -name 'wiki' \) -prune \
+    -o -not -path './es_configs import/*' \
+    -not -name 'es_configs import' \
+    -not -name '.gitignore' \
+    -not -name '.gitattributes' \
+    -not -name '.env' \
+    -not -name 'opencode.json' \
+    -not -name 'AGENTS.md' \
+    -not -name 'opencode_history.md' \
     -not -name 'build.sh' \
     -not -name 'README.md' \
     -not -name 'LICENSE' \
     -not -name 'AUTHORS' \
     -not -name 'LICENCE.Marvell' \
-    -not -name '.gitignore' \
-    -not -name '.gitattributes' \
-    -not -name 'AGENTS.md' \
-    -not -name 'opencode_history.md' \
     -not -name '*.zip' \
     -not -name '*.tar.xz' \
     -not -name '*.cpio.gz' \
