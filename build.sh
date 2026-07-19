@@ -523,6 +523,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=PS4
+KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
@@ -534,7 +535,7 @@ ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 ExecStart=emulationstation
-Restart=always
+Restart=on-failure
 RestartSec=3
 
 [Install]
@@ -1066,7 +1067,7 @@ video_fullscreen = "true"
 video_driver = "gl"
 video_context_driver = "kms"
 audio_driver = "alsa"
-audio_device = "alsa_output.pci-0000_00_01.1.hdmi-stereo"
+audio_device = "hw:0,3"
 input_driver = "udev"
 input_device = "Sony Interactive Entertainment Wireless Controller"
 input_autodetect_enable = "true"
@@ -1087,24 +1088,26 @@ video_font_size = "32.000000"
 config_save_on_exit = "false"
 menu_show_load_content = "false"
 menu_show_load_content_animation = "false"
-input_menu_toggle_gamepad_combo = "0"
-input_enable_hotkey_btn = "5"
+# Hotkey - PS/BTN_MODE (button 12) = hotkey modifier
+# Hold PS + press button = hotkey action
+# Hold Start(11) + Select(10) = open RA menu (gamepad combo)
+input_menu_toggle_gamepad_combo = "2"
+input_enable_hotkey_btn = "12"
 input_menu_toggle = "f1"
-input_menu_toggle_btn = "1"
 input_exit_emulator = "escape"
-input_exit_emulator_btn = "6"
+input_exit_emulator_btn = "0"
 input_save_state = "f2"
-input_save_state_btn = "5"
+input_save_state_btn = "7"
 input_load_state = "f4"
-input_load_state_btn = "4"
+input_load_state_btn = "6"
 input_screenshot = "f8"
-input_screenshot_btn = "3"
+input_screenshot_btn = "4"
 input_hold_fast_forward = "l"
-input_hold_fast_forward_btn = "+7"
+input_hold_fast_forward_btn = "14"
 input_rewind = "r"
-input_rewind_btn = "+6"
+input_rewind_btn = "13"
 input_reset = "r"
-input_reset_btn = "1"
+input_reset_btn = "3"
 input_state_slot_decrease = "left"
 input_state_slot_decrease_btn = "h0left"
 input_state_slot_increase = "right"
@@ -1113,15 +1116,15 @@ input_up = "h0up"
 input_down = "h0down"
 input_left = "h0left"
 input_right = "h0right"
-input_a = "0"
-input_b = "1"
+input_a = "1"
+input_b = "0"
 input_x = "3"
 input_y = "4"
 input_start = "11"
 input_select = "10"
 input_l = "6"
 input_r = "7"
-input_l2_axis = "+4"
+input_l2_axis = "+2"
 input_r2_axis = "+5"
 input_l3_btn = "13"
 input_r3_btn = "14"
@@ -1138,15 +1141,15 @@ input_up_btn = "h0up"
 input_down_btn = "h0down"
 input_left_btn = "h0left"
 input_right_btn = "h0right"
-input_a_btn = "0"
-input_b_btn = "1"
+input_a_btn = "1"
+input_b_btn = "0"
 input_x_btn = "3"
 input_y_btn = "4"
 input_start_btn = "11"
 input_select_btn = "10"
 input_l_btn = "6"
 input_r_btn = "7"
-input_l2_axis = "+4"
+input_l2_axis = "+2"
 input_r2_axis = "+5"
 input_l3_btn = "13"
 input_r3_btn = "14"
@@ -1158,8 +1161,8 @@ input_r_x_plus_axis = "+3"
 input_r_x_minus_axis = "-3"
 input_r_y_plus_axis = "+4"
 input_r_y_minus_axis = "-4"
-input_player1_a_btn = "0"
-input_player1_b_btn = "1"
+input_player1_a_btn = "1"
+input_player1_b_btn = "0"
 input_player1_x_btn = "3"
 input_player1_y_btn = "4"
 input_player1_l_btn = "6"
@@ -1181,7 +1184,7 @@ input_player1_r_x_plus_axis = "+3"
 input_player1_r_x_minus_axis = "-3"
 input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
-input_player1_l2_axis = "+4"
+input_player1_l2_axis = "+2"
 input_player1_r2_axis = "+5"
 RETROCFG
 
@@ -1277,9 +1280,25 @@ if [ -n "$IMAGE" ]; then
     show_image "$IMAGE"
 fi
 
-# Clear framebuffer and set mode BEFORE RetroArch grabs it
+# Ignore HUP so we survive if parent shell dies
+trap '' HUP
+
+# Stop ES with sudo (PS4 user has NOPASSWD)
+echo "PS4" | sudo -S systemctl stop es-session.service 2>/dev/null
+
+# Wait for ES to fully die
+for i in $(seq 1 30); do
+    pidof emulationstation >/dev/null 2>&1 || break
+    sleep 0.2
+done
+
+# Settle time for DRM cleanup
+sleep 0.5
+
+# Clear framebuffer
 dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
-modetest -s HDMI-A-1:1920x1080 2>/dev/null
+
+# DO NOT run modetest here - it corrupts DRM CRTC state and causes green screen
 
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
@@ -1288,13 +1307,23 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-/usr/bin/retroarch "$@" 2>&1 | tee /tmp/retroarch.log
 
-# Retrain display after RetroArch exits
-modetest -s HDMI-A-1:1920x1080 2>/dev/null
+# Launch RetroArch in new session, with verbose logging for DRM debugging
+setsid /usr/bin/retroarch --verbose "$@" </dev/null > >(tee /tmp/retroarch.log) 2>&1 &
+RA_PID=$!
+
+# Wait for RetroArch to actually exit
+while kill -0 "$RA_PID" 2>/dev/null; do
+    sleep 0.5
+done
+
+# Restore display after RetroArch exits
 dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
 
-exit $?
+# Restart ES
+echo "PS4" | sudo -S systemctl start es-session.service 2>/dev/null
+
+exit 0
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
@@ -1303,7 +1332,8 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 # PS4 RetroBox - RetroArch appendconfig (matches ES Configure Input mapping)
 
 # Audio
-audio_driver = "sdl2"
+audio_driver = "alsa"
+audio_device = "hw:0,3"
 audio_sync = "true"
 audio_latency = "64"
 
@@ -1317,19 +1347,20 @@ menu_unified_controls = "true"
 menu_disable_left_analog = "false"
 menu_disable_right_analog = "false"
 
-# Hotkey - PS/Guide (button 5) = hotkey modifier
-input_menu_toggle_gamepad_combo = "0"
-input_enable_hotkey_btn = "5"
-input_menu_toggle_btn = "1"
-input_exit_emulator_btn = "6"
-input_save_state_btn = "5"
-input_load_state_btn = "4"
-input_screenshot_btn = "2"
-input_hold_fast_forward_btn = "+4"
-input_state_slot_decrease_btn = "13"
-input_state_slot_increase_btn = "14"
-input_rewind_btn = "-4"
-input_reset_btn = "0"
+# Hotkey - PS/BTN_MODE (button 12) = hotkey modifier
+# Hold PS + press button = hotkey action
+# Hold Start(11) + Select(10) = open RA menu (gamepad combo)
+input_menu_toggle_gamepad_combo = "2"
+input_enable_hotkey_btn = "12"
+input_exit_emulator_btn = "0"
+input_save_state_btn = "7"
+input_load_state_btn = "6"
+input_screenshot_btn = "4"
+input_hold_fast_forward_btn = "14"
+input_state_slot_decrease_btn = "h0left"
+input_state_slot_increase_btn = "h0right"
+input_rewind_btn = "13"
+input_reset_btn = "3"
 
 # D-Pad via hat
 input_up = "h0up"
@@ -1337,27 +1368,27 @@ input_down = "h0down"
 input_left = "h0left"
 input_right = "h0right"
 
-# Face buttons - match ES: a=Cross(1), b=Circle(0), x=Triangle(3), y=Square(2)
+# Face buttons - match ES: a=Circle(1), b=Cross(0), x=Triangle(3), y=Square(4)
 input_a = "1"
 input_b = "0"
 input_x = "3"
-input_y = "2"
+input_y = "4"
 
-# Start/Select - match ES: start=Options(6), select=Share(4)
-input_start = "6"
-input_select = "4"
+# Start/Select - match ES: start=Options(11), select=Share(10)
+input_start = "11"
+input_select = "10"
 
-# Shoulders - match ES: l=L1(9), r=R1(10)
-input_l = "9"
-input_r = "10"
+# Shoulders - match ES: l=L1(6), r=R1(7)
+input_l = "6"
+input_r = "7"
 
-# Triggers - match ES: lefttrigger=axis 4(-1), righttrigger=axis 5(-1)
-input_l2_axis = "-4"
-input_r2_axis = "-5"
+# Triggers - L2=axis2(ABS_Z), R2=axis5(ABS_RZ)
+input_l2_axis = "+2"
+input_r2_axis = "+5"
 
-# Thumb sticks - match ES: l3=7, r3=8
-input_l3 = "7"
-input_r3 = "8"
+# Thumb sticks - match ES: l3=13, r3=14
+input_l3 = "13"
+input_r3 = "14"
 
 # Left analog stick - match ES: axis 0/1
 input_l_x_plus_axis = "+0"
@@ -1365,25 +1396,25 @@ input_l_x_minus_axis = "-0"
 input_l_y_plus_axis = "+1"
 input_l_y_minus_axis = "-1"
 
-# Right analog stick - match ES: axis 2/3
-input_r_x_plus_axis = "+2"
-input_r_x_minus_axis = "-2"
-input_r_y_plus_axis = "+3"
-input_r_y_minus_axis = "-3"
+# Right analog stick - match ES: axis 3/4
+input_r_x_plus_axis = "+3"
+input_r_x_minus_axis = "-3"
+input_r_y_plus_axis = "+4"
+input_r_y_minus_axis = "-4"
 
 # Player 1 bindings - match ES exactly
 input_device_p1 = "Sony Interactive Entertainment Wireless Controller"
 input_player1_a_btn = "1"
 input_player1_b_btn = "0"
 input_player1_x_btn = "3"
-input_player1_y_btn = "2"
-input_player1_l_btn = "9"
-input_player1_r_btn = "10"
-input_player1_select_btn = "4"
-input_player1_start_btn = "6"
-input_player1_l3_btn = "7"
-input_player1_r3_btn = "8"
-input_player1_guide_btn = "5"
+input_player1_y_btn = "4"
+input_player1_l_btn = "6"
+input_player1_r_btn = "7"
+input_player1_select_btn = "10"
+input_player1_start_btn = "11"
+input_player1_l3_btn = "13"
+input_player1_r3_btn = "14"
+input_player1_guide_btn = "12"
 input_player1_up_btn = "h0up"
 input_player1_down_btn = "h0down"
 input_player1_left_btn = "h0left"
@@ -1392,12 +1423,12 @@ input_player1_l_x_plus_axis = "+0"
 input_player1_l_x_minus_axis = "-0"
 input_player1_l_y_plus_axis = "+1"
 input_player1_l_y_minus_axis = "-1"
-input_player1_r_x_plus_axis = "+2"
-input_player1_r_x_minus_axis = "-2"
-input_player1_r_y_plus_axis = "+3"
-input_player1_r_y_minus_axis = "-3"
-input_player1_l2_axis = "-4"
-input_player1_r2_axis = "-5"
+input_player1_r_x_plus_axis = "+3"
+input_player1_r_x_minus_axis = "-3"
+input_player1_r_y_plus_axis = "+4"
+input_player1_r_y_minus_axis = "-4"
+input_player1_l2_axis = "+2"
+input_player1_r2_axis = "+5"
 beetle_psx_cd_access_method = "precache"
 beetle_psx_cd_fastload = "4x(native)"
 beetle_psx_gpu_overclock = "2x(native)"
@@ -1471,16 +1502,16 @@ input_device_display_name = "PS4 DualShock 4"
 input_a_btn = "1"
 input_b_btn = "0"
 input_x_btn = "3"
-input_y_btn = "2"
-input_l_btn = "4"
-input_r_btn = "5"
-input_l2_axis = "+4"
+input_y_btn = "4"
+input_l_btn = "6"
+input_r_btn = "7"
+input_l2_axis = "+2"
 input_r2_axis = "+5"
-input_select_btn = "4"
-input_start_btn = "6"
-input_l3_btn = "10"
-input_r3_btn = "11"
-input_guide_btn = "5"
+input_select_btn = "10"
+input_start_btn = "11"
+input_l3_btn = "13"
+input_r3_btn = "14"
+input_guide_btn = "12"
 input_up_btn = "h0up"
 input_down_btn = "h0down"
 input_left_btn = "h0left"
@@ -1500,7 +1531,7 @@ input_right = "h0right"
 input_a = "1"
 input_b = "0"
 input_x = "3"
-input_y = "2"
+input_y = "4"
 DS4CFG
 
 # === Configure EmulationStation ===
@@ -2279,6 +2310,8 @@ find . \
     -not -path './es_configs import/*' \
     -not -path './.env' \
     -not -path './.opencode/*' \
+    -not -path './dev/*' \
+    -not -path './etc/emulationstation/*' \
     -not -name 'build.sh' \
     -not -name 'README.md' \
     -not -name 'LICENSE' \
@@ -2287,7 +2320,10 @@ find . \
     -not -name '.gitignore' \
     -not -name '.gitattributes' \
     -not -name 'AGENTS.md' \
+    -not -name 'opencode_history.md' \
     -not -name '*.zip' \
+    -not -name '*.tar.xz' \
+    -not -name '*.cpio.gz' \
     -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
 echo "  initramfs rebuilt from source tree (with Plymouth)"
 
