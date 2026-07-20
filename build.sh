@@ -523,7 +523,6 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=PS4
-KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
@@ -533,9 +532,8 @@ Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 ExecStart=emulationstation
-Restart=on-failure
+Restart=always
 RestartSec=3
 
 [Install]
@@ -1483,7 +1481,6 @@ beetle_psx_draw_frontend_borders = "disabled"
 beetle_psx_enable_og_sce_audio = "disabled"
 beetle_psx_analog_calibration = "enabled"
 PSXOPT
-PSXOPT
 chmod 444 "$ROOTFS/home/PS4/.config/retroarch/config/Beetle PSX/Beetle PSX.opt"
 
 # === Create DS4 USB polling reduction rule ===
@@ -2300,29 +2297,9 @@ tar -cJf "$SCRIPT_DIR/community-files/arch.tar.xz" -C "$ROOTFS" \
     --exclude='./proc' --exclude='./sys' --exclude='./run' \
     --exclude='./dev' --exclude='./tmp' .
 
-# === Rebuild initramfs from source tree ===
+# === Rebuild initramfs from known-good source directories ===
 echo "=== Rebuilding initramfs ==="
-cd "$SCRIPT_DIR"
-find . \
-    \( -name '.git' -o -name '.opencode' -o -name '.github' -o -name 'community-files' -o -name 'wiki' \) -prune \
-    -o -not -path './es_configs import/*' \
-    -not -name 'es_configs import' \
-    -not -name '.gitignore' \
-    -not -name '.gitattributes' \
-    -not -name '.env' \
-    -not -name 'opencode.json' \
-    -not -name 'AGENTS.md' \
-    -not -name 'opencode_history.md' \
-    -not -name 'build.sh' \
-    -not -name 'README.md' \
-    -not -name 'LICENSE' \
-    -not -name 'AUTHORS' \
-    -not -name 'LICENCE.Marvell' \
-    -not -name '*.zip' \
-    -not -name '*.tar.xz' \
-    -not -name '*.cpio.gz' \
-    -print0 | cpio --null -o --format=newc 2>/dev/null | gzip > community-files/initramfs.cpio.gz
-echo "  initramfs rebuilt from source tree (with Plymouth)"
+bash "$SCRIPT_DIR/scripts/build-initramfs.sh"
 
 echo ""
 echo "=== Build complete! ==="
@@ -2331,10 +2308,6 @@ echo "  arch.tar.xz          $(du -h community-files/arch.tar.xz | cut -f1)  (Ub
 echo "  initramfs.cpio.gz    $(du -h community-files/initramfs.cpio.gz 2>/dev/null | cut -f1 || echo 'missing')  (with Plymouth splash)"
 echo "  bzImage*             (kernel - already in community-files)"
 echo "  payload-960-*.elf    (payloads - already in community-files)"
-echo ""
-echo "Creating release zip..."
-cd "$SCRIPT_DIR/community-files" && zip -j "../ps4-retrobox-v$(cat ../VERSION).zip" arch.tar.xz initramfs.cpio.gz bootargs.txt 2>/dev/null && echo "  Release zip: ps4-retrobox-v$(cat ../VERSION).zip ($(du -h "../ps4-retrobox-v$(cat ../VERSION).zip" | cut -f1))"
-cd "$SCRIPT_DIR"
 echo ""
 echo "FTP these 3 files to your PS4:"
 echo "  1. bzImage*           -> /data/linux/boot/bzImage"
