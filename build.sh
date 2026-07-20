@@ -1176,102 +1176,10 @@ input_player1_l2_axis = "+2"
 input_player1_r2_axis = "+5"
 RETROCFG
 
-# === Create RetroArch wrapper (shows image FIRST, then stops ES, then launches game) ===
+# === Create RetroArch wrapper ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
-
-find_launch_image() {
-    local system="$1" rom="$2"
-    local rom_bn="${rom##*/}"
-    rom_bn="${rom_bn%.*}"
-    for img in \
-        "/home/PS4/.emulationstation/downloaded_images/$system/images/${rom_bn}-launching.png" \
-        "/home/PS4/.emulationstation/downloaded_images/$system/launching.png" \
-        "/home/PS4/ROMS/$system/launching.png" \
-        "/home/PS4/.emulationstation/configs/all/launching.png"; do
-        [ -f "$img" ] && echo "$img" && return
-    done
-}
-
-show_image() {
-    local img="$1"
-    if command -v python3 >/dev/null 2>&1; then
-        python3 -c "
-from PIL import Image
-img = Image.open('$img').convert('RGBA')
-img = img.resize((1920, 1080), Image.LANCZOS)
-data = bytearray(img.tobytes())
-for i in range(0, len(data), 4):
-    data[i], data[i+2] = data[i+2], data[i]
-fd = open('/dev/fb0', 'wb')
-fd.write(bytes(data))
-fd.close()
-" 2>/dev/null
-    fi
-}
-
-SYSTEM=""
-ROM_PATH=""
-for arg in "$@"; do
-    case "$arg" in
-        *snes*) SYSTEM="snes" ;;
-        *nes*) SYSTEM="nes" ;;
-        *n64*) SYSTEM="n64" ;;
-        *gba*) SYSTEM="gba" ;;
-        *gb/*|*gbc*) SYSTEM="gb" ;;
-        *megadrive*) SYSTEM="megadrive" ;;
-        *psx*) SYSTEM="psx" ;;
-        *tg16*) SYSTEM="tg16" ;;
-        *tgcd*) SYSTEM="tgcd" ;;
-        *arcade*) SYSTEM="arcade" ;;
-        *neogeo*) SYSTEM="neogeo" ;;
-        *atari2600*) SYSTEM="atari2600" ;;
-        *atari5200*) SYSTEM="atari5200" ;;
-        *atari7800*) SYSTEM="atari7800" ;;
-        *mastersystem*) SYSTEM="mastersystem" ;;
-        *gamegear*) SYSTEM="gamegear" ;;
-        *famicom*) SYSTEM="famicom" ;;
-        *fds*) SYSTEM="fds" ;;
-        *genesis*) SYSTEM="genesis" ;;
-        *sfc*) SYSTEM="sfc" ;;
-        *mega-cd*) SYSTEM="mega-cd" ;;
-        *segacd*) SYSTEM="segacd" ;;
-        *sega32x*) SYSTEM="sega32x" ;;
-        *wonderswancolor*) SYSTEM="wonderswancolor" ;;
-        *wonderswan*) SYSTEM="wonderswan" ;;
-        *atarijaguar*) SYSTEM="atarijaguar" ;;
-        *atarilynx*) SYSTEM="atarilynx" ;;
-        *colecovision*) SYSTEM="colecovision" ;;
-        *gameandwatch*) SYSTEM="gameandwatch" ;;
-        *ngpc*) SYSTEM="ngpc" ;;
-        *ngp*) SYSTEM="ngp" ;;
-        *psp*) SYSTEM="psp" ;;
-        *sg-1000*) SYSTEM="sg-1000" ;;
-        *supergrafx*) SYSTEM="supergrafx" ;;
-        *virtualboy*) SYSTEM="virtualboy" ;;
-        *channelf*) SYSTEM="channelf" ;;
-        *mame-libretro*) SYSTEM="mame-libretro" ;;
-        *vectrex*) SYSTEM="vectrex" ;;
-        *dreamcast*) SYSTEM="dreamcast" ;;
-        *ps2*) SYSTEM="ps2" ;;
-        *gamecube*) SYSTEM="gamecube" ;;
-        *wii*) SYSTEM="wii" ;;
-    esac
-    [[ "$arg" == /home/PS4/ROMS/* ]] && ROM_PATH="$arg"
-done
-
-# Show launch image
-IMAGE=""
-if [ -n "$SYSTEM" ] && [ -n "$ROM_PATH" ]; then
-    IMAGE=$(find_launch_image "$SYSTEM" "$ROM_PATH")
-fi
-if [ -n "$IMAGE" ]; then
-    show_image "$IMAGE"
-fi
-
-# Ignore HUP so we survive if parent shell dies
 trap '' HUP
-
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
@@ -1279,9 +1187,8 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-# Do NOT stop ES — it stays alive in background, RA takes over display via KMS
-# When RA exits, ES is still there showing its UI
 /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
+echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
 exit 0
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
