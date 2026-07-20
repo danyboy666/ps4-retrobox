@@ -876,41 +876,29 @@ echo HDMI recovery complete.
 RECOVEREOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
 
+# === HDMI watcher — DISABLED (was corrupting DRM state via modetest) ===
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
-echo hdmi-watcher started
-modetest -s HDMI-A-1:1920x1080 2>/dev/null
-while true; do
-    if ! pgrep -f emulationstation > /dev/null 2>&1; then
-        echo hdmi-watcher: ES not running, restarting
-        modetest -s HDMI-A-1:1920x1080 2>/dev/null
-        sleep 1
-        systemctl start es-session.service 2>/dev/null
-    fi
-    sleep 5
-done
+# HDMI watcher disabled — modetest corrupts DRM CRTC state
+exit 0
 HDMI_EOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
-chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
-# === HDMI watcher systemd service ===
 cat > "$ROOTFS/etc/systemd/system/hdmi-watcher.service" << 'SVC2EOF'
 [Unit]
-Description=HDMI Hotplug Watcher
+Description=HDMI Hotplug Watcher (disabled)
 After=multi-user.target
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=/usr/local/bin/hdmi-watcher.sh
-Restart=always
-RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 SVC2EOF
 
-ln -sf /etc/systemd/system/hdmi-watcher.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/hdmi-watcher.service"
-echo "Services: hdmi-watcher enabled"
+# Do NOT enable hdmi-watcher — it was causing green screen / no signal
+echo "Services: hdmi-watcher disabled"
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
