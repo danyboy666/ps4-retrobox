@@ -523,10 +523,11 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=PS4
+KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
-Environment=SDL_AUDIODRIVER=alsa
+Environment=SDL_AUDIODRIVER=pulse
 Environment=LANG=en_US.UTF-8
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
@@ -1050,13 +1051,14 @@ chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
+video_fullscreen_x = "1920"
+video_fullscreen_y = "1080"
 video_driver = "gl"
 video_context_driver = "kms"
-audio_driver = "alsa"
-audio_device = "hw:0,3"
+audio_driver = "pulse"
 input_driver = "udev"
 input_device = "Sony Interactive Entertainment Wireless Controller"
-input_autodetect_enable = "true"
+input_autodetect_enable = "false"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
@@ -1197,6 +1199,7 @@ show_image() {
         python3 -c "
 from PIL import Image
 img = Image.open('$img').convert('RGBA')
+img = img.resize((1920, 1080), Image.LANCZOS)
 data = bytearray(img.tobytes())
 for i in range(0, len(data), 4):
     data[i], data[i+2] = data[i+2], data[i]
@@ -1269,23 +1272,6 @@ fi
 # Ignore HUP so we survive if parent shell dies
 trap '' HUP
 
-# Stop ES with sudo (PS4 user has NOPASSWD)
-echo "PS4" | sudo -S systemctl stop es-session.service 2>/dev/null
-
-# Wait for ES to fully die
-for i in $(seq 1 30); do
-    pidof emulationstation >/dev/null 2>&1 || break
-    sleep 0.2
-done
-
-# Settle time for DRM cleanup
-sleep 0.5
-
-# Clear framebuffer
-dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
-
-# DO NOT run modetest here - it corrupts DRM CRTC state and causes green screen
-
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
@@ -1293,22 +1279,9 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-
-# Launch RetroArch in new session, with verbose logging for DRM debugging
-setsid /usr/bin/retroarch --verbose "$@" </dev/null > >(tee /tmp/retroarch.log) 2>&1 &
-RA_PID=$!
-
-# Wait for RetroArch to actually exit
-while kill -0 "$RA_PID" 2>/dev/null; do
-    sleep 0.5
-done
-
-# Restore display after RetroArch exits
-dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
-
-# Restart ES
-echo "PS4" | sudo -S systemctl start es-session.service 2>/dev/null
-
+# Do NOT stop ES — it stays alive in background, RA takes over display via KMS
+# When RA exits, ES is still there showing its UI
+/usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
 exit 0
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
@@ -1318,8 +1291,7 @@ cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
 # PS4 RetroBox - RetroArch appendconfig (matches ES Configure Input mapping)
 
 # Audio
-audio_driver = "alsa"
-audio_device = "hw:0,3"
+audio_driver = "pulse"
 audio_sync = "true"
 audio_latency = "64"
 
