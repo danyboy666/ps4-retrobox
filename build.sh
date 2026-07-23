@@ -1168,10 +1168,17 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
+# Force HDMI audio before launching RA (PulseAudio may switch to DS4 USB audio)
+pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
-# Restore HDMI audio sink (PulseAudio may switch to DS4 USB audio during gameplay)
+# Restore HDMI audio after RA exits
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+# Retry modetest up to 3 times to handle USB disconnect race conditions
+for i in 1 2 3; do
+    echo "PS4" | sudo -S modetest -s HDMI-A-1:1920x1080 2>/dev/null && break
+    sleep 1
+done
 echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
 exit 0
 WRAPPER
