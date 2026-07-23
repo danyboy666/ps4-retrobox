@@ -5,7 +5,44 @@ CRITICAL RULE FOR MIMO: Append new sessions to the TOP of this file.
 Keep entries brief, highly technical, and completely clear of credentials.
 -->
 
-## 2026-07-21 | Session: Controller combos + keyboard fixed, sound fixed, commit progress
+## 2026-07-21 | Session: Autoconfig fix, USB disconnect investigation
+
+### AUTOCONFIG FIX (DEPLOYED + IN BUILD.SH)
+- Created `Sony_DualShock4_Custom.cfg` in `/usr/share/retroarch/assets/autoconfig/udev/`
+- Copied to `Sony DualShock 4 Controller.cfg`, `Sony Interactive Entertainment Wireless Controller.cfg`, `Wireless_Controller.cfg`
+- **D-pad = h0up/h0down/h0left/h0right** (HAT hardware, NOT button IDs 11-14)
+- **hotkey/guide = 12** (PS/BTN_MODE, NOT 5)
+- **vendor_id=1356, product_id=2508** for device matching
+- All other button IDs match ES exactly
+
+### USB DISCONNECT ISSUE (KERNEL-LEVEL)
+- DS4 disconnects/reconnects over USB every ~17 seconds
+- 7 USB disconnects logged in dmesg
+- Kernel has `usbhid.quirks=0x054c:0x09cc:0x400000` (NO_INIT_ENDPOINTS) and `usbcore.autosuspend=-1`
+- xhci_aeolia USB controller re-enumerates device on disconnect
+- **CANNOT FIX without kernel rebuild** — Orbis uses custom USB stack
+- Added udev rule to disable autosuspend (may help but doesn't fix root cause)
+- Bluetooth available but DS4 not paired
+
+### WHAT WAS DEPLOYED AND CONFIRMED WORKING
+- D-pad (h0up) ✓
+- Controller combos (PS button=12 as hotkey) ✓
+- Keyboard (Enter/Escape/arrows/F1) ✓  
+- RA menu access ✓
+- Sound (HDMI sink restored after RA exits) ✓
+
+### STILL BROKEN
+- USB disconnect/reconnect cycle (~17 second interval)
+- Face button mapping "still wrong" — user hasn't specified which
+- In-game combos/keyboard may not work (user reported "in-game")
+
+### build.sh CHANGES
+- retroarch.cfg: hotkey=12, D-pad=h0up, keyboard bindings, guide=12
+- appendconfig: player1 bindings matching ES, no duplicate global bindings
+- autoconfig: D-pad=h0up, hotkey=12, vendor/product IDs
+- wrapper: pactl set-default-sink HDMI after RA exits, dd fb0 before restart
+
+## 2026-07-20 | Session: Controller combos + keyboard fixed, sound fixed, commit progress
 
 ### WHAT WAS DEPLOYED AND CONFIRMED WORKING
 PS4 configs:
