@@ -106,6 +106,7 @@ map_input() {
     local value=$(echo "$result" | cut -d' ' -f3)
     
     local retro_value=""
+    local retro_value_hat=""
     case "$type" in
         button)
             retro_value="$id"
@@ -130,7 +131,14 @@ map_input() {
     fi
     
     for key in $retroarch_keys; do
-        echo "${key} = \"${retro_value}\"" >> "$TMPFILE"
+        case "$type" in
+            button|hat)
+                echo "${key}_btn = \"${retro_value}\"" >> "$TMPFILE"
+                ;;
+            axis)
+                echo "${key}_axis = \"${retro_value}\"" >> "$TMPFILE"
+                ;;
+        esac
     done
 }
 
@@ -199,18 +207,18 @@ fi
 
 # Add hotkey functions (when hotkey is held + button pressed)
 # X = Menu Toggle, Start = Exit
-grep "input_player1_x" "$TMPFILE" | sed 's/input_player1_x/input_menu_toggle/' >> "$TMPFILE"
-grep "input_player1_start" "$TMPFILE" | sed 's/input_player1_start/input_exit_emulator/' >> "$TMPFILE"
-grep "input_player1_left" "$TMPFILE" | sed 's/input_player1_left/input_state_slot_decrease/' >> "$TMPFILE"
-grep "input_player1_right" "$TMPFILE" | sed 's/input_player1_right/input_state_slot_increase/' >> "$TMPFILE"
-grep "input_player1_l\b" "$TMPFILE" | sed 's/input_player1_l /input_load_state /' >> "$TMPFILE"
-grep "input_player1_r\b" "$TMPFILE" | sed 's/input_player1_r /input_save_state /' >> "$TMPFILE"
+grep "input_player1_x_btn" "$TMPFILE" | sed 's/input_player1_x_btn/input_menu_toggle_btn/' >> "$TMPFILE"
+grep "input_player1_start_btn" "$TMPFILE" | sed 's/input_player1_start_btn/input_exit_emulator_btn/' >> "$TMPFILE"
+grep "input_player1_left_btn" "$TMPFILE" | sed 's/input_player1_left_btn/input_state_slot_decrease_btn/' >> "$TMPFILE"
+grep "input_player1_right_btn" "$TMPFILE" | sed 's/input_player1_right_btn/input_state_slot_increase_btn/' >> "$TMPFILE"
+grep "input_player1_l_btn" "$TMPFILE" | sed 's/input_player1_l_btn/input_load_state_btn/' >> "$TMPFILE"
+grep "input_player1_r_btn" "$TMPFILE" | sed 's/input_player1_r_btn/input_save_state_btn/' >> "$TMPFILE"
 
 # Add left stick as D-pad fallback
-grep "input_player1_l_y_minus" "$TMPFILE" | sed 's/input_player1_l_y_minus/input_player1_up/' >> "$TMPFILE"
-grep "input_player1_l_y_plus" "$TMPFILE" | sed 's/input_player1_l_y_plus/input_player1_down/' >> "$TMPFILE"
-grep "input_player1_l_x_minus" "$TMPFILE" | sed 's/input_player1_l_x_minus/input_player1_left/' >> "$TMPFILE"
-grep "input_player1_l_x_plus" "$TMPFILE" | sed 's/input_player1_l_x_plus/input_player1_right/' >> "$TMPFILE"
+grep "input_player1_l_y_minus_axis" "$TMPFILE" | sed 's/input_player1_l_y_minus_axis/input_player1_up_btn/' >> "$TMPFILE"
+grep "input_player1_l_y_plus_axis" "$TMPFILE" | sed 's/input_player1_l_y_plus_axis/input_player1_down_btn/' >> "$TMPFILE"
+grep "input_player1_l_x_minus_axis" "$TMPFILE" | sed 's/input_player1_l_x_minus_axis/input_player1_left_btn/' >> "$TMPFILE"
+grep "input_player1_l_x_plus_axis" "$TMPFILE" | sed 's/input_player1_l_x_plus_axis/input_player1_right_btn/' >> "$TMPFILE"
 
 # Disable autodetect (we set everything explicitly)
 echo 'input_autodetect_enable = "false"' >> "$TMPFILE"
