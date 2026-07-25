@@ -512,11 +512,11 @@ true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === ES systemd service (no X11 — PS4 can't switch VTs, ES uses SDL2 framebuffer directly) ===
+# === ES systemd service (X11 — ES runs under X server) ===
 mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
-Description=EmulationStation (SDL2 framebuffer)
+Description=EmulationStation (X11)
 After=multi-user.target network-online.target plymouth-quit.service
 Wants=network-online.target
 
@@ -527,13 +527,9 @@ KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
-Environment=SDL_AUDIODRIVER=pulse
 Environment=LANG=en_US.UTF-8
-Environment=vblank_mode=2
-Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
-ExecStart=emulationstation
+ExecStart=/bin/bash -c "su - PS4 -c 'startx /home/PS4/.xinitrc -- vt1'"
 Restart=always
 RestartSec=3
 
@@ -1161,7 +1157,7 @@ RETROCFG
 # === Create RetroArch wrapper ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
-trap '' HUP
+trap "" HUP
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
@@ -1169,17 +1165,12 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-# Force HDMI audio before launching RA (PulseAudio may switch to DS4 USB audio)
+export DISPLAY=:0
+# Force HDMI audio before launching RA
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
 # Restore HDMI audio after RA exits
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
-echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
-# Retry modetest up to 3 times to handle USB disconnect race conditions
-for i in 1 2 3; do
-    echo "PS4" | sudo -S modetest -s HDMI-A-1:1920x1080 2>/dev/null && break
-    sleep 1
-done
 echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
 exit 0
 WRAPPER
