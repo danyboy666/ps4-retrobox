@@ -429,6 +429,12 @@ EOF
 echo "=== Creating xorg.conf ==="
 mkdir -p "$ROOTFS/etc/X11"
 cat > "$ROOTFS/etc/X11/xorg.conf" << 'XORGEOF'
+Section "ServerFlags"
+    Option "DontVTSwitch" "true"
+    Option "DontZoom" "true"
+    Option "AllowMouseOpenFail" "true"
+EndSection
+
 Section "Device"
     Identifier  "AMDGPU"
     Driver      "amdgpu"
@@ -512,11 +518,11 @@ true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === ES systemd service (X11 — ES runs under X server) ===
+# === ES systemd service (SDL2 framebuffer — PS4 has no VT support for X11) ===
 mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
-Description=EmulationStation (X11)
+Description=EmulationStation (SDL2 framebuffer)
 After=multi-user.target network-online.target plymouth-quit.service
 Wants=network-online.target
 
@@ -527,9 +533,13 @@ KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
+Environment=SDL_AUDIODRIVER=pulse
 Environment=LANG=en_US.UTF-8
+Environment=vblank_mode=2
+Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStart=/bin/bash -c "su - PS4 -c 'startx /home/PS4/.xinitrc -- vt1'"
+ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
+ExecStart=emulationstation
 Restart=always
 RestartSec=3
 
