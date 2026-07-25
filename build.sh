@@ -484,7 +484,8 @@ echo "=== Creating .xinitrc ==="
 cat > "$ROOTFS/home/PS4/.xinitrc" << 'XINITEOF'
 #!/bin/bash
 
-# PS4 RetroBox — xinitrc (uses openbox like Batocera)
+# PS4 RetroBox — xinitrc
+# Disables power management, sets 1080p, hides cursor, starts ES
 
 # Kill any lingering ES processes from previous X sessions
 killall -9 emulationstation 2>/dev/null
@@ -495,11 +496,19 @@ xset -dpms
 xset s off
 xset s noblank
 
-# Hide mouse cursor
-unclutter --noevents -b 2>/dev/null || xsetroot -cursor_name none 2>/dev/null || true
+# Force 1080p resolution
+xrandr --output HDMI-A-0 --mode 1920x1080 2>/dev/null || \
+xrandr --output HDMI-0 --mode 1920x1080 2>/dev/null || true
 
-# Launch ES under openbox (like Batocera)
-openbox --config-file /etc/openbox/rc.xml --startup "emulationstation"
+# Hide mouse cursor
+xsetroot -cursor_name none 2>/dev/null || true
+
+# Disable cursor blinking
+xsetroot -cursor_name left_ptr 2>/dev/null || true
+
+# Start EmulationStation (software GL + vsync)
+sleep 5
+exec env LIBGL_ALWAYS_SOFTWARE=1 vblank_mode=2 __GL_SYNC_TO_VBLANK=1 emulationstation
 XINITEOF
 chmod +x "$ROOTFS/home/PS4/.xinitrc"
 
@@ -509,11 +518,11 @@ true
 EOF
 chmod +x "$ROOTFS/home/PS4/.bash_profile"
 
-# === ES systemd service (X11 via openbox — Batocera pattern) ===
+# === ES systemd service (SDL2 framebuffer) ===
 mkdir -p "$ROOTFS/etc/systemd/system"
 cat > "$ROOTFS/etc/systemd/system/es-session.service" << 'SVCEOF'
 [Unit]
-Description=EmulationStation (X11 + openbox)
+Description=EmulationStation (SDL2 framebuffer)
 After=multi-user.target network-online.target plymouth-quit.service
 Wants=network-online.target
 
@@ -524,9 +533,14 @@ KillMode=process
 Environment=LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 Environment=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 Environment=XDG_RUNTIME_DIR=/tmp/runtime-PS4
+Environment=SDL_AUDIODRIVER=pulse
 Environment=LANG=en_US.UTF-8
+Environment=vblank_mode=2
+Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStart=/usr/bin/startx /home/PS4/.xinitrc
+ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
+ExecStart=emulationstation
 Restart=always
 RestartSec=3
 
@@ -1162,7 +1176,6 @@ export XDG_RUNTIME_DIR=/tmp/runtime-PS4
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
-export DISPLAY=:0
 # Force HDMI audio before launching RA
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
