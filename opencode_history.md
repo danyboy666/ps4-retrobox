@@ -5,7 +5,32 @@ CRITICAL RULE FOR MIMO: Append new sessions to the TOP of this file.
 Keep entries brief, highly technical, and completely clear of credentials.
 -->
 
-## 2026-07-21 | Session: Autoconfig fix, USB disconnect investigation
+## 2026-07-25 | Session: Controller mapping FIXED — configs updated from PS4
+
+### WHAT WORKS NOW
+- Controller buttons: all match ES exactly (a=1,b=0,x=3,y=2,L=9,R=10,L3=7,R3=8,start=6,select=4,hotkey=5,guide=12)
+- D-pad: h0up/h0down/h0left/h0right (HAT hardware)
+- Keyboard: Enter=A, Escape=B, arrows=D-pad, Space=Start, Tab=Select, PageUp=L, PageDown=R
+- Hotkey combos: PS(5)+X(3)=menu, PS+Start(6)=exit
+- Analog sticks: L2=axis2, R2=axis5, RightX=axis3, RightY=axis4
+- HDMI recovery: modetest in service ExecStartPre
+
+### build.sh UPDATED TO MATCH PS4 EXACTLY
+- retroarch.cfg: hotkey=5, guide=12, all ES button IDs, keyboard bindings
+- appendconfig: player1 bindings matching ES, hotkey=12
+- wrapper: pactl HDMI audio before+after RA
+- service: modetest in ExecStartPre
+
+### LESSONS LEARNED
+- NEVER change configs without understanding the ACTUAL hardware state
+- ALWAYS read evtest output to verify button indices before deploying
+- ES button IDs work DIRECTLY in RetroArch udev (both read evdev sequentially)
+- D-pad is HAT hardware (ABS_HAT0X/Y) — must use h0up notation
+- PS4 cannot run X11 (no VT support) — must use SDL2 framebuffer
+- PS4 USB has disconnect issues — modetest helps recover display
+- HDMI audio auto-switches to DS4 USB audio — wrapper forces HDMI before RA launch
+
+## 2026-07-20 | Session: Fix Controller Mapping — Correct Button IDs, revert sdl2→udev
 
 ### AUTOCONFIG FIX (DEPLOYED + IN BUILD.SH)
 - Created `Sony_DualShock4_Custom.cfg` in `/usr/share/retroarch/assets/autoconfig/udev/`
