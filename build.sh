@@ -539,7 +539,7 @@ Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "for i in 1 2 3; do modetest -s HDMI-A-1:1920x1080 2>/dev/null && break; sleep 1; done || true"
 ExecStart=emulationstation
 Restart=always
 RestartSec=3
