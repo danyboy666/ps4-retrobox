@@ -235,10 +235,14 @@ GAMEMODE
 echo "=== Creating USB power udev rules ==="
 mkdir -p "$ROOTFS/etc/udev/rules.d"
 cat > "$ROOTFS/etc/udev/rules.d/99-ps4-usb-power.rules" << 'UDEV'
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="084e", ATTR{power/autosuspend}="-1"
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1"
-# Reduce DS4 polling from 5ms to 8ms (200Hz -> 125Hz)
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="8"
+# Disable ALL USB autosuspend globally
+ACTION=="add", SUBSYSTEM=="usb", ATTR{power/autosuspend}="-1"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{power/autosuspend_delay_ms}="-1"
+# DS4: disable autosuspend, force power on, reduce polling to 16ms
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1", ATTR{power/autosuspend_delay_ms}="-1", ATTR{power/control}="on"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", TEST=="*/ep_*/interval", ATTR*/ep_*/interval="16"
+# Handle DS4 reconnections
+ACTION=="change", SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="09cc", ATTR{power/autosuspend}="-1", ATTR{power/control}="on"
 UDEV
 
 # === Install RetroArch autoconfig profiles ===
