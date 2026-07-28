@@ -23,14 +23,42 @@ Keep entries brief, highly technical, and completely clear of credentials.
 
 ### LESSONS LEARNED
 - NEVER change configs without understanding the ACTUAL hardware state
-- ALWAYS read evtest output to verify button indices before deploying
+- ALWAYS read evdev output to verify button indices before deploying
 - ES button IDs work DIRECTLY in RetroArch udev (both read evdev sequentially)
 - D-pad is HAT hardware (ABS_HAT0X/Y) — must use h0up notation
 - PS4 cannot run X11 (no VT support) — must use SDL2 framebuffer
 - PS4 USB has disconnect issues — modetest helps recover display
 - HDMI audio auto-switches to DS4 USB audio — wrapper forces HDMI before RA launch
+- **DO NOT REMOVE usbhid.quirks** — causes USB disconnects, breaks button numbering
 
-## 2026-07-20 | Session: Fix Controller Mapping — Correct Button IDs, revert sdl2→udev
+## 2026-07-27 | Session: usbhid.quirks removal broke everything — NEEDS REFLASH
+
+### ROOT CAUSE: Removing `usbhid.quirks` from bootargs broke:
+1. BTN_C(306)/BTN_Z(309) disappeared — ES button IDs no longer match
+2. DS4 USB disconnects started — controller drops during gameplay
+3. Controller combos broke — hotkey button5 (BTN_Z) no longer exists
+4. Analog sticks broken — button numbering shifted
+5. `input_l2_axis` in appendconfig was wrong (+2 instead of -4)
+
+### FIX: Re-enable usbhid.quirks (already done in bootargs.txt)
+The quirk was NOT causing issues — it was REQUIRED for PS4 DS4.
+
+### PS4 state at end of session
+- hotkey=12 (PS button), save_state=7, load_state=6
+- L2_axis=-4 (matches ES)
+- Launch images downloaded to downloaded_images/nes/snes/n64
+- PIL installed and working
+- USB udev rules for autosuspend
+- Display: modetest retry loop in service
+- **BUT bootargs still has usbhid.quirks REMOVED** — needs reflash to restore
+
+### NEXT SESSION MUST DO
+1. Verify bootargs.txt has usbhid.quirks restored (I did this before session ended)
+2. User reflashes with corrected bootargs
+3. Verify button IDs with evtest
+4. Fix launching images if still broken
+5. Fix keyboard if still broken
+6. Commit ONLY after user confirms everything works
 
 ### AUTOCONFIG FIX (DEPLOYED + IN BUILD.SH)
 - Created `Sony_DualShock4_Custom.cfg` in `/usr/share/retroarch/assets/autoconfig/udev/`
