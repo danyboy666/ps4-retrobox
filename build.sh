@@ -714,23 +714,61 @@ echo "ES config: es_input.cfg (keyboard + DS4 joystick)"
 # writes input_{name}_{type} = "{value}" to joypad file
 python3 << 'PYEOF'
 import xml.etree.ElementTree as ET, os, re
-tree = ET.parse("/home/PS4/.emulationstation/es_input.cfg")
-joypad_dir = "/home/PS4/.config/retroarch/all/retroarch-joypads"
+ROOTFS = os.environ.get("ROOTFS", "/mnt/ps4root")
+tree = ET.parse(f"{ROOTFS}/home/PS4/.emulationstation/es_input.cfg")
+joypad_dir = f"{ROOTFS}/home/PS4/.config/retroarch/all/retroarch-joypads"
 os.makedirs(joypad_dir, exist_ok=True)
+
+# RetroPie mapping: ES input name → RetroArch key(s)
+# From configscripts/retroarch.sh map_retroarch_joystick()
+RA_KEYS = {
+    "up": ["input_up"],
+    "down": ["input_down"],
+    "left": ["input_left", "input_state_slot_decrease"],
+    "right": ["input_right", "input_state_slot_increase"],
+    "a": ["input_a"],
+    "b": ["input_b", "input_reset"],
+    "x": ["input_x", "input_menu_toggle"],
+    "y": ["input_y"],
+    "leftshoulder": ["input_l", "input_load_state"],
+    "rightshoulder": ["input_r", "input_save_state"],
+    "lefttrigger": ["input_l2"],
+    "righttrigger": ["input_r2"],
+    "leftthumb": ["input_l3"],
+    "rightthumb": ["input_r3"],
+    "start": ["input_start", "input_exit_emulator"],
+    "select": ["input_select"],
+    "hotkeyenable": ["input_enable_hotkey"],
+    "leftanalogleft": ["input_l_x_minus"],
+    "leftanalogright": ["input_l_x_plus"],
+    "leftanalogup": ["input_l_y_minus"],
+    "leftanalogdown": ["input_l_y_plus"],
+    "rightanalogleft": ["input_r_x_minus"],
+    "rightanalogright": ["input_r_x_plus"],
+    "rightanalogup": ["input_r_y_minus"],
+    "rightanalogdown": ["input_r_y_plus"],
+}
+HAT_MAP = {"1": "up", "2": "right", "4": "down", "8": "left"}
+
 for ic in tree.getroot().findall("inputConfig"):
     if ic.get("type") != "joystick": continue
     name = ic.get("deviceName")
     lines = [f'input_driver = "udev"', f'input_device = "{name}"']
     for inp in ic.findall("input"):
         n, t, i, v = inp.get("name"), inp.get("type"), inp.get("id"), inp.get("value")
-        if t == "button": lines.append(f'input_{n}_btn = "{i}"')
+        keys = RA_KEYS.get(n, [])
+        if not keys: continue
+        if t == "button":
+            for k in keys: lines.append(f'{k}_btn = "{i}"')
         elif t == "hat":
-            hm = {"1":"up","2":"right","4":"down","8":"left"}
-            if v in hm: lines.append(f'input_{n}_btn = "h{i}{hm[v]}"')
-        elif t == "axis": lines.append(f'input_{n}_axis = "{"+" if int(v)>0 else "-"}{i}"')
+            if v in HAT_MAP:
+                for k in keys: lines.append(f'{k}_btn = "h{i}{HAT_MAP[v]}"')
+        elif t == "axis":
+            val = f"+{i}" if int(v) > 0 else f"-{i}"
+            for k in keys: lines.append(f'{k}_axis = "{val}"')
     safe = re.sub(r'[:<>?"/\\|*]', '', name)
     with open(f"{joypad_dir}/{safe}.cfg", "w") as f: f.write("\n".join(lines)+"\n")
-    print(f"Generated: {joypad_dir}/{safe}.cfg")
+    print(f"Generated: {joypad_dir}/{safe}.cfg ({len(lines)} lines)")
 PYEOF
 
 # === Storage choice ===
