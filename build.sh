@@ -709,6 +709,30 @@ INPUTEOF
 echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
 echo "ES config: es_input.cfg (keyboard + DS4 joystick)"
 
+# === Generate RetroArch autoconfig from es_input.cfg ===
+# Mimics RetroPie configscripts/retroarch.sh: reads ES input type/id/value,
+# writes input_{name}_{type} = "{value}" to joypad file
+python3 << 'PYEOF'
+import xml.etree.ElementTree as ET, os, re
+tree = ET.parse("/home/PS4/.emulationstation/es_input.cfg")
+joypad_dir = "/home/PS4/.config/retroarch/all/retroarch-joypads"
+os.makedirs(joypad_dir, exist_ok=True)
+for ic in tree.getroot().findall("inputConfig"):
+    if ic.get("type") != "joystick": continue
+    name = ic.get("deviceName")
+    lines = [f'input_driver = "udev"', f'input_device = "{name}"']
+    for inp in ic.findall("input"):
+        n, t, i, v = inp.get("name"), inp.get("type"), inp.get("id"), inp.get("value")
+        if t == "button": lines.append(f'input_{n}_btn = "{i}"')
+        elif t == "hat":
+            hm = {"1":"up","2":"right","4":"down","8":"left"}
+            if v in hm: lines.append(f'input_{n}_btn = "h{i}{hm[v]}"')
+        elif t == "axis": lines.append(f'input_{n}_axis = "{"+" if int(v)>0 else "-"}{i}"')
+    safe = re.sub(r'[:<>?"/\\|*]', '', name)
+    with open(f"{joypad_dir}/{safe}.cfg", "w") as f: f.write("\n".join(lines)+"\n")
+    print(f"Generated: {joypad_dir}/{safe}.cfg")
+PYEOF
+
 # === Storage choice ===
 echo ""
 echo "Where should ROMs be stored?"
@@ -1064,6 +1088,7 @@ chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 # Hotkey = BTN_Z (button 5) from ES config
 # Analog axes: L2=axis2(ABS_Z), R2=axis5(ABS_RZ), RightX=axis3, RightY=axis4
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/all/retroarch-joypads"
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
 video_fullscreen = "true"
 video_fullscreen_x = "1920"
@@ -1073,7 +1098,7 @@ video_context_driver = "kms"
 audio_driver = "pulse"
 input_driver = "udev"
 input_device = "Sony Interactive Entertainment Wireless Controller"
-input_autodetect_enable = "false"
+input_autodetect_enable = "true"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
