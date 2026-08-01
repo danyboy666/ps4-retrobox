@@ -752,8 +752,10 @@ HAT_MAP = {"1": "up", "2": "right", "4": "down", "8": "left"}
 
 for ic in tree.getroot().findall("inputConfig"):
     if ic.get("type") != "joystick": continue
-    name = ic.get("deviceName")
-    lines = [f'input_driver = "udev"', f'input_device = "{name}"']
+    es_name = ic.get("deviceName")
+    # Use actual device name that RetroArch detects (not ES name)
+    ra_name = "Sony Interactive Entertainment Wireless Controller"
+    lines = [f'input_driver = "udev"', f'input_device = "{ra_name}"']
     for inp in ic.findall("input"):
         n, t, i, v = inp.get("name"), inp.get("type"), inp.get("id"), inp.get("value")
         keys = RA_KEYS.get(n, [])
