@@ -214,22 +214,10 @@ fi
 echo "=== Installing extras ==="
 run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     joystick jstest-gtk evtest ffmpeg netpbm python3-pil \
-    gamemode xkb-data"
-
-# === Configure GameMode ===
-echo "=== Configuring GameMode ==="
-mkdir -p "$ROOTFS/etc/gamemode"
-cat > "$ROOTFS/etc/gamemode/gamemode.ini" << 'GAMEMODE'
-[general]
-reaper_frequency=5
-desiredgov=performance
-reaper_nice=0
-renice=10
-ioprio=0
-apply_gpu_optimisations=1
-apply_renice=1
-apply_ioprio=1
-GAMEMODE
+    xkb-data"
+# Force reinstall xkb-data to ensure symbol files survive rootfs cleanup
+run_chroot "apt-get install --reinstall -y xkb-data"
+run_chroot "ls /usr/share/X11/xkb/symbols/ | wc -l"
 
 # === USB power management ===
 echo "=== Creating USB power udev rules ==="
@@ -371,7 +359,7 @@ chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 
 # === Create user ===
 echo "=== Creating user PS4 ==="
-run_chroot "useradd -m -s /bin/bash -G sudo,video,input,plugdev,render PS4"
+run_chroot "useradd -m -s /bin/bash -G sudo,video,input,plugdev,render,audio PS4"
 run_chroot "echo 'PS4:PS4' | chpasswd"
 run_chroot "echo 'root:root' | chpasswd"
 run_chroot "echo 'PS4 ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/PS4"
@@ -541,9 +529,12 @@ Environment=SDL_AUDIODRIVER=pulse
 Environment=LANG=en_US.UTF-8
 Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
+Environment=XKB_CONFIG_ROOT=/usr/share/X11/xkb
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "killall -9 retroarch 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "sleep 1"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "for i in 1 2 3; do modetest -s HDMI-A-1:1920x1080 2>/dev/null && break; sleep 1; done || true"
+ExecStartPre=/bin/bash -c "sleep 1"
 ExecStart=emulationstation
 Restart=always
 RestartSec=3
@@ -552,6 +543,33 @@ RestartSec=3
 WantedBy=multi-user.target
 SVCEOF
 ln -sf /etc/systemd/system/es-session.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/es-session.service"
+
+# === Disable getty services (they steal keyboard input from RetroArch) ===
+echo "=== Disabling getty services ==="
+for tty_num in 1 2 3 4 5 6; do
+    run_chroot "systemctl mask getty@tty${tty_num}.service" 2>/dev/null || true
+done
+run_chroot "systemctl mask serial-getty@ttyS0.service" 2>/dev/null || true
+
+# === Enable lingering for PulseAudio (starts on boot without login) ===
+echo "=== Enabling user lingering ==="
+run_chroot "loginctl enable-linger PS4" 2>/dev/null || true
+
+# === PulseAudio: force HDMI as default sink ===
+echo "=== Configuring PulseAudio HDMI default ==="
+mkdir -p "$ROOTFS/home/PS4/.config/pulse"
+cat > "$ROOTFS/home/PS4/.config/pulse/default.pa" << 'PAPAEOF'
+#!/usr/bin/pulseaudio -nF
+
+.include /etc/pulse/default.pa
+
+# Remove auto-switch so DS4 speaker doesn't steal audio
+unload-module module-switch-on-connect
+
+# Set HDMI as default
+set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo
+PAPAEOF
+chown -R 1000:1000 "$ROOTFS/home/PS4/.config/pulse"
 
 # === CPU governor performance service ===
 cat > "$ROOTFS/etc/systemd/system/cpu-performance.service" << 'CPUEOF'
@@ -855,9 +873,13 @@ echo "ES folders created"
 
 # Download launching images from ehettervik/es-runcommand-splash
 echo "=== Downloading launching images ==="
-SPLEASH_DIR="/tmp/es-runcommand-splash"
-rm -rf "$SPLASH_DIR"
-git clone --depth 1 https://github.com/ehettervik/es-runcommand-splash.git "$SPLASH_DIR" 2>/dev/null || true
+SPLEASH_DIR="/tmp/es-runcommand-splash-$$"
+rm -rf "$SPLEASH_DIR"
+git clone --depth 1 https://github.com/ehettervik/es-runcommand-splash.git "$SPLEASH_DIR" 2>&1 || {
+    echo "WARNING: git clone failed, trying curl fallback..."
+    mkdir -p "$SPLEASH_DIR"
+    curl -sL https://github.com/ehettervik/es-runcommand-splash/archive/refs/heads/master.tar.gz | tar xz -C "$SPLEASH_DIR" --strip-components=1 2>/dev/null || true
+}
 if [ -d "$SPLEASH_DIR" ]; then
     # Map system name to ehettervik folder name (most match 1:1)
     for sys in $ALL_SYSTEMS; do
@@ -955,26 +977,39 @@ chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
 # === HDMI watcher — DISABLED (was corrupting DRM state via modetest) ===
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
-# HDMI watcher disabled — modetest corrupts DRM CRTC state
-exit 0
+# HDMI watcher: periodically re-establish display after TV power cycle
+while true; do
+    STATUS=$(cat /sys/class/drm/card0-HDMI-A-1/status 2>/dev/null)
+    if [ "$STATUS" = "connected" ]; then
+        # Check if framebuffer is black (signal lost)
+        FIRST_BYTE=$(dd if=/dev/fb0 bs=1 count=1 2>/dev/null | od -An -tx1 | tr -d ' ')
+        if [ "$FIRST_BYTE" = "00" ]; then
+            # Screen is black — re-establish HDMI
+            modetest -s HDMI-A-1:1920x1080 2>/dev/null
+            dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+        fi
+    fi
+    sleep 5
+done
 HDMI_EOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
 
 cat > "$ROOTFS/etc/systemd/system/hdmi-watcher.service" << 'SVC2EOF'
 [Unit]
-Description=HDMI Hotplug Watcher (disabled)
+Description=HDMI Signal Recovery Watcher
 After=multi-user.target
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=/usr/local/bin/hdmi-watcher.sh
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 SVC2EOF
-
-# Do NOT enable hdmi-watcher — it was causing green screen / no signal
-echo "Services: hdmi-watcher disabled"
+ln -sf /etc/systemd/system/hdmi-watcher.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/hdmi-watcher.service"
+echo "Services: hdmi-watcher enabled"
 
 # === DHCP fallback service ===
 cat > "$ROOTFS/etc/systemd/system/ps4-dhcp-fallback.service" << 'DHCPEOF'
@@ -1122,133 +1157,26 @@ esac
 SAMBA
 chmod +x "$ROOTFS/usr/local/bin/setup-samba.sh"
 
-# === Configure RetroArch (complete config - keyboard + gamepad) ===
-# Button IDs from es_input.cfg (ES SDL raw evdev indices)
-# D-pad is HAT hardware (ABS_HAT0X/Y) — use h0up notation
-# Hotkey = BTN_Z (button 5) from ES config
-# Analog axes: L2=axis2(ABS_Z), R2=axis5(ABS_RZ), RightX=axis3, RightY=axis4
+# === Configure RetroArch via configscript (RetroPie approach) ===
+# Runs configscripts/retroarch.sh in chroot to generate retroarch.cfg from es_input.cfg
+# This ensures controller mapping matches ES exactly, with hotkey combos derived from ES bindings
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch"
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/all/retroarch-joypads"
-cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch.cfg" << 'RETROCFG'
-video_fullscreen = "true"
-video_fullscreen_x = "1920"
-video_fullscreen_y = "1080"
-video_driver = "gl"
-video_context_driver = "kms"
+cp configscripts/retroarch.sh "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+chmod +x "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+chown 1000:1000 "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
+# Run configscript in chroot — generates retroarch.cfg from es_input.cfg
+# Handles: button mapping, D-pad HAT override, PS button hotkey, keyboard bindings, analog axes
+run_chroot "/usr/local/bin/retroarch-configscript.sh"
+
+# === RetroArch appendconfig: audio only (all bindings come from configscript) ===
+cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
+# PS4 RetroBox - Audio settings only
+# Controller bindings, hotkeys, keyboard — all generated by retroarch-configscript.sh
 audio_driver = "pulse"
-input_driver = "udev"
-input_device = "Sony Interactive Entertainment Wireless Controller"
-input_autodetect_enable = "false"
-libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
-screenshot_directory = "/home/PS4/screenshots"
-savefile_directory = "/home/PS4/saves"
-savestate_directory = "/home/PS4/saves"
-system_directory = "/home/PS4/BIOS"
-menu_driver = "xmb"
-all_users_control_menu = "true"
-menu_unified_controls = "true"
-video_shared_context = "true"
-video_font_enable = "true"
-video_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-video_font_size = "32.000000"
-config_save_on_exit = "false"
-menu_show_load_content = "false"
-menu_show_load_content_animation = "false"
-input_menu_toggle_gamepad_combo = "2"
-input_enable_hotkey_btn = "12"
-input_exit_emulator_btn = "6"
-input_menu_toggle_btn = "3"
-input_save_state_btn = "5"
-input_load_state_btn = "4"
-input_screenshot_btn = "2"
-input_reset_btn = "1"
-input_hold_fast_forward_btn = "14"
-input_rewind_btn = "13"
-input_state_slot_decrease_btn = "h0left"
-input_state_slot_increase_btn = "h0right"
-input_up_btn = "h0up"
-input_down_btn = "h0down"
-input_left_btn = "h0left"
-input_right_btn = "h0right"
-input_a_btn = "1"
-input_b_btn = "0"
-input_x_btn = "3"
-input_y_btn = "2"
-input_start_btn = "6"
-input_select_btn = "4"
-input_l_btn = "9"
-input_r_btn = "10"
-input_l3_btn = "7"
-input_r3_btn = "8"
-input_guide_btn = "12"
-input_l2_axis = "-4"
-input_r2_axis = "+5"
-input_l_x_plus_axis = "+0"
-input_l_x_minus_axis = "-0"
-input_l_y_plus_axis = "+1"
-input_l_y_minus_axis = "-1"
-input_r_x_plus_axis = "+3"
-input_r_x_minus_axis = "-3"
-input_r_y_plus_axis = "+4"
-input_r_y_minus_axis = "-4"
-input_player1_up_btn = "h0up"
-input_player1_down_btn = "h0down"
-input_player1_left_btn = "h0left"
-input_player1_right_btn = "h0right"
-input_player1_a_btn = "1"
-input_player1_b_btn = "0"
-input_player1_x_btn = "3"
-input_player1_y_btn = "2"
-input_player1_start_btn = "6"
-input_player1_select_btn = "4"
-input_player1_l_btn = "9"
-input_player1_r_btn = "10"
-input_player1_l3_btn = "7"
-input_player1_r3_btn = "8"
-input_player1_guide_btn = "12"
-input_player1_l2_axis = "-4"
-input_player1_r2_axis = "+5"
-input_player1_l_x_plus_axis = "+0"
-input_player1_l_x_minus_axis = "-0"
-input_player1_l_y_plus_axis = "+1"
-input_player1_l_y_minus_axis = "-1"
-input_player1_r_x_plus_axis = "+3"
-input_player1_r_x_minus_axis = "-3"
-input_player1_r_y_plus_axis = "+4"
-input_player1_r_y_minus_axis = "-4"
-input_menu_toggle = "f1"
-input_exit_emulator = "escape"
-input_save_state = "f2"
-input_load_state = "f4"
-input_screenshot = "f8"
-input_up = "up"
-input_down = "down"
-input_left = "left"
-input_right = "right"
-input_a = "return"
-input_b = "escape"
-input_start = "space"
-input_select = "tab"
-input_l = "pageup"
-input_r = "pagedown"
-RETROCFG
-input_player1_r_y_minus_axis = "-4"
-input_menu_toggle = "f1"
-input_exit_emulator = "escape"
-input_save_state = "f2"
-input_load_state = "f4"
-input_screenshot = "f8"
-input_up = "up"
-input_down = "down"
-input_left = "left"
-input_right = "right"
-input_a = "return"
-input_b = "escape"
-input_start = "space"
-input_select = "tab"
-input_l = "pageup"
-input_r = "pagedown"
-RETROCFG
+audio_sync = "true"
+audio_latency = "64"
+APPENDCFG
 
 # === Create RetroArch wrapper ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
@@ -1257,84 +1185,42 @@ trap "" HUP
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
-export XDG_RUNTIME_DIR=/tmp/runtime-PS4
+export XDG_RUNTIME_DIR=/run/user/1000
 export PULSE_SERVER=unix:/run/user/1000/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
+export XKB_CONFIG_ROOT=/usr/share/X11/xkb
+export vblank_mode=2
+export __GL_SYNC_TO_VBLANK=1
 # Force HDMI audio before launching RA
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
-/usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
-# Restore HDMI audio after RA exits
+# KMS retry: RA may fail if ES hasn't released DRM yet
+MAX_RETRIES=3
+RETRY=0
+while [ $RETRY -lt $MAX_RETRIES ]; do
+    /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
+    RC=$?
+    # Check if it was a KMS error
+    if grep -q "KMS.*Error when switching mode" /tmp/retroarch.log 2>/dev/null; then
+        RETRY=$((RETRY+1))
+        echo "KMS error, retry $RETRY/$MAX_RETRIES..."
+        echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
+        sleep 3
+    else
+        break
+    fi
+done
+# HDMI recovery after RA exits
+sleep 2
+echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
+sleep 1
+echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+sleep 1
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
-exit 0
+exit $RC
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
-
-# === RetroArch appendconfig with DS4 controller mapping ===
-# Player1 bindings match es_input.cfg exactly
-cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
-# PS4 RetroBox - RetroArch appendconfig (player1 bindings match ES exactly)
-audio_driver = "pulse"
-audio_sync = "true"
-audio_latency = "64"
-input_player1_up_btn = "h0up"
-input_player1_down_btn = "h0down"
-input_player1_left_btn = "h0left"
-input_player1_right_btn = "h0right"
-input_player1_a_btn = "1"
-input_player1_b_btn = "0"
-input_player1_x_btn = "3"
-input_player1_y_btn = "2"
-input_player1_start_btn = "6"
-input_player1_select_btn = "4"
-input_player1_l_btn = "9"
-input_player1_r_btn = "10"
-input_player1_l3_btn = "7"
-input_player1_r3_btn = "8"
-input_player1_guide_btn = "12"
-input_player1_l2_axis = "-4"
-input_player1_r2_axis = "+5"
-input_player1_l_x_plus_axis = "+0"
-input_player1_l_x_minus_axis = "-0"
-input_player1_l_y_plus_axis = "+1"
-input_player1_l_y_minus_axis = "-1"
-input_player1_r_x_plus_axis = "+3"
-input_player1_r_x_minus_axis = "-3"
-input_player1_r_y_plus_axis = "+4"
-input_player1_r_y_minus_axis = "-4"
-APPENDCFG
-APPENDCFG
-input_player1_guide_btn = "5"
-input_player1_up_btn = "11"
-input_player1_down_btn = "12"
-input_player1_left_btn = "13"
-input_player1_right_btn = "14"
-input_player1_l2_axis = "-4"
-input_player1_r2_axis = "+5"
-input_player1_l_x_plus_axis = "+0"
-input_player1_l_x_minus_axis = "-0"
-input_player1_l_y_plus_axis = "+1"
-input_player1_l_y_minus_axis = "-1"
-input_player1_r_x_plus_axis = "+2"
-input_player1_r_x_minus_axis = "-2"
-input_player1_r_y_plus_axis = "+3"
-input_player1_r_y_minus_axis = "-3"
-
-# Core options
-beetle_psx_cd_access_method = "precache"
-beetle_psx_cd_fastload = "4x(native)"
-beetle_psx_gpu_overclock = "2x(native)"
-beetle_psx_dither_mode = "disabled"
-beetle_psx_crop_overscan = "smart"
-beetle_psx_display_internal_fps = "disabled"
-beetle_psx_draw_frontend_borders = "disabled"
-beetle_psx_enable_og_sce_audio = "disabled"
-beetle_psx_internal_resolution = "1x(native)"
-beetle_psx_aspect_ratio = "corrected"
-beetle_psx_cpu_dynarec = "execute"
-beetle_psx_gte_overclock = "enabled"
-APPENDCFG
 
 # === Create N64 core options (optimized for PS4 base) ===
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next"
@@ -1403,7 +1289,7 @@ input_l2_axis = "-4"
 input_r2_axis = "+5"
 input_l3_btn = "7"
 input_r3_btn = "8"
-input_guide_btn = "10"
+input_guide_btn = "12"
 input_up_btn = "h0up"
 input_down_btn = "h0down"
 input_left_btn = "h0left"
@@ -2151,7 +2037,7 @@ run_chroot "rm -rf /usr/share/libretro/assets/wallpapers" 2>/dev/null
 run_chroot "rm -f /usr/lib/x86_64-linux-gnu/libvulkan_*.so" 2>/dev/null
 run_chroot "find /usr/lib/x86_64-linux-gnu -name '*.a' -delete" 2>/dev/null
 run_chroot "find /usr/lib/gcc -name '*.a' -delete" 2>/dev/null
-run_chroot "rm -rf /usr/share/X11" 2>/dev/null
+run_chroot "rm -rf /usr/share/X11/app-defaults /usr/share/X11/locale /usr/share/X11/rgb.txt" 2>/dev/null
 run_chroot "rm -rf /usr/share/ghostscript" 2>/dev/null
 run_chroot "rm -rf /usr/share/mime" 2>/dev/null
 run_chroot "rm -rf /usr/share/bash-completion" 2>/dev/null
@@ -2181,8 +2067,19 @@ echo "Locale regenerated"
 
 # === Cleanup ===
 echo "=== Cleaning up ==="
+# Save modetest before autoremove (it removes libdrm-tests)
+echo "modetest before cleanup: $(ls "$ROOTFS/usr/bin/modetest" 2>/dev/null || echo MISSING)"
+cp "$ROOTFS/usr/bin/modetest" /tmp/modetest-backup 2>/dev/null
+echo "modetest backup: $(ls -la /tmp/modetest-backup 2>/dev/null || echo MISSING)"
 run_chroot "apt-get autoremove -y && apt-get clean"
-run_chroot "rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*"
+run_chroot "rm -rf /var/lib/apt/lists/* /var/tmp/*"
+# Restore modetest
+cp /tmp/modetest-backup "$ROOTFS/usr/bin/modetest" 2>/dev/null
+chmod +x "$ROOTFS/usr/bin/modetest" 2>/dev/null
+rm -f /tmp/modetest-backup
+# Verify
+echo "xkb symbols: $(ls "$ROOTFS/usr/share/X11/xkb/symbols/" 2>/dev/null | wc -l)"
+echo "modetest after: $(ls "$ROOTFS/usr/bin/modetest" 2>/dev/null || echo MISSING)"
 
 # === Unmount pseudo-filesystems ===
 for fs in tmp run dev/pts dev sys proc; do

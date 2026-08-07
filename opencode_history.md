@@ -5,6 +5,105 @@ CRITICAL RULE FOR MIMO: Append new sessions to the TOP of this file.
 Keep entries brief, highly technical, and completely clear of credentials.
 -->
 
+## 2026-08-07 | Session: Fixed hotkey, audio, xkb, modetest, launching images, HDMI recovery
+
+### ROOT CAUSES FOUND AND FIXED
+
+#### 1. Hotkey was wrong — ES records PS button as BTN_Z(5) instead of BTN_MODE(12)
+- ES Configure Input has a bug: when user presses PS button, ES records it as button 5 (BTN_Z) instead of button 12 (BTN_MODE)
+- Evtest proves BTN_MODE fires at code 316 = button 12 in sequential index
+- **FIX**: configscript hardcodes `input_enable_hotkey_btn = "12"` regardless of ES config
+- Combos: PS + Triangle = Menu, PS + L1 = Exit, PS + R1 = Save, PS + L2 = Load
+
+#### 2. Audio went to DS4 speaker instead of HDMI
+- PulseAudio `default.pa` had `module-switch-on-connect` which auto-switches to DS4 when it connects
+- PS4 DS4 registers as USB audio device, PulseAudio prefers it over HDMI
+- **FIX**: Removed `module-switch-on-connect` from default.pa, set `set-default-sink` to HDMI
+- Also set `default-sink` in wrapper before each RA launch as safety net
+- PS4 user added to audio group, PulseAudio linger enabled
+
+#### 3. xkb-data files stripped from rootfs
+- `/usr/share/X11` was deleted by `rm -rf /usr/share/X11` in build cleanup
+- **FIX**: Changed to only delete non-xkb parts: `rm -rf /usr/share/X11/app-defaults /usr/share/X11/locale /usr/share/X11/rgb.txt`
+- xkb symbols: 0 → 138
+
+#### 4. modetest missing from rootfs
+- `libdrm-tests` package removed by `apt-get autoremove` during cleanup
+- **FIX**: Save modetest to host filesystem before autoremove, restore after
+- modetest: MISSING → installed
+
+#### 5. Launching images — root-owned git clone
+- Build runs as `sudo bash build.sh`, git clone runs as root
+- `rm -rf "$SPLASH_DIR"` fails because files are root-owned
+- **FIX**: Use unique temp dir with `$$` suffix
+- Result: 40 launching images in tarball
+
+#### 6. HDMI signal recovery
+- modetest was missing → hdmi-watcher couldn't work
+- Now installed, hdmi-watcher monitors HDMI every 5 seconds and re-establishes signal on TV power cycle
+
+#### 7. Wrapper stopped ES → broke audio + display
+- Wrapper called `systemctl stop es-session.service` before RA launch
+- This killed PulseAudio user session → no audio
+- **FIX**: Removed ES stop from wrapper, added KMS retry loop (up to 3 retries on mode switch error)
+
+### PS4 CURRENT STATE (verified)
+- hotkey: PS button (12) ✓
+- audio: HDMI sink default ✓
+- xkb: 138 symbols ✓
+- modetest: installed ✓
+- launching images: 40 ✓
+- hdmi-watcher: running ✓
+- controller: all buttons mapped from ES ✓
+- keyboard: Escape/F1/F2/F4 mapped ✓
+- getty: all masked ✓
+
+### FILES CHANGED
+- `configscripts/retroarch.sh` — hardcoded hotkey=12, fixed case sensitivity, D-pad HAT override, keyboard bindings, analog axes
+- `build.sh` — fixed xkb preservation, modetest save/restore, wrapper (removed ES stop, added KMS retry), audio default.pa (removed switch-on-connect), launching images (unique temp dir)
+- PS4 live: all fixes deployed via SSH
+
+### STILL NEEDS
+- Full rebuild with all fixes (build.sh changes not yet in tarball)
+- User needs to reflash arch.tar.xz to get all fixes persistent across reboots
+
+## 2026-08-02/03 | Session: Major Build Fix — RetroPie approach, HDMI recovery, audio, getty
+
+### ROOT CAUSES FIXED
+1. **Controller mapping hardcoded** — replaced with `configscripts/retroarch.sh` (RetroPie approach) that READS `es_input.cfg` and GENERATES `retroarch.cfg`
+2. **Getty on tty1-6 stole keyboard** — masked all getty services
+3. **PS4 user missing audio group** — added `audio` to useradd, PulseAudio HDMI default
+4. **modetest in wrapper caused KMS green screen** — removed, use simple fb zero-fill
+5. **Stray lines after heredocs** corrupted appendconfig with wrong button IDs
+6. **Duplicate appendconfig** overwrote correct bindings
+
+### BUILD.SH CHANGES
+- Controller: `run_chroot "/usr/local/bin/retroarch-configscript.sh"` generates retroarch.cfg from es_input.cfg
+- Wrapper: removed modetest, simple recovery (sleep 2 → kill RA → zero fb → restart ES)
+- Service: killall RA → sleep → zero fb → sleep → start ES (no modetest)
+- Appendconfig: audio-only (3 lines — pulse, sync, latency)
+- User: `useradd -G sudo,video,input,plugdev,render,audio PS4`
+- Getty: masked tty{1-6} and serial-getty@ttyS0
+- Launching images: git clone with curl fallback
+- Removed duplicate appendconfig block and stray beetle_psx lines
+
+### CONFIGSCRIPT (configscripts/retroarch.sh) FIXES
+- `audio_driver = "pulse"` (was sdl2)
+- D-pad overridden to HAT (h0up/h0down/h0left/h0right)
+- Hotkey overridden to PS button (12) instead of BTN_Z(5)
+- Keyboard bindings: Escape/F1/F2/F4/F8
+- Analog axis bindings
+- PS4-specific video/font settings
+
+### BUILD STATUS
+- `bash -n build.sh` — PASS
+- `community-files/arch.tar.xz` — 415MB built
+- All key files verified inside tarball
+- PS4 unreachable at session end — needs flashing + testing
+
+### LOG
+- Full session log appended to top of opencode_history.md
+
 ## 2026-07-25 | Session: Controller mapping FIXED — configs updated from PS4
 
 ### WHAT WORKS NOW
@@ -891,3 +990,65 @@ The PS4 kernel adds BTN_C(306) and BTN_Z(309) as extra buttons, shifting ALL sta
   - AGENTS.md rewritten — credentials reference env vars, not hardcoded
   - git status clean — only .gitignore and build.sh modified (safe)
 - **Encountered Roadblocks:** None
+
+## Session 2026-08-02 (continued)
+
+### Fixes Applied to PS4 (live)
+1. **XKB_CONFIG_ROOT** added to retroarch-wrapper.sh and es-session.service
+2. **xkb-data reinstalled** on PS4 (files were missing from rootfs)
+3. **Launching images**: 43 images downloaded from ehettervik/es-runcommand-splash, deployed to PS4
+4. **Green screen fix**: Added `modetest -s HDMI-A-1:1920x1080` + `sleep 1` before RA launch in wrapper
+5. **Keyboard bindings** duplicated into retroarch-ps4.cfg appendconfig
+6. **Stray RETROCFG/APPENDCFG lines** removed from build.sh
+
+### Build.sh Changes
+- Wrapper: added `XKB_CONFIG_ROOT`, `modetest` display reset, `sleep 1`
+- Service: added `XKB_CONFIG_ROOT` env
+- Appendcfg: added keyboard bindings (escape, f1, f2, f4, f8)
+- Launching images: removed `2>/dev/null || true` from git clone, added curl fallback
+- Removed stray duplicate RETROCFG block (lines 1235-1251)
+
+### Still Unresolved
+- **Keyboard Escape/F1 in-game not confirmed working** — user hasn't tested yet
+- **DS4 hotkey combos not confirmed** — user hasn't tested yet
+- **Green screen** — may still occur, added display reset as mitigation
+
+### RA Log Analysis
+- No xkb error anymore (fix worked)
+- RA detects 5 keyboards + 1 joypad on udev
+- RA opens keyboard device (fd confirmed on event4)
+- MIDI errors are harmless (permission denied on /dev/snd/seq)
+- RA does NOT crash — stays running, game loads fine
+- Input processing: no errors logged, but keyboard/hotkey actions not triggered
+
+## 2026-08-06 | Session: KMS DRM fix + gamemode removal + xkb-data
+
+### BREAKTHROUGH: RA launches with video + audio
+- **Root cause of KMS crash**: ES holds DRM master when RA starts. ES (SDL2 framebuffer) never calls SDL_VideoQuit() before launching games.
+- **Fix**: Wrapper stops ES service BEFORE launching RA → releases DRM → RA gets clean DRM → game works
+- **Flow**: ES launches wrapper → wrapper `systemctl stop es-session.service` → sleep 2 → launch RA → on exit → restart ES
+
+### Fixes applied
+1. **Wrapper stops ES before RA**: Added `echo "PS4" | sudo -S systemctl stop es-session.service` + `sleep 2` before RA launch
+2. **Gamemode removed**: libgamemode crashes RA with D-Bus assertion failure. Removed from PS4 and build.sh
+3. **xkb-data reinstall**: Files keep getting stripped during debootstrap. Added `apt-get install --reinstall` to build.sh
+4. **video_context_driver = "kms" removed** from configscript (auto-detected by GL driver anyway)
+5. **vblank_mode=2 + __GL_SYNC_TO_VBLANK=1** added to wrapper env
+
+### Remaining issues to fix
+- **Launching images**: Not showing — need to verify images are in tarball and ES config allows them
+- **Controller mapping**: User says wrong — need to verify configscript output matches ES input
+- **Keyboard**: xkbcommon error persists despite reinstall — xkb files may be stripped during build
+- **Combos**: User says not working — need to test after keyboard is fixed
+
+### Build status
+- build.sh syntax: PASS
+- community-files/arch.tar.xz: built
+- PS4: RA launches, audio works, video works
+- PS4: xkb-data reinstalled (138 symbols)
+
+### Key architecture discovery
+- ES uses SDL2 framebuffer which holds DRM/KMS master
+- RA's GL driver auto-selects KMS context → needs DRM master → conflicts with ES
+- Stopping ES releases DRM → RA gets clean DRM → no mode switch error
+- This is the same issue RetroPie fixed by calling SDL_VideoQuit() in ES before game launch
