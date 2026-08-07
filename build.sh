@@ -1182,6 +1182,9 @@ APPENDCFG
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
 trap "" HUP
+# Stop ES to release DRM display for RA
+echo "PS4" | sudo -S systemctl stop es-session.service 2>/dev/null
+sleep 2
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
@@ -1192,7 +1195,6 @@ export MESA_NO_ERROR=1
 export XKB_CONFIG_ROOT=/usr/share/X11/xkb
 export vblank_mode=2
 export __GL_SYNC_TO_VBLANK=1
-# Force HDMI audio before launching RA
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 # KMS retry: RA may fail if ES hasn't released DRM yet
 MAX_RETRIES=3
