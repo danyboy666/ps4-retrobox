@@ -1195,6 +1195,9 @@ export MESA_NO_ERROR=1
 export XKB_CONFIG_ROOT=/usr/share/X11/xkb
 export vblank_mode=2
 export __GL_SYNC_TO_VBLANK=1
+# Restart PulseAudio user service after ES stop
+systemctl --user restart pulseaudio 2>/dev/null
+sleep 1
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 # KMS retry: RA may fail if ES hasn't released DRM yet
 MAX_RETRIES=3
@@ -1217,6 +1220,9 @@ sleep 2
 echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
 sleep 1
 echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+sleep 1
+# Restart PulseAudio user service
+systemctl --user restart pulseaudio 2>/dev/null
 sleep 1
 pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
