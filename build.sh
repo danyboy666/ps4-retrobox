@@ -1524,7 +1524,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Super Nintendo</fullname>
     <path>/home/PS4/ROMS/snes</path>
     <extension>.sfc .smc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
     <platform>snes</platform>
     <theme>snes</theme>
   </system>
@@ -1533,7 +1533,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo Entertainment System</fullname>
     <path>/home/PS4/ROMS/nes</path>
     <extension>.nes .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
     <platform>nes</platform>
     <theme>nes</theme>
   </system>
@@ -1542,7 +1542,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo 64</fullname>
     <path>/home/PS4/ROMS/n64</path>
     <extension>.n64 .z64 .v64 .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_next_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mupen64plus_next_libretro.so %ROM%</command>
     <platform>n64</platform>
     <theme>n64</theme>
   </system>
@@ -1551,7 +1551,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy Advance</fullname>
     <path>/home/PS4/ROMS/gba</path>
     <extension>.gba .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mgba_libretro.so %ROM%</command>
     <platform>gba</platform>
     <theme>gba</theme>
   </system>
@@ -1560,7 +1560,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy</fullname>
     <path>/home/PS4/ROMS/gb</path>
     <extension>.gb .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gb</platform>
     <theme>gb</theme>
   </system>
@@ -1569,7 +1569,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game Boy Color</fullname>
     <path>/home/PS4/ROMS/gbc</path>
     <extension>.gbc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/gambatte_libretro.so %ROM%</command>
     <platform>gbc</platform>
     <theme>gbc</theme>
   </system>
@@ -1578,7 +1578,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Mega Drive</fullname>
     <path>/home/PS4/ROMS/megadrive</path>
     <extension>.md .bin .gen .smd .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>megadrive</platform>
     <theme>megadrive</theme>
   </system>
@@ -1587,7 +1587,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sony PlayStation</fullname>
     <path>/home/PS4/ROMS/psx</path>
     <extension>.bin .cue .iso .pbp .chd .m3u .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_psx_libretro.so %ROM%</command>
     <platform>psx</platform>
     <theme>psx</theme>
   </system>
@@ -1596,7 +1596,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>TurboGrafx-16</fullname>
     <path>/home/PS4/ROMS/tg16</path>
     <extension>.pce .cue .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>tg16</platform>
     <theme>tg16</theme>
   </system>
@@ -1605,7 +1605,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>TurboGrafx-CD</fullname>
     <path>/home/PS4/ROMS/tgcd</path>
     <extension>.chd .cue .iso .m3u</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_pce_fast_libretro.so %ROM%</command>
     <platform>tgcd</platform>
     <theme>tgcd</theme>
   </system>
@@ -1614,7 +1614,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Arcade</fullname>
     <path>/home/PS4/ROMS/arcade</path>
     <extension>.zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>arcade</platform>
     <theme>arcade</theme>
   </system>
@@ -1623,7 +1623,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Neo Geo</fullname>
     <path>/home/PS4/ROMS/neogeo</path>
     <extension>.zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/fbneo_libretro.so %ROM%</command>
     <platform>neogeo</platform>
     <theme>neogeo</theme>
   </system>
@@ -1632,7 +1632,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 2600</fullname>
     <path>/home/PS4/ROMS/atari2600</path>
     <extension>.a26 .bin .rom .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/stella_libretro.so %ROM%</command>
     <platform>atari2600</platform>
     <theme>atari2600</theme>
   </system>
@@ -1641,7 +1641,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 5200</fullname>
     <path>/home/PS4/ROMS/atari5200</path>
     <extension>.a52 .bin .xfd .atari .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/atari800_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/atari800_libretro.so %ROM%</command>
     <platform>atari5200</platform>
     <theme>atari5200</theme>
   </system>
@@ -1650,7 +1650,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari 7800</fullname>
     <path>/home/PS4/ROMS/atari7800</path>
     <extension>.a78 .bin .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/prosystem_libretro.so %ROM%</command>
     <platform>atari7800</platform>
     <theme>atari7800</theme>
   </system>
@@ -1659,7 +1659,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Master System</fullname>
     <path>/home/PS4/ROMS/mastersystem</path>
     <extension>.sms .bin .gen .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>mastersystem</platform>
     <theme>mastersystem</theme>
   </system>
@@ -1668,7 +1668,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Game Gear</fullname>
     <path>/home/PS4/ROMS/gamegear</path>
     <extension>.gg .bin .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>gamegear</platform>
     <theme>gamegear</theme>
   </system>
@@ -1677,7 +1677,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo Famicom</fullname>
     <path>/home/PS4/ROMS/famicom</path>
     <extension>.nes .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/nestopia_libretro.so %ROM%</command>
     <platform>famicom</platform>
     <theme>famicom</theme>
   </system>
@@ -1686,7 +1686,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo Famicom Disk System</fullname>
     <path>/home/PS4/ROMS/fds</path>
     <extension>.fds .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mesen_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mesen_libretro.so %ROM%</command>
     <platform>fds</platform>
     <theme>fds</theme>
   </system>
@@ -1695,7 +1695,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Genesis</fullname>
     <path>/home/PS4/ROMS/genesis</path>
     <extension>.md .bin .gen .smd .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>genesis</platform>
     <theme>genesis</theme>
   </system>
@@ -1704,7 +1704,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Super Famicom</fullname>
     <path>/home/PS4/ROMS/sfc</path>
     <extension>.sfc .smc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/snes9x_libretro.so %ROM%</command>
     <platform>sfc</platform>
     <theme>sfc</theme>
   </system>
@@ -1713,7 +1713,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega CD</fullname>
     <path>/home/PS4/ROMS/segacd</path>
     <extension>.bin .cue .iso .chd .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>segacd</platform>
     <theme>segacd</theme>
   </system>
@@ -1722,7 +1722,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Mega CD</fullname>
     <path>/home/PS4/ROMS/mega-cd</path>
     <extension>.bin .cue .iso .chd .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/genesis_plus_gx_libretro.so %ROM%</command>
     <platform>mega-cd</platform>
     <theme>segacd</theme>
   </system>
@@ -1731,7 +1731,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega 32X</fullname>
     <path>/home/PS4/ROMS/sega32x</path>
     <extension>.32x .bin .smd .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/picodrive_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/picodrive_libretro.so %ROM%</command>
     <platform>sega32x</platform>
     <theme>sega32x</theme>
   </system>
@@ -1740,7 +1740,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Bandai WonderSwan</fullname>
     <path>/home/PS4/ROMS/wonderswan</path>
     <extension>.ws .wsc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
     <platform>wonderswan</platform>
     <theme>wonderswan</theme>
   </system>
@@ -1749,7 +1749,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Bandai WonderSwan Color</fullname>
     <path>/home/PS4/ROMS/wonderswancolor</path>
     <extension>.wsc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_wswan_libretro.so %ROM%</command>
     <platform>wonderswancolor</platform>
     <theme>wonderswancolor</theme>
   </system>
@@ -1758,7 +1758,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari Jaguar</fullname>
     <path>/home/PS4/ROMS/atarijaguar</path>
     <extension>.j64 .jag .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/virtualjaguar_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/virtualjaguar_libretro.so %ROM%</command>
     <platform>atarijaguar</platform>
     <theme>atarijaguar</theme>
   </system>
@@ -1767,7 +1767,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Atari Lynx</fullname>
     <path>/home/PS4/ROMS/atarilynx</path>
     <extension>.lnx .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_lynx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_lynx_libretro.so %ROM%</command>
     <platform>atarilynx</platform>
     <theme>atarilynx</theme>
   </system>
@@ -1776,7 +1776,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>ColecoVision</fullname>
     <path>/home/PS4/ROMS/colecovision</path>
     <extension>.col .bin .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gearcoleco_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/gearcoleco_libretro.so %ROM%</command>
     <platform>colecovision</platform>
     <theme>colecovision</theme>
   </system>
@@ -1785,7 +1785,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Game and Watch</fullname>
     <path>/home/PS4/ROMS/gameandwatch</path>
     <extension>.gw .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gw_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/gw_libretro.so %ROM%</command>
     <platform>gameandwatch</platform>
     <theme>gameandwatch</theme>
   </system>
@@ -1794,7 +1794,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>SNK Neo Geo Pocket</fullname>
     <path>/home/PS4/ROMS/ngp</path>
     <extension>.ngp .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
     <platform>ngp</platform>
     <theme>ngp</theme>
   </system>
@@ -1803,7 +1803,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>SNK Neo Geo Pocket Color</fullname>
     <path>/home/PS4/ROMS/ngpc</path>
     <extension>.ngc .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_ngp_libretro.so %ROM%</command>
     <platform>ngpc</platform>
     <theme>ngpc</theme>
   </system>
@@ -1812,7 +1812,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sony PlayStation Portable</fullname>
     <path>/home/PS4/ROMS/psp</path>
     <extension>.iso .cso .pbp .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/ppsspp_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/ppsspp_libretro.so %ROM%</command>
     <platform>psp</platform>
     <theme>psp</theme>
   </system>
@@ -1821,7 +1821,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega SG-1000</fullname>
     <path>/home/PS4/ROMS/sg-1000</path>
     <extension>.sg .bin .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/gearsystem_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/gearsystem_libretro.so %ROM%</command>
     <platform>sg-1000</platform>
     <theme>sg-1000</theme>
   </system>
@@ -1830,7 +1830,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>NEC SuperGrafx</fullname>
     <path>/home/PS4/ROMS/supergrafx</path>
     <extension>.pce .sg .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_supergrafx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_supergrafx_libretro.so %ROM%</command>
     <platform>supergrafx</platform>
     <theme>supergrafx</theme>
   </system>
@@ -1839,7 +1839,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Nintendo Virtual Boy</fullname>
     <path>/home/PS4/ROMS/virtualboy</path>
     <extension>.vb .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_vb_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mednafen_vb_libretro.so %ROM%</command>
     <platform>virtualboy</platform>
     <theme>virtualboy</theme>
   </system>
@@ -1848,7 +1848,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Fairchild Channel F</fullname>
     <path>/home/PS4/ROMS/channelf</path>
     <extension>.chf .bin .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/freechaf_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/freechaf_libretro.so %ROM%</command>
     <platform>channelf</platform>
     <theme>channelf</theme>
   </system>
@@ -1857,7 +1857,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>MAME</fullname>
     <path>/home/PS4/ROMS/mame-libretro</path>
     <extension>.zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/mame2003_plus_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/mame2003_plus_libretro.so %ROM%</command>
     <platform>mame-libretro</platform>
     <theme>mame-libretro</theme>
   </system>
@@ -1866,7 +1866,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>GCE Vectrex</fullname>
     <path>/home/PS4/ROMS/vectrex</path>
     <extension>.vec .zip</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/vecx_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/vecx_libretro.so %ROM%</command>
     <platform>vectrex</platform>
     <theme>vectrex</theme>
   </system>
@@ -1875,7 +1875,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_systems.cfg" << 'ESCFG'
     <fullname>Sega Dreamcast</fullname>
     <path>/home/PS4/ROMS/dreamcast</path>
     <extension>.cdi .chd .gdi .iso</extension>
-    <command>/usr/local/bin/retroarch-wrapper.sh --appendconfig /home/PS4/.config/retroarch/retroarch-ps4.cfg -L /usr/lib/x86_64-linux-gnu/libretro/flycast_libretro.so %ROM%</command>
+    <command>/usr/local/bin/retroarch-wrapper.sh -L /usr/lib/x86_64-linux-gnu/libretro/flycast_libretro.so %ROM%</command>
     <platform>dreamcast</platform>
     <theme>dreamcast</theme>
   </system>
