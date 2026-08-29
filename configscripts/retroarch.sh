@@ -158,7 +158,6 @@ with open(RETROARCH_CFG, "a") as cfg:
 
         if hotkey_id is not None:
             cfg.write(f'input_enable_hotkey_btn = "{hotkey_id}"\n')
-            cfg.write(f'input_menu_toggle_gamepad_combo = "{hotkey_id}"\n')
 
     # Per-device joypad file (RetroPie autoconfig layout)
     safe_name = "".join(c for c in device_name if c.isalnum() or c in " -_").strip()
