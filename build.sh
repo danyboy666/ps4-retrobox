@@ -96,7 +96,7 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     mesa-vulkan-drivers libdrm-amdgpu1 libgl1-mesa-dri libgl1-mesa-glx \
     libglu1-mesa libegl1-mesa xserver-xorg-video-amdgpu \
     xinit xterm x11-xserver-utils xserver-xorg-input-libinput \
-    libdrm-tests plymouth plymouth-themes"
+    libdrm-tests plymouth plymouth-themes fbi imagemagick"
 
 # === Install EmulationStation build deps ===
 echo "=== Installing EmulationStation build deps ==="
@@ -131,6 +131,10 @@ run_chroot "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     retroarch-assets libretro-core-info" || true
 # Remove 330MB noto fonts pulled in as dependency (keep retroarch-assets installed)
 run_chroot "rm -rf /usr/share/fonts/truetype/noto" 2>/dev/null || true
+
+# Disable system DS4 autoconfig (PS4 kernel shifts button indices via BTN_C=2/BTN_Z=5)
+run_chroot "mv /usr/share/retroarch/assets/autoconfig/udev/'Sony DualShock 4 Controller.cfg' \
+    /usr/share/retroarch/assets/autoconfig/udev/'Sony DualShock 4 Controller.cfg.disabled' 2>/dev/null" || true
 
 # === Install fonts for XMB menu ===
 echo "=== Installing fonts ==="
@@ -531,9 +535,11 @@ Environment=vblank_mode=2
 Environment=__GL_SYNC_TO_VBLANK=1
 Environment=XKB_CONFIG_ROOT=/usr/share/X11/xkb
 ExecStartPre=/bin/bash -c "plymouth quit --retain-splash 2>/dev/null || true"
-ExecStartPre=/bin/bash -c "killall -9 retroarch 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "killall -9 retroarch retroarch-wrapper.sh 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "sleep 1"
 ExecStartPre=/bin/bash -c "dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null || true"
+ExecStartPre=/bin/bash -c "sleep 1"
+ExecStartPre=/bin/bash -c "modetest -s HDMI-A-1:1920x1080 2>/dev/null || true"
 ExecStartPre=/bin/bash -c "sleep 1"
 ExecStart=emulationstation
 Restart=always
@@ -678,9 +684,16 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_settings.cfg" << 'ESCFG'
 </config>
 ESCFG
 
-# es_input.cfg (keyboard + DS4 joystick)
+# es_input.cfg (keyboard + DS4 joystick) — ORIGINAL PS4 mapping
+# a=Circle(1) b=Cross(0) x=Triangle(3) y=BTN_C(2)
+# start=L1(6) select=Square(4)
+# leftshoulder=R2-digital(9) rightshoulder=Share(10)
+# leftthumb=R1(7) rightthumb=L2-digital(8)
+# lefttrigger=axis4 righttrigger=axis5
+# hotkeyenable=PS(12)
+# up=Options(11) down=PS(12) left=L3(13) right=R3(14)
 cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <inputList>
   <inputConfig type="keyboard" deviceName="Keyboard" deviceGUID="-1">
     <input name="up" type="key" id="1073741906" value="1" />
@@ -698,7 +711,7 @@ cat > "$ROOTFS/home/PS4/.emulationstation/es_input.cfg" << 'INPUTEOF'
     <input name="a" type="button" id="1" value="1" />
     <input name="b" type="button" id="0" value="1" />
     <input name="down" type="button" id="12" value="1" />
-    <input name="hotkeyenable" type="button" id="5" value="1" />
+    <input name="hotkeyenable" type="button" id="12" value="1" />
     <input name="left" type="button" id="13" value="1" />
     <input name="leftanalogdown" type="axis" id="1" value="1" />
     <input name="leftanalogleft" type="axis" id="0" value="-1" />
@@ -728,7 +741,7 @@ echo "ES config: es_settings.cfg (ThemeSet=carbon, ShowMissingGames=true)"
 echo "ES config: es_input.cfg (keyboard + DS4 joystick)"
 
 # === Generate RetroArch autoconfig from es_input.cfg ===
-# Mimics RetroPie configscripts/retroarch.sh: reads ES input type/id/value,
+# Mimics Batocera libretroControllers.py: reads ES input type/id/value,
 # writes input_{name}_{type} = "{value}" to joypad file
 python3 << 'PYEOF'
 import xml.etree.ElementTree as ET, os, re
@@ -737,24 +750,23 @@ tree = ET.parse(f"{ROOTFS}/home/PS4/.emulationstation/es_input.cfg")
 joypad_dir = f"{ROOTFS}/home/PS4/.config/retroarch/all/retroarch-joypads"
 os.makedirs(joypad_dir, exist_ok=True)
 
-# RetroPie mapping: ES input name → RetroArch key(s)
-# From configscripts/retroarch.sh map_retroarch_joystick()
+# Batocera mapping: ES input name → RetroArch key(s)
 RA_KEYS = {
     "up": ["input_up"],
     "down": ["input_down"],
-    "left": ["input_left", "input_state_slot_decrease"],
-    "right": ["input_right", "input_state_slot_increase"],
+    "left": ["input_left"],
+    "right": ["input_right"],
     "a": ["input_a"],
-    "b": ["input_b", "input_reset"],
-    "x": ["input_x", "input_menu_toggle"],
+    "b": ["input_b"],
+    "x": ["input_x"],
     "y": ["input_y"],
-    "leftshoulder": ["input_l", "input_load_state"],
-    "rightshoulder": ["input_r", "input_save_state"],
+    "leftshoulder": ["input_l"],
+    "rightshoulder": ["input_r"],
     "lefttrigger": ["input_l2"],
     "righttrigger": ["input_r2"],
     "leftthumb": ["input_l3"],
     "rightthumb": ["input_r3"],
-    "start": ["input_start", "input_exit_emulator"],
+    "start": ["input_start"],
     "select": ["input_select"],
     "hotkeyenable": ["input_enable_hotkey"],
     "leftanalogleft": ["input_l_x_minus"],
@@ -771,9 +783,11 @@ HAT_MAP = {"1": "up", "2": "right", "4": "down", "8": "left"}
 for ic in tree.getroot().findall("inputConfig"):
     if ic.get("type") != "joystick": continue
     es_name = ic.get("deviceName")
-    # Use actual device name that RetroArch detects (not ES name)
+    if "PS4" not in es_name and "Wireless" not in es_name and "Sony" not in es_name:
+        continue
     ra_name = "Sony Interactive Entertainment Wireless Controller"
-    lines = [f'input_driver = "udev"', f'input_device = "{ra_name}"']
+    lines = [f'input_driver = "udev"', f'input_device = "{ra_name}"',
+             f'input_autodetect_enable = "true"']
     for inp in ic.findall("input"):
         n, t, i, v = inp.get("name"), inp.get("type"), inp.get("id"), inp.get("value")
         keys = RA_KEYS.get(n, [])
@@ -786,7 +800,8 @@ for ic in tree.getroot().findall("inputConfig"):
         elif t == "axis":
             val = f"+{i}" if int(v) > 0 else f"-{i}"
             for k in keys: lines.append(f'{k}_axis = "{val}"')
-    safe = re.sub(r'[:<>?"/\\|*]', '', name)
+    safe = re.sub(r'[:<>?"/\\|*]', '', es_name)
+    safe = re.sub(r'\s+', '_', safe)
     with open(f"{joypad_dir}/{safe}.cfg", "w") as f: f.write("\n".join(lines)+"\n")
     print(f"Generated: {joypad_dir}/{safe}.cfg ({len(lines)} lines)")
 PYEOF
@@ -948,6 +963,64 @@ cat > "$ROOTFS/etc/udev/rules.d/99-tty0-permissions.rules" << 'UDEVTTY'
 KERNEL=="tty0", MODE="0666"
 UDEVTTY
 
+# === PS4 autoconfig override (corrects button IDs for PS4 BTN_C/BTN_Z kernel) ===
+# Standard system autoconfig uses non-shifted indices; PS4 kernel adds BTN_C=2 / BTN_Z=5
+# Disable system autoconfig, install user-level PS4-correct override
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/autoconfig"
+cat > "$ROOTFS/home/PS4/.config/retroarch/autoconfig/054c09cc.cfg" << 'ACFG'
+input_driver = "udev"
+input_device = "Sony Interactive Entertainment Wireless Controller"
+input_autodetect_enable = "true"
+# === ORIGINAL PS4 mapping (Batocera-aligned — derived from es_input.cfg) ===
+# PS4 Linux kernel: BTN_C=2, BTN_Z=5 (extras) — shifts standard indices by 2
+# a=1(Circle) b=0(Cross) x=3(Triangle) y=2(BTN_C)
+# start=6(L1) select=4(Square)
+# leftshoulder=9(R2-dig) rightshoulder=10(Share)
+# leftthumb=7(R1) rightthumb=8(L2-dig)
+# lefttrigger=axis4 righttrigger=axis5
+# hotkeyenable=12(PS) — matches es_input.cfg
+input_a_btn = "1"
+input_b_btn = "0"
+input_x_btn = "3"
+input_y_btn = "2"
+input_start_btn = "6"
+input_select_btn = "4"
+input_l_btn = "9"
+input_r_btn = "10"
+input_l3_btn = "7"
+input_r3_btn = "8"
+input_l2_axis = "-4"
+input_r2_axis = "+5"
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
+input_l_x_plus_axis = "+0"
+input_l_x_minus_axis = "-0"
+input_l_y_plus_axis = "+1"
+input_l_y_minus_axis = "-1"
+input_r_x_plus_axis = "+2"
+input_r_x_minus_axis = "-2"
+input_r_y_plus_axis = "+3"
+input_r_y_minus_axis = "-3"
+# === Hotkey + combos (matches es_input.cfg) ===
+input_enable_hotkey_btn = "12"
+input_exit_emulator_btn = "6"
+input_menu_toggle_btn = "0"
+input_save_state_btn = "2"
+input_load_state_btn = "3"
+input_reset_btn = "1"
+input_a_btn_label = "Circle"
+input_b_btn_label = "Cross"
+input_x_btn_label = "Triangle"
+input_y_btn_label = "BTN_C"
+input_start_btn_label = "L1"
+input_select_btn_label = "Square"
+ACFG
+cp "$ROOTFS/home/PS4/.config/retroarch/autoconfig/054c09cc.cfg" \
+   "$ROOTFS/home/PS4/.config/retroarch/autoconfig/Sony Interactive Entertainment Wireless Controller.cfg"
+chown -R 1000:1000 "$ROOTFS/home/PS4/.config/retroarch/autoconfig"
+
 # === HDMI hotplug watcher ===
 echo "=== Installing HDMI watcher ==="
 cat > "$ROOTFS/usr/local/bin/hdmi-recover" << 'RECOVEREOF'
@@ -974,22 +1047,110 @@ echo HDMI recovery complete.
 RECOVEREOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-recover"
 
-# === HDMI watcher — DISABLED (was corrupting DRM state via modetest) ===
+# === HDMI watcher v3.1 — HPD + link-status detection, escalating recovery ===
 cat > "$ROOTFS/usr/local/bin/hdmi-watcher.sh" << 'HDMI_EOF'
 #!/bin/bash
-# HDMI watcher: periodically re-establish display after TV power cycle
+LOG=/var/log/hdmi-watcher.log
+touch "$LOG"
+chmod 666 "$LOG"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG" >/dev/null; }
+LAST_STATUS=""
+LAST_LINK="Good"
+RECOVERY_COOLDOWN=0
+RECOVERY_COUNT=0
+CONSEC_BAD=0
+get_link() {
+    modetest -M amdgpu -c 2>/dev/null | awk '/^53 / {found=1; next} found && /link-status/ {found=2; next} found==2 && /value:/ {print $2; exit}'
+}
+recover_light() {
+    log "Light: modetest mode set + chvt"
+    modetest -s HDMI-A-1:1920x1080 >> "$LOG" 2>&1
+    sleep 1
+    chvt 1 >/dev/null 2>&1
+    sleep 1
+    chvt 7 >/dev/null 2>&1
+    sleep 2
+}
+recover_heavy() {
+    log "Heavy: stop ES -> modetest mode set + chvt -> start ES"
+    systemctl stop es-session.service >> "$LOG" 2>&1
+    sleep 2
+    pkill -9 -f /usr/bin/retroarch >> "$LOG" 2>&1
+    sleep 1
+    modetest -s HDMI-A-1:1920x1080 >> "$LOG" 2>&1
+    sleep 1
+    chvt 1 >/dev/null 2>&1
+    sleep 1
+    chvt 7 >/dev/null 2>&1
+    sleep 1
+    systemctl start es-session.service >> "$LOG" 2>&1
+    sleep 3
+}
+recover_nuclear() {
+    log "Nuclear: stop ES -> DPMS cycle -> modetest + chvt -> start ES"
+    systemctl stop es-session.service >> "$LOG" 2>&1
+    sleep 2
+    pkill -9 -f /usr/bin/retroarch >> "$LOG" 2>&1
+    sleep 1
+    modetest -M amdgpu -w 53:DPMS:3 >> "$LOG" 2>&1
+    sleep 3
+    modetest -M amdgpu -w 53:DPMS:0 >> "$LOG" 2>&1
+    sleep 2
+    modetest -s HDMI-A-1:1920x1080 >> "$LOG" 2>&1
+    sleep 1
+    chvt 1 >/dev/null 2>&1
+    sleep 1
+    chvt 7 >/dev/null 2>&1
+    sleep 1
+    systemctl start es-session.service >> "$LOG" 2>&1
+    sleep 3
+}
+do_recovery() {
+    RECOVERY_COUNT=$((RECOVERY_COUNT+1))
+    log "=== RECOVERY #$RECOVERY_COUNT ==="
+    case "$RECOVERY_COUNT" in
+        1|2) recover_light ;;
+        3|4) recover_heavy ;;
+        *)   recover_nuclear ;;
+    esac
+    if [ $RECOVERY_COUNT -ge 8 ]; then
+        log "8 recoveries done — please reboot manually if signal still missing"
+        RECOVERY_COUNT=0
+    fi
+}
+log "=== hdmi-watcher v3.1 started ==="
 while true; do
     STATUS=$(cat /sys/class/drm/card0-HDMI-A-1/status 2>/dev/null)
-    if [ "$STATUS" = "connected" ]; then
-        # Check if framebuffer is black (signal lost)
-        FIRST_BYTE=$(dd if=/dev/fb0 bs=1 count=1 2>/dev/null | od -An -tx1 | tr -d ' ')
-        if [ "$FIRST_BYTE" = "00" ]; then
-            # Screen is black — re-establish HDMI
-            modetest -s HDMI-A-1:1920x1080 2>/dev/null
-            dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+    LINK_VAL=$(get_link)
+    [ -z "$LINK_VAL" ] && LINK_VAL="?"
+    if [ "$LINK_VAL" = "0" ]; then LINK="Good"
+    elif [ "$LINK_VAL" = "1" ]; then LINK="Bad"
+    else LINK="Unknown($LINK_VAL)"; fi
+    if [ "$LAST_STATUS" = "connected" ] && [ "$STATUS" = "disconnected" ]; then
+        log "TV DISCONNECTED (HPD lost)"
+    fi
+    if [ "$LAST_STATUS" = "disconnected" ] && [ "$STATUS" = "connected" ]; then
+        log "TV RECONNECTED (HPD gained) — scheduling recovery"
+        RECOVERY_COOLDOWN=2
+    fi
+    if [ "$LINK" = "Bad" ]; then
+        CONSEC_BAD=$((CONSEC_BAD+1))
+        if [ $CONSEC_BAD -eq 5 ]; then
+            log "link-status Bad for 5 cycles — scheduling recovery"
+            RECOVERY_COOLDOWN=2
+        fi
+    else
+        CONSEC_BAD=0
+    fi
+    if [ $RECOVERY_COOLDOWN -gt 0 ]; then
+        RECOVERY_COOLDOWN=$((RECOVERY_COOLDOWN-1))
+        if [ $RECOVERY_COOLDOWN -eq 0 ]; then
+            do_recovery
         fi
     fi
-    sleep 5
+    LAST_STATUS="$STATUS"
+    LAST_LINK="$LINK"
+    sleep 3
 done
 HDMI_EOF
 chmod +x "$ROOTFS/usr/local/bin/hdmi-watcher.sh"
@@ -1169,62 +1330,92 @@ chown 1000:1000 "$ROOTFS/usr/local/bin/retroarch-configscript.sh"
 # Handles: button mapping, D-pad HAT override, PS button hotkey, keyboard bindings, analog axes
 run_chroot "/usr/local/bin/retroarch-configscript.sh"
 
-# === RetroArch appendconfig: audio only (all bindings come from configscript) ===
+# === RetroArch appendconfig: audio (ALSA direct) + keyboard fallback bindings ===
 cat > "$ROOTFS/home/PS4/.config/retroarch/retroarch-ps4.cfg" << 'APPENDCFG'
-# PS4 RetroBox - Audio settings only
-# Controller bindings, hotkeys, keyboard — all generated by retroarch-configscript.sh
-audio_driver = "pulse"
+# PS4 RetroBox - Audio (ALSA direct, bypasses dying PulseAudio) + keyboard fallback bindings
+# Controller bindings — generated by retroarch-configscript.sh from es_input.cfg
+audio_driver = "alsa"
+audio_device = "plughw:0,3"
 audio_sync = "true"
 audio_latency = "64"
+
+# Keyboard fallback bindings (NO hotkey required — escape exits immediately)
+input_menu_toggle_key = "f1"
+input_exit_emulator_key = "escape"
+input_save_state_key = "f3"
+input_load_state_key = "f4"
+input_state_slot_decrease_key = "f5"
+input_state_slot_increase_key = "f6"
+
+# Keyboard gameplay fallbacks
+input_a_key = "x"
+input_b_key = "z"
+input_start_key = "enter"
+input_select_key = "right_shift"
+input_up_key = "up"
+input_down_key = "down"
+input_left_key = "left"
+input_right_key = "right"
+input_l_key = "q"
+input_r_key = "w"
 APPENDCFG
 
 # === Create RetroArch wrapper ===
 cat > "$ROOTFS/usr/local/bin/retroarch-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
+# PS4 RetroBox RetroArch wrapper
+# - Shows launching.png via fbi (runs as ROOT for /dev/tty7 access, full-screen -a)
+# - KMS retry loop
+# - HDMI recovery on exit
+# - ALSA audio (no PulseAudio dependency — PA daemon dies between launches)
+
 trap "" HUP
-# Stop ES to release DRM display for RA
-echo "PS4" | sudo -S systemctl stop es-session.service 2>/dev/null
-sleep 2
 mkdir -p /tmp/runtime-PS4 && chmod 700 /tmp/runtime-PS4
+
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/amdgpu_shim.so
 export MESA_LOADER_DRIVER_OVERRIDE=radeonsi
 export XDG_RUNTIME_DIR=/run/user/1000
-export PULSE_SERVER=unix:/run/user/1000/pulse/native
-export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export MESA_NO_ERROR=1
 export XKB_CONFIG_ROOT=/usr/share/X11/xkb
 export vblank_mode=2
 export __GL_SYNC_TO_VBLANK=1
-# Restart PulseAudio user service after ES stop
-systemctl --user restart pulseaudio 2>/dev/null
-sleep 1
-pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
-# KMS retry: RA may fail if ES hasn't released DRM yet
-MAX_RETRIES=3
+
+# Show launching image (ROOT, full-screen with -a)
+ROM_PATH="$*"
+SYS_DIR=$(echo "$ROM_PATH" | grep -oE '/ROMS/[^/ ]+' | head -1 | sed 's|/ROMS/||')
+LAUNCH_IMG="/home/PS4/.emulationstation/downloaded_images/$SYS_DIR/launching.png"
+if [ -f "$LAUNCH_IMG" ]; then
+    sudo fbi -T 7 -d /dev/fb0 -a -t 4 -noverbose -1 "$LAUNCH_IMG" 2>/dev/null &
+    FBI_PID=$!
+    sleep 3
+    sudo kill $FBI_PID 2>/dev/null
+    sleep 1
+    sudo dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
+fi
+
+# KMS retry loop
+MAX_RETRIES=5
 RETRY=0
 while [ $RETRY -lt $MAX_RETRIES ]; do
-    /usr/bin/retroarch --verbose "$@" > /tmp/retroarch.log 2>&1
+    /usr/bin/retroarch --verbose --appendconfig=/home/PS4/.config/retroarch/retroarch-ps4.cfg "$@" > /tmp/retroarch.log 2>&1
     RC=$?
-    # Check if it was a KMS error
     if grep -q "KMS.*Error when switching mode" /tmp/retroarch.log 2>/dev/null; then
         RETRY=$((RETRY+1))
-        echo "KMS error, retry $RETRY/$MAX_RETRIES..."
         echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
-        sleep 3
+        sleep 5
     else
         break
     fi
 done
-# HDMI recovery after RA exits
+
+# HDMI recovery on exit
 sleep 2
 echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
 sleep 1
 echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
 sleep 1
-# Restart PulseAudio user service
-systemctl --user restart pulseaudio 2>/dev/null
+echo "PS4" | sudo -S modetest -s HDMI-A-1:1920x1080 2>/dev/null
 sleep 1
-pactl set-default-sink alsa_output.pci-0000_00_01.1.hdmi-stereo 2>/dev/null
 echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
 exit $RC
 WRAPPER
