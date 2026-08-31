@@ -1419,6 +1419,23 @@ exit $RC
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
 
+# === Build and install hdmi-recover (DRM DPMS Off→On cycle for HDMI re-sync) ===
+echo "=== Building hdmi-recover ==="
+gcc -O2 -I/usr/include/libdrm -o "$ROOTFS/usr/local/bin/hdmi-recover" hdmi-recover.c -ldrm 2>/dev/null || echo "WARN: hdmi-recover compile failed"
+chmod +x "$ROOTFS/usr/local/bin/hdmi-recover" 2>/dev/null
+
+# === HDMI autorecover daemon (periodic recovery every 5 minutes) ===
+cat > "$ROOTFS/usr/local/bin/hdmi-autorecover.sh" << 'HDMIAUTO'
+#!/bin/bash
+while true; do
+    sleep 300
+    if systemctl is-active es-session >/dev/null 2>&1; then
+        /usr/local/bin/hdmi-recover.sh >/dev/null 2>&1
+    fi
+done
+HDMIAUTO
+chmod +x "$ROOTFS/usr/local/bin/hdmi-autorecover.sh"
+
 # === Build and install ds4-bridge (DS4 js0→uinput button bridge) ===
 echo "=== Building ds4-bridge ==="
 gcc -O2 -o "$ROOTFS/usr/local/bin/ds4-bridge" ds4-bridge.c 2>/dev/null || echo "WARN: ds4-bridge compile failed (host gcc needed)"
