@@ -33,7 +33,7 @@ audio_latency = "64"
 # === Input driver ===
 input_driver = "udev"
 input_autodetect_enable = "true"
-input_device = "Sony Interactive Entertainment Wireless Controller"
+input_device = "PS4 DS4 Bridge Joystick"
 libretro_directory = "/usr/lib/x86_64-linux-gnu/libretro"
 screenshot_directory = "/home/PS4/screenshots"
 savefile_directory = "/home/PS4/saves"
@@ -102,7 +102,6 @@ RA_SPECIALS = {
     "x": "input_load_state",
     "a": "input_reset",
     "up": "input_state_slot_increase",
-    "down": "input_state_slot_decrease",
     "left": "input_rewind",
     "right": "input_hold_fast_forward",
     "lefttrigger": "input_shader_prev",
@@ -125,7 +124,7 @@ with open(RETROARCH_CFG, "a") as cfg:
             continue
 
         cfg.write(f'# Controller: {device_name}\n')
-        cfg.write(f'input_player1_joypad_index = "0"\n')
+        cfg.write(f'input_player1_joypad_index = "1"\n')
         cfg.write(f'input_player1_analog_dpad_mode = "1"\n')
 
         for inp in inputConfig.findall("input"):

@@ -549,6 +549,8 @@ RestartSec=3
 WantedBy=multi-user.target
 SVCEOF
 ln -sf /etc/systemd/system/es-session.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/es-session.service"
+ln -sf /etc/systemd/system/ds4-bridge.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/ds4-bridge.service"
+ln -sf /etc/systemd/system/hdmi-watchdog.service "$ROOTFS/etc/systemd/system/multi-user.target.wants/hdmi-watchdog.service"
 
 # === Disable getty services (they steal keyboard input from RetroArch) ===
 echo "=== Disabling getty services ==="
@@ -1408,18 +1410,87 @@ while [ $RETRY -lt $MAX_RETRIES ]; do
     fi
 done
 
-# HDMI recovery on exit
-sleep 2
+# HDMI recovery on exit — do NOT restart es-session, ES is already running
+sleep 1
 echo "PS4" | sudo -S killall -9 retroarch 2>/dev/null
 sleep 1
-echo "PS4" | sudo -S dd if=/dev/zero of=/dev/fb0 bs=8294400 count=1 2>/dev/null
-sleep 1
 echo "PS4" | sudo -S modetest -s HDMI-A-1:1920x1080 2>/dev/null
-sleep 1
-echo "PS4" | sudo -S systemctl restart es-session.service 2>/dev/null
 exit $RC
 WRAPPER
 chmod +x "$ROOTFS/usr/local/bin/retroarch-wrapper.sh"
+
+# === Build and install ds4-bridge (DS4 js0→uinput button bridge) ===
+echo "=== Building ds4-bridge ==="
+gcc -O2 -o "$ROOTFS/usr/local/bin/ds4-bridge" ds4-bridge.c 2>/dev/null || echo "WARN: ds4-bridge compile failed (host gcc needed)"
+chmod +x "$ROOTFS/usr/local/bin/ds4-bridge" 2>/dev/null
+
+# === Build and install hdmi-force (forces HDMI PHY re-init) ===
+echo "=== Building hdmi-force ==="
+gcc -O2 -I/usr/include/libdrm -o "$ROOTFS/usr/local/bin/hdmi-force" hdmi-force.c -ldrm 2>/dev/null || echo "WARN: hdmi-force compile failed"
+chmod +x "$ROOTFS/usr/local/bin/hdmi-force" 2>/dev/null
+
+# === HDMI watchdog + recovery scripts ===
+cat > "$ROOTFS/usr/local/bin/hdmi-recover.sh" << 'HDMIRECOVER'
+#!/bin/bash
+systemctl stop es-session 2>/dev/null
+killall -9 emulationstation 2>/dev/null
+sleep 2
+/usr/local/bin/hdmi-force 2>&1
+sleep 2
+systemctl start es-session 2>/dev/null
+HDMIRECOVER
+chmod +x "$ROOTFS/usr/local/bin/hdmi-recover.sh"
+
+cat > "$ROOTFS/usr/local/bin/hdmi-watchdog.sh" << 'HDMIWATCHDOG'
+#!/bin/bash
+PREV_EDID=""
+while true; do
+    EDID=$(cat /sys/class/drm/card0-HDMI-A-1/edid 2>/dev/null | wc -c)
+    STATUS=$(cat /sys/class/drm/card0-HDMI-A-1/status 2>/dev/null)
+    if [ "$STATUS" = "connected" ] && [ "$EDID" = "0" ] && [ "$PREV_EDID" != "0" ]; then
+        /usr/local/bin/hdmi-recover.sh >/dev/null 2>&1
+        sleep 15
+    fi
+    PREV_EDID="$EDID"
+    sleep 3
+done
+HDMIWATCHDOG
+chmod +x "$ROOTFS/usr/local/bin/hdmi-watchdog.sh"
+
+mkdir -p "$ROOTFS/etc/systemd/system"
+cat > "$ROOTFS/etc/systemd/system/ds4-bridge.service" << 'BRIDGESVC'
+[Unit]
+Description=DS4 Button Bridge
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ds4-bridge
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
+BRIDGESVC
+
+cat > "$ROOTFS/etc/systemd/system/hdmi-watchdog.service" << 'HDMISVC'
+[Unit]
+Description=HDMI Signal Watchdog
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/hdmi-watchdog.sh
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
+HDMISVC
+
+# === DS4 bridge autoconfig for RetroArch ===
+mkdir -p "$ROOTFS/home/PS4/.config/retroarch/autoconfig"
+cp autoconfig.cfg "$ROOTFS/home/PS4/.config/retroarch/autoconfig/PS4 DS4 Bridge Joystick.cfg"
 
 # === Create N64 core options (optimized for PS4 base) ===
 mkdir -p "$ROOTFS/home/PS4/.config/retroarch/config/Mupen64Plus-Next"
