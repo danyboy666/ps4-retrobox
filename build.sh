@@ -1427,11 +1427,17 @@ chmod +x "$ROOTFS/usr/local/bin/hdmi-recover" 2>/dev/null
 # === HDMI autorecover daemon (periodic recovery every 5 minutes) ===
 cat > "$ROOTFS/usr/local/bin/hdmi-autorecover.sh" << 'HDMIAUTO'
 #!/bin/bash
+# Smart HDMI recovery: monitors HDMI audio ELD for TV power-cycle detection
+# ELD=524 when TV on, ELD=0 when TV off. Triggers recovery on TV power-ON.
+ELD_FILE="/proc/asound/card0/eld#0.0"
+PREV_ELD=""
 while true; do
-    sleep 300
-    if systemctl is-active es-session >/dev/null 2>&1; then
+    sleep 3
+    ELD_SIZE=$(cat "$ELD_FILE" 2>/dev/null | wc -c)
+    if [ "$ELD_SIZE" != "0" ] && [ "$PREV_ELD" = "0" ]; then
         /usr/local/bin/hdmi-recover.sh >/dev/null 2>&1
     fi
+    PREV_ELD="$ELD_SIZE"
 done
 HDMIAUTO
 chmod +x "$ROOTFS/usr/local/bin/hdmi-autorecover.sh"
