@@ -50,10 +50,9 @@ sudo ./build.sh
 
 ```bash
 cd community-files
-zip -j ps4-retrobox-v1.3.zip \
+zip -j ps4-retrobox-v1.7-stable.zip \
     arch.tar.xz initramfs.cpio.gz \
-    bzImage_no-built-in-fw_Clang_fullLTO \
-    bzImage_Baikal_5.4.247 bootargs.txt \
+    bzImage-7.0 bootargs.txt \
     payloads/payload-960-*.bin payloads/payload-960-*.elf
 ```
 

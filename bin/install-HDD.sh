@@ -93,15 +93,16 @@ echo "UFS mounted and writable."
 sleep 2
 clear
 
-# Auto-detect the .tar.* file
-_install_OS="$(ls /ps4hdd/system/boot/*.tar.* 2>/dev/null | head -1)"
+# Auto-detect the .tar.* file (search both system and user boot dirs)
+_install_OS="$(ls /ps4hdd/system/boot/*.tar.* /ps4hdd/user/system/boot/*.tar.* 2>/dev/null | head -1)"
 if [ -z "$_install_OS" ]; then
-	echo "ERROR: No .tar.* found in /ps4hdd/system/boot/"
-	echo "Upload arch.tar.xz via FTP first."
+	echo "ERROR: No .tar.* found in /ps4hdd/system/boot/ or /ps4hdd/user/system/boot/"
+	echo "Upload arch.tar.xz via FTP to /user/system/boot/ first."
 	rescueshell
 fi
+_install_OS_DIR="$(dirname "$_install_OS")"
 _install_OS="$(basename "$_install_OS")"
-echo "Auto-detected OS: $_install_OS"
+echo "Auto-detected OS: $_install_OS (from $_install_OS_DIR)"
 
 _install_OS_img="$(echo "$_install_OS" | sed -n 's/.tar.*/.img/p')"
 echo "Target image: $_install_OS_img"
@@ -356,7 +357,7 @@ cd /newroot
 _PROG_PID=$!
 
 # Extract — busybox tar handles xz natively (DO NOT pipe through xz)
-tar xf "/ps4hdd/system/boot/$_install_OS"
+tar xf "$_install_OS_DIR/$_install_OS"
 _TAR_EXIT=$?
 
 # Kill progress tracker

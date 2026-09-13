@@ -2,6 +2,21 @@
 
 ## Common Issues
 
+### Black screen on Linux boot (no output at all)
+
+If you see absolutely nothing on the TV after sending the payload (no kernel messages, no Plymouth, no console), the most common cause is **Orbis settings interfering with HDMI output**. Check:
+
+1. **HDCP is disabled**: `Settings > System > Enable HDCP = Off`
+2. **HDMI Link is disabled**: `Settings > System > Enable HDMI Link = Off`
+3. **Resolution is 1080p**: `Settings > Sound and Screen > Video Output Settings > Resolution = 1080p` (NOT Automatic)
+
+See [Orbis Settings](Orbis-Settings.md) for full details on why each setting matters.
+
+If the above are correct and you still get black screen:
+- Verify the 4 files were FTP'd correctly (use FileZilla binary mode, not ASCII)
+- Try the alternate HDMI port (`HDMI-A-1` instead of `HDMI-A-0` in bootargs.txt — only if your TV is on HDMI-2 physical port)
+- SSH into the PS4 to check kernel logs: `ssh PS4@<PS4_IP> dmesg | head -50`
+
 ### ES shows but no game systems
 
 ES may not have found your ROMs. Check:

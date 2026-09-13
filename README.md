@@ -123,6 +123,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 ## Quick Links
 
 - [Installation Guide](wiki/Installation-Guide.md) — Full setup walkthrough
+- [Orbis Settings](wiki/Orbis-Settings.md) — **Required** Orbis firmware settings (HDCP off, HDMI Link off, 1080p)
 - [Supported Systems](wiki/Systems.md) — Full list of 39 systems with cores and ROM formats
 - [Controller Setup](wiki/Controller-Setup.md) — DS4 mapping, hotkeys, RetroArch config
 - [Troubleshooting](wiki/Troubleshooting.md) — Common issues and fixes
@@ -134,8 +135,7 @@ See [Installation Guide](wiki/Installation-Guide.md) for full details.
 | Repo | Description |
 |------|-------------|
 | [ps4-retrobox](https://github.com/danyboy666/ps4-retrobox) | Main repo — build scripts, initramfs, configs, releases |
-| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts |
-| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, scraper API key UI, TheGamesDB v1 + ScreenScraper |
+| [EmulationStation](https://github.com/danyboy666/EmulationStation) | PS4 fork — 25-button input, configscripts, scraper API key UI, TheGamesDB v1 + ScreenScraper |
 | [RetroArch](https://github.com/libretro/RetroArch) | v1.22.2 with PS4 patches — GL stale error fix, KMS modeset non-fatal, FBO blit fix, glColorMask font fix |
 | [ps4-linux-12xx](https://github.com/danyboy666/ps4-linux-12xx) | PS4 Linux kernel 6.15.4 — IRQ round-robin, WiFi MT6632 fixes, Clang+FullLTO |
 

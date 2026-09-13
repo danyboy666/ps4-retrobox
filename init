@@ -158,11 +158,11 @@ clear
 
 # Find existing .img (>1GB, ignore failed partials)
 [ "$_PLYMOUTH_ACTIVE" = "1" ] && plymouth update --status="Looking for boot image" 2>/dev/null
-_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' -size +1024k ! -name 'trophy.img' 2>/dev/null | head -1)"
 
 # Fallback: find any .img regardless of size
 if [ -z "$_EXISTING_IMG" ]; then
-	_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' 2>/dev/null | head -1)"
+	_EXISTING_IMG="$(find /ps4hdd/home -name '*.img' ! -name 'trophy.img' 2>/dev/null | head -1)"
 fi
 
 if [ -n "$_EXISTING_IMG" ]; then
@@ -208,7 +208,7 @@ if [ -z "$_EXISTING_IMG" ]; then
 fi
 
 # Inline expansion: expand .img to target size BEFORE booting
-_IMG_FILE="$(find /ps4hdd/home -name '*.img' -size +1024k 2>/dev/null | head -1)"
+_IMG_FILE="$(find /ps4hdd/home -name '*.img' -size +1024k ! -name 'trophy.img' 2>/dev/null | head -1)"
 _TARGET_FILE="/ps4hdd/home/.target_size"
 if [ -n "$_IMG_FILE" ] && [ -f "$_TARGET_FILE" ]; then
 	_TARGET_GB=$(cat "$_TARGET_FILE" 2>/dev/null | tr -d '[:space:]')

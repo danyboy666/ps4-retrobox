@@ -7,9 +7,11 @@
 - Windows PC on same network
 - [GoldHEN](https://github.com/GoldHEN) installed on PS4
 
+> **⚠ BEFORE YOU START**: Configure the required Orbis settings. See [Orbis Settings](Orbis-Settings.md) — disable HDCP, disable HDMI Link, set resolution to 1080p. Skipping this step results in a **black screen on first Linux boot**.
+
 ## Files Needed
 
-Download [v1.3 ZIP](https://github.com/danyboy666/ps4-retrobox/releases/tag/v1.3) and extract:
+Download [latest release ZIP](https://github.com/danyboy666/ps4-retrobox/releases/latest) and extract:
 
 | File | FTP To | Notes |
 |------|--------|-------|
