@@ -49,3 +49,4 @@ gamemode-daemon_*.deb
 *.zip
 *.cpio.gz
 community-files/bzImage
+opencode_history.md
