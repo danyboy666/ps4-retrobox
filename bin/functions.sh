@@ -666,11 +666,10 @@ rootdelay() {
 
 choose_boot_os() {
 
-	_OS_list="$(ls /ps4hdd/home 2>/dev/null | grep \.img | sed -n 's/.img//p')"
-	_OS="$(echo -e "$_OS_list" | head -1)"
-
-	if [ -z "$_OS" ]; then
-		echo "ERROR: No .img found in /ps4hdd/home/"
+	if [ -f /ps4hdd/home/arch.img ]; then
+		_OS="arch"
+	else
+		echo "ERROR: No arch.img found in /ps4hdd/home/"
 		rescueshell
 	fi
 
